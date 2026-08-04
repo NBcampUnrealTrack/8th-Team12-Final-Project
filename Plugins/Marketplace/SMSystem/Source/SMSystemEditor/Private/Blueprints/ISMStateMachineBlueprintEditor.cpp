@@ -1,0 +1,7 @@
+// Copyright Recursoft LLC. All Rights Reserved.
+
+#include "Blueprints/ISMStateMachineBlueprintEditor.h"
+
+ISMStateMachineBlueprintEditor::FOnCreateGraphEditorCommands ISMStateMachineBlueprintEditor::OnCreateGraphEditorCommandsEvent;
+ISMStateMachineBlueprintEditor::FOnBlueprintEditorOpened ISMStateMachineBlueprintEditor::OnBlueprintEditorOpened;
+ISMStateMachineBlueprintEditor::FOnBlueprintEditorClosed ISMStateMachineBlueprintEditor::OnBlueprintEditorClosed;
