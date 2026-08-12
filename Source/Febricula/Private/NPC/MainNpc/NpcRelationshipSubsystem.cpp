@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "NPC/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
 
 float UNpcRelationshipSubsystem::GetAffinityValue(FName NpcId) const
 {

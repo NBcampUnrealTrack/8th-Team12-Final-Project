@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "NpcTypes.h"
+#include "NPC/NpcTypes.h"
 #include "NpcRelationshipSubsystem.generated.h"
 
 UCLASS(BlueprintType)
