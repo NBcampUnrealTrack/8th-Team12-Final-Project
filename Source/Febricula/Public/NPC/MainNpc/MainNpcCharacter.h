@@ -1,9 +1,12 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BaseNpcCharacter.h"
+#include "NPC/BaseNpcCharacter.h"
 #include "MainNpcCharacter.generated.h"
 
+class ANpcPatrolRoute;
 class UNpcRelationshipSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNpcTalkStateChanged, bool, bIsTalking);
@@ -14,9 +17,15 @@ class FEBRICULA_API AMainNpcCharacter : public ABaseNpcCharacter
 	GENERATED_BODY()
 
 public:
+	AMainNpcCharacter();
+
+	virtual void BeginPlay() override;
+
 	virtual bool IsMainNpc() const override { return true; }
 
 	virtual FText GetInteractionPrompt_Implementation(AActor* Interactor) const override;
+
+	// ---- 추적/동행 ----
 
 	UFUNCTION(BlueprintCallable, Category = "NPC|Main")
 	virtual void StartFollowTarget(AActor* TargetToFollow);
@@ -29,6 +38,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "NPC|Main")
 	AActor* GetFollowTarget() const { return CurrentFollowTarget; }
+
+	// ---- 대화 ----
 	
 	UFUNCTION(BlueprintCallable, Category = "NPC|Main")
 	virtual void StartTalk(AActor* Talker);
@@ -41,6 +52,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "NPC|Main")
 	AActor* GetCurrentTalker() const { return CurrentTalker; }
+
+	// ---- 호감도 조회 (실제 값의 소유자는 UNpcRelationshipSubsystem) ----
 	
 	UFUNCTION(BlueprintPure, Category = "NPC|Relationship")
 	bool IsRelationshipAtLeast(ENpcRelationshipLevel MinimumLevel) const;
@@ -62,6 +75,15 @@ protected:
 	void OnTalkEnded();
 
 	UNpcRelationshipSubsystem* GetRelationshipSubsystem() const;
+	
+	void SetBehaviorTreePaused(bool bPaused) const;
+	
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "NPC|AI")
+	TObjectPtr<ANpcPatrolRoute> DefaultPatrolRoute;
+
+	/** DefaultPatrolRoute가 지정되어 있을 때 BeginPlay에서 자동으로 Patrol을 시작할지 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|AI")
+	bool bAutoStartPatrol = true;
 
 	/** Blackboard의 추적/동행 대상 키 이름 (Object 키) */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|AI")
