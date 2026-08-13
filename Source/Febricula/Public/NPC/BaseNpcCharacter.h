@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Interactable.h"
+#include "Interaction/Interactable.h"
 #include "NpcTypes.h"
 #include "BaseNpcCharacter.generated.h"
 
