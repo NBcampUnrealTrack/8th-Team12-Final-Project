@@ -9,7 +9,7 @@
 #include "DoorMapActor.generated.h"
 
 UCLASS()
-class FEBRICULA_API ADoorMapActor : public AMovableMapActor
+class FEBRICULA_API ADoorMapActor : public AMovableMapActor, public IInteractableInterface
 {
 	GENERATED_BODY()
 
@@ -21,15 +21,22 @@ protected:
 	virtual void BeginPlay() override;
 	void OpenActor() override;
 	void CloseActor() override;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")
-	bool bCanChangeLevel;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta = (AllowedClasses="/Script/Engine.World"))
-	TSoftObjectPtr<UWorld> ConnectedLevel;
-	EMoveState NowState;
 	
+	virtual void DoInteract_Implementation(AActor* Interactor) override;
+	virtual bool CanInteract_Implementation(AActor* Interactor) const override;
+	
+
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")
+	// bool bCanChangeLevel;
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta = (AllowedClasses="/Script/Engine.World"))
+	// TSoftObjectPtr<UWorld> ConnectedLevel;
+	EMoveState NowState;
+		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	TArray<float> MinRotation;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Change")
+	TSoftObjectPtr<UWorld> TargetLevel;
 
 };
 
