@@ -5,13 +5,13 @@
 
 #include "TimerManager.h"
 #include "Components/TimelineComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
 ADoorMapActor::ADoorMapActor()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	UTimelineComponent* OpenTimeline = CreateDefaultSubobject<UTimelineComponent>(FName("Open"));
 }
 
 // void ADoorMapActor::StartMove()
@@ -59,6 +59,7 @@ void ADoorMapActor::OpenActor()
 				Hinges[i]->SetRelativeRotation(FRotator(Hinges[i]->GetRelativeRotation().Pitch, MinRotation[i] + MaxMovement, Hinges[i]->GetRelativeRotation().Roll));
 				NowState = EMoveState::CLOSING;
 				bNowMove = false;
+				DoInteract_Implementation(GetOwner());
 			}
 		}
 	}
@@ -82,6 +83,18 @@ void ADoorMapActor::CloseActor()
 			}
 		}
 	}
+}
+
+void ADoorMapActor::DoInteract_Implementation(AActor* Interactor)
+{
+	if (!Execute_CanInteract(this, Interactor)) { return;} 
+	if (TargetLevel.IsNull()) { return; }
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
+}
+
+bool ADoorMapActor::CanInteract_Implementation(AActor* Interactor) const
+{
+	return bCanInteract;
 }
 
 // Called when the game starts or when spawned

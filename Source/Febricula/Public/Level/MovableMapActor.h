@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InteractableInterface.h"
 #include "MapActorBase.h"
 #include "MoveState.h"
 #include "MovableMapActor.generated.h"
@@ -23,6 +24,7 @@ protected:
 	virtual void OpenActor() PURE_VIRTUAL(AMovableMapActor::OpenActor, );
 	virtual void CloseActor() PURE_VIRTUAL(AMovableMapActor::CloseActor, );
 
+	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta=(UseComponentPicker, AllowedClasses="/Script/Engine.SceneComponent"))
