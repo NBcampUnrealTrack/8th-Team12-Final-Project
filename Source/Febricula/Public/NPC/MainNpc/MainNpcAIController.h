@@ -32,7 +32,7 @@ class UBlackboardComponent;
  * ---- Blackboard 키 (이름이 아래 static FName들과 정확히 같아야 함) ----
  *   AIState (Enum, ENpcAIState) / PatrolRoute (Object, ANpcPatrolRoute)
  *   PatrolIndex (Int) / PatrolTargetLocation (Vector) / ChaseTarget (Object, Actor)
- **/
+ */
 UCLASS()
 class FEBRICULA_API AMainNpcAIController : public AAIController
 {
@@ -62,11 +62,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NPC|AI")
 	void StartChase(AActor* TargetToChase);
 
-	/** Idle로 복귀 */
+	/** Idle로 복귀 (추적 중단) */
 	UFUNCTION(BlueprintCallable, Category = "NPC|AI")
 	void StopChase();
 
-	// ---- Blackboard 키 이름 ----
+	// ---- Blackboard 키 이름 (Blackboard 애셋에서 만드는 키 이름과 반드시 일치해야 함) ----
 	static const FName BBKey_AIState;
 	static const FName BBKey_PatrolRoute;
 	static const FName BBKey_PatrolIndex;

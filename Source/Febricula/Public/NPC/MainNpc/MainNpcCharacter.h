@@ -33,6 +33,16 @@ public:
 
 	virtual FText GetInteractionPrompt_Implementation(AActor* Interactor) const override;
 
+	/**
+	 * 상호작용 시 Talk 상태로 들어가고 이벤트 트리 대화를 시작한다.
+	 * 조건을 만족하는 이벤트가 없으면 DefaultIdleNodeId(있다면)를 재생하고, 그것도 없으면 그냥 지나간다.
+	 */
+	virtual void Interact_Implementation(AActor* Interactor) override;
+
+	/** 순찰 경로 조회 (대화 액션 NpcStartPatrol에서 사용) */
+	UFUNCTION(BlueprintPure, Category = "NPC|AI")
+	ANpcPatrolRoute* GetDefaultPatrolRoute() const { return DefaultPatrolRoute; }
+
 	// ---- 추적/동행 ----
 
 	/** 대상을 계속 따라 이동한다 (한서윤 순찰 동행, 김도윤 산책 동행 등) */
@@ -109,6 +119,13 @@ protected:
 	/** DefaultPatrolRoute가 지정되어 있을 때 BeginPlay에서 자동으로 Patrol을 시작할지 여부 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|AI")
 	bool bAutoStartPatrol = true;
+
+	/**
+	 * 발생 가능한 이벤트가 하나도 없을 때 재생할 기본 대화 노드.
+	 * ("오늘은 별일 없어." 같은 잡담. 비워두면 상호작용해도 아무 일도 일어나지 않는다)
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Dialogue")
+	FName DefaultIdleNodeId;
 
 	/** Blackboard의 추적/동행 대상 키 이름 (Object 키) */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|AI")

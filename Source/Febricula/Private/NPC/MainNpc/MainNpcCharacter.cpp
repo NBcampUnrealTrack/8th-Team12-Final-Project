@@ -5,6 +5,7 @@
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BrainComponent.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
@@ -44,7 +45,42 @@ void AMainNpcCharacter::BeginPlay()
 
 FText AMainNpcCharacter::GetInteractionPrompt_Implementation(AActor* Interactor) const
 {
-	return NSLOCTEXT("Npc", "TalkPrompt", "대화하기");
+	return NSLOCTEXT("Npc", "TalkPrompt", "E - 대화하기");
+}
+
+void AMainNpcCharacter::Interact_Implementation(AActor* Interactor)
+{
+	// 부모가 OnNpcInteracted 브로드캐스트 + OnInteracted 블루프린트 훅까지 처리한다.
+	Super::Interact_Implementation(Interactor);
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>();
+	if (!Dialogue || Dialogue->IsDialogueActive())
+	{
+		return;
+	}
+
+	// 대화 시작 전에 먼저 멈춰 세우고 플레이어를 바라보게 한다.
+	// (BT 일시정지도 StartTalk 안에서 처리되므로 대화 도중 순찰로 걸어가 버리지 않는다)
+	StartTalk(Interactor);
+
+	// 조건을 만족하는 이벤트를 찾아 시작. 없으면 기본 잡담으로 폴백.
+	bool bStarted = Dialogue->TryStartEventForNpc(GetNpcId(), this);
+	if (!bStarted && !DefaultIdleNodeId.IsNone())
+	{
+		bStarted = Dialogue->StartDialogueAtNode(DefaultIdleNodeId, this);
+	}
+
+	if (!bStarted)
+	{
+		// 할 말이 없으면 Talk 상태를 바로 풀어준다 (안 그러면 계속 멈춰 서 있게 된다).
+		EndTalk();
+	}
 }
 
 // ---------------------------------------------------------------------------
