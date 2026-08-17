@@ -9,8 +9,8 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
-#include "NPC/MainNpc/NpcPatrolRoute.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcRoute.h"
 
 AMainNpcCharacter::AMainNpcCharacter()
 {
@@ -22,24 +22,36 @@ void AMainNpcCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 레벨 디테일 패널에서 DefaultPatrolRoute만 지정해두면 여기서 알아서 순찰을 시작한다.
+	// 레벨 디테일 패널에서 DefaultRoute와 AutoStartMode만 지정해두면 여기서 알아서 시작한다.
 	// (AIController 빙의와 RunBehaviorTree는 PostInitializeComponents 단계에서 이미 끝나 있으므로
 	//  BeginPlay 시점엔 Blackboard가 준비된 상태다.)
-	if (!bAutoStartPatrol || !DefaultPatrolRoute)
+	if (AutoStartMode == ENpcAutoStartMode::None || !DefaultRoute)
 	{
 		return;
 	}
 
-	if (AMainNpcAIController* NpcAIController = Cast<AMainNpcAIController>(GetController()))
-	{
-		NpcAIController->StartPatrol(DefaultPatrolRoute);
-	}
-	else
+	AMainNpcAIController* NpcAIController = Cast<AMainNpcAIController>(GetController());
+	if (!NpcAIController)
 	{
 		UE_LOG(LogTemp, Warning,
-			TEXT("%s: AMainNpcAIController를 찾지 못해 자동 순찰을 시작하지 못했습니다. "
+			TEXT("%s: AMainNpcAIController를 찾지 못해 자동 시작에 실패했습니다. "
 				 "AI Controller Class가 MainNpcAIController인지, Auto Possess AI 설정이 켜져 있는지 확인하세요."),
 			*GetNameSafe(this));
+		return;
+	}
+
+	switch (AutoStartMode)
+	{
+	case ENpcAutoStartMode::Patrol:
+		NpcAIController->StartPatrol(DefaultRoute);
+		break;
+
+	case ENpcAutoStartMode::Guide:
+		NpcAIController->StartGuide(DefaultRoute);
+		break;
+
+	default:
+		break;
 	}
 }
 

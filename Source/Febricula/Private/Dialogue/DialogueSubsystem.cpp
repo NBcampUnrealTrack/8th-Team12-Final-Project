@@ -418,17 +418,27 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		{
 			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(MainNpc->GetController()))
 			{
-				AI->StartPatrol(MainNpc->GetDefaultPatrolRoute());
+				AI->StartPatrol(MainNpc->GetDefaultRoute());
 			}
 		}
 		break;
 
-	case EGameActionType::NpcStopPatrol:
+	case EGameActionType::NpcStartGuide:
+		if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(FindNpcById(Action.Key)))
+		{
+			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(MainNpc->GetController()))
+			{
+				AI->StartGuide(MainNpc->GetDefaultRoute());
+			}
+		}
+		break;
+
+	case EGameActionType::NpcStopRouteMove:
 		if (const ABaseNpcCharacter* Npc = FindNpcById(Action.Key))
 		{
 			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(Npc->GetController()))
 			{
-				AI->StopPatrol();
+				AI->StopRouteMovement();
 			}
 		}
 		break;

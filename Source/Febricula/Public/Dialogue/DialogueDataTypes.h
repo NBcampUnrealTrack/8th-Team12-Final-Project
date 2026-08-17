@@ -87,20 +87,29 @@ enum class EGameActionType : uint8
 
 	// ---- AI 연동 ----
 
-	/** Key(NpcId) NPC를 Value(ENpcAIState)로 전환 */
+	/** Key(NpcId) NPC를 Value(ENpcAIState: 0=Idle,1=Patrol,2=Guide,3=Chase)로 전환 */
 	NpcSetAIState			UMETA(DisplayName = "NPC AI 상태 변경"),
 
-	/** Key(NpcId) NPC가 플레이어를 따라오게 함 */
+	/** Key(NpcId) NPC가 플레이어를 졸졸 따라오게 함 (NPC가 뒤를 따름) */
 	NpcFollowPlayer			UMETA(DisplayName = "NPC 플레이어 추적 시작"),
 
 	/** Key(NpcId) NPC 추적 중단 */
 	NpcStopFollow			UMETA(DisplayName = "NPC 추적 중단"),
 
-	/** Key(NpcId) NPC가 자기 DefaultPatrolRoute로 순찰 시작 */
-	NpcStartPatrol			UMETA(DisplayName = "NPC 순찰 시작"),
+	/**
+	 * Key(NpcId) NPC가 자기 DefaultRoute를 혼자 계속 돈다.
+	 * 지점에 도착하면 바로 다음 지점으로 간다. 플레이어를 기다리지 않는다.
+	 */
+	NpcStartPatrol			UMETA(DisplayName = "NPC 순찰 시작 (혼자)"),
 
-	/** Key(NpcId) NPC 순찰 중단 */
-	NpcStopPatrol			UMETA(DisplayName = "NPC 순찰 중단"),
+	/**
+	 * Key(NpcId) NPC가 자기 DefaultRoute를 따라가되, 각 지점에서 플레이어가
+	 * 따라올 때까지 기다린다. 학교 안내, 산책 동행 같은 "데리고 다니는" 연출용.
+	 */
+	NpcStartGuide			UMETA(DisplayName = "NPC 안내 시작 (플레이어 대기)"),
+
+	/** Key(NpcId) 순찰/안내 공통 중단 → Idle */
+	NpcStopRouteMove		UMETA(DisplayName = "NPC 순찰·안내 중단"),
 };
 
 /**

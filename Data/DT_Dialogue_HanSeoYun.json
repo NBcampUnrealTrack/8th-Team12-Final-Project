@@ -13,7 +13,7 @@
 		"SpeakerName": "한서윤",
 		"Text": "따라와. 30분이면 한 바퀴 다 돌 수 있으니까.",
 		"OnEnterActions": [
-			{ "Type": "NpcStartPatrol", "Key": "NPC_HanSeoYun", "Value": 0 }
+			{ "Type": "NpcStartGuide", "Key": "NPC_HanSeoYun", "Value": 0 }
 		],
 		"Choices": [],
 		"Branches": [],
@@ -94,7 +94,7 @@
 		"SpeakerName": "한서윤",
 		"Text": "...잠깐.",
 		"OnEnterActions": [
-			{ "Type": "NpcStopPatrol", "Key": "NPC_HanSeoYun", "Value": 0 }
+			{ "Type": "NpcStopRouteMove", "Key": "NPC_HanSeoYun", "Value": 0 }
 		],
 		"Choices": [],
 		"Branches": [],

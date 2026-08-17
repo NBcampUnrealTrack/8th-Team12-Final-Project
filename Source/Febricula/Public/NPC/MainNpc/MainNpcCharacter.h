@@ -6,7 +6,7 @@
 #include "NPC/BaseNpcCharacter.h"
 #include "MainNpcCharacter.generated.h"
 
-class ANpcPatrolRoute;
+class ANpcRoute;
 class UNpcRelationshipSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNpcTalkStateChanged, bool, bIsTalking);
@@ -39,9 +39,9 @@ public:
 	 */
 	virtual void Interact_Implementation(AActor* Interactor) override;
 
-	/** 순찰 경로 조회 (대화 액션 NpcStartPatrol에서 사용) */
+	/** 이동 경로 조회 (대화 액션 NpcStartPatrol / NpcStartGuide에서 사용) */
 	UFUNCTION(BlueprintPure, Category = "NPC|AI")
-	ANpcPatrolRoute* GetDefaultPatrolRoute() const { return DefaultPatrolRoute; }
+	ANpcRoute* GetDefaultRoute() const { return DefaultRoute; }
 
 	// ---- 추적/동행 ----
 
@@ -108,17 +108,20 @@ protected:
 	void SetBehaviorTreePaused(bool bPaused) const;
 
 	/**
-	 * 레벨에 배치한 순찰 경로. 여기에 경로를 지정해두면 BeginPlay에서 자동으로 순찰을 시작하므로
-	 * 테스트할 때 블루프린트를 따로 만들 필요가 없다.
+	 * 레벨에 배치한 이동 경로. 순찰(Patrol)과 안내(Guide)가 같은 경로를 공유한다.
 	 * EditInstanceOnly라 "레벨에 배치된 NPC를 선택한 상태"의 디테일 패널에서 지정한다
-	 * (순찰 경로는 레벨마다 다르므로 클래스 디폴트가 아니라 인스턴스 값이 맞다).
+	 * (경로는 레벨마다 다르므로 클래스 디폴트가 아니라 인스턴스 값이 맞다).
 	 */
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "NPC|AI")
-	TObjectPtr<ANpcPatrolRoute> DefaultPatrolRoute;
+	TObjectPtr<ANpcRoute> DefaultRoute;
 
-	/** DefaultPatrolRoute가 지정되어 있을 때 BeginPlay에서 자동으로 Patrol을 시작할지 여부 */
+	/**
+	 * DefaultRoute가 지정되어 있을 때 BeginPlay에서 무엇을 자동으로 시작할지.
+	 * 블루프린트 배선 없이 레벨에 놓기만 해도 동작을 확인할 수 있게 하려는 편의 기능이다.
+	 * 이벤트 트리로 제어할 NPC라면 None으로 두면 된다.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|AI")
-	bool bAutoStartPatrol = true;
+	ENpcAutoStartMode AutoStartMode = ENpcAutoStartMode::Patrol;
 
 	/**
 	 * 발생 가능한 이벤트가 하나도 없을 때 재생할 기본 대화 노드.
