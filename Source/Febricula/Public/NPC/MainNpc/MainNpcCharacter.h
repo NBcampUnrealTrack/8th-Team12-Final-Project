@@ -76,6 +76,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "NPC|Main")
 	AActor* GetCurrentTalker() const { return CurrentTalker; }
 
+	/**
+	 * 대화 중인데도 AI를 다시 돌린다 ("걸으면서 대화하기" 연출용).
+	 * StartTalk은 기본적으로 NPC를 제자리에 세우는데, 학교 안내처럼 이동과 대사가 맞물려야 하는
+	 * 장면에서는 대화 데이터가 이 함수를 호출해서 AI를 깨운다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "NPC|Main")
+	void ResumeAIDuringTalk();
+
+	/** 다시 제자리에 세운다 */
+	UFUNCTION(BlueprintCallable, Category = "NPC|Main")
+	void PauseAIDuringTalk();
+
 	// ---- 호감도 조회 (실제 값의 소유자는 UNpcRelationshipSubsystem) ----
 
 	/** 이벤트 트리 전제조건("호의 이상" 등) 판정에 바로 쓰는 헬퍼 */

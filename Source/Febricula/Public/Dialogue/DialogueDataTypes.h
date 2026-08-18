@@ -110,6 +110,39 @@ enum class EGameActionType : uint8
 
 	/** Key(NpcId) 순찰/안내 공통 중단 → Idle */
 	NpcStopRouteMove		UMETA(DisplayName = "NPC 순찰·안내 중단"),
+
+	/**
+	 * Key(NpcId) 대화 중에도 BehaviorTree를 돌린다.
+	 * 기본적으로 대화가 시작되면 NPC는 제자리에 멈추는데("대화 중엔 안 움직인다"가 보통 맞으므로),
+	 * "걸으면서 대화하는" 연출에서는 이 액션으로 AI를 다시 켜 줘야 한다.
+	 */
+	NpcResumeAI				UMETA(DisplayName = "대화 중 NPC AI 재개"),
+
+	/** Key(NpcId) 다시 제자리에 세운다 */
+	NpcPauseAI				UMETA(DisplayName = "대화 중 NPC AI 정지"),
+};
+
+/**
+ * 대사를 다음으로 넘기는 방식.
+ * 기본은 플레이어 클릭이지만, 이동 연출과 대사를 맞물리게 하려면 자동 진행이 필요하다.
+ */
+UENUM(BlueprintType)
+enum class EDialogueAutoAdvance : uint8
+{
+	/** 플레이어가 클릭(또는 E)해야 넘어간다 */
+	None				UMETA(DisplayName = "클릭 대기 (기본)"),
+
+	/** AutoAdvanceValue 초가 지나면 자동으로 넘어간다 */
+	AfterDelay			UMETA(DisplayName = "N초 후 자동"),
+
+	/** 플레이어가 대화 상대에게 AutoAdvanceValue 이내로 접근하면 넘어간다 */
+	WhenPlayerNearNpc	UMETA(DisplayName = "플레이어가 NPC에 접근하면"),
+
+	/**
+	 * NPC가 현재 경로 지점에 도착하면 넘어간다 (AutoAdvanceValue = 도착 판정 반경).
+	 * "따라와" 대사를 띄운 채로 NPC가 다음 지점까지 걸어가게 만들 때 쓴다.
+	 */
+	WhenNpcArrived		UMETA(DisplayName = "NPC가 경로 지점에 도착하면"),
 };
 
 /**
@@ -203,7 +236,8 @@ struct FDialogueBranch
  * 진행 순서:
  *   1) OnEnterActions 실행
  *   2) SpeakerName / Text 를 HUD에 출력
- *   3) 플레이어가 클릭해서 넘기면:
+ *   3) AutoAdvance가 None이면 플레이어 클릭을 기다리고, 아니면 해당 조건이 만족될 때까지 기다린다
+ *   4) 넘어갈 때:
  *      - Choices가 있으면  → 선택지 표시
  *      - Branches가 있으면 → 위에서부터 조건 검사해 첫 통과 갈래로 이동
  *      - 둘 다 없으면      → NextNodeId로 이동 (None이면 대화 종료)
@@ -231,6 +265,28 @@ struct FDialogueNodeRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	FName NextNodeId;
+
+	/**
+	 * 이 대사를 어떻게 넘길지. 자동 진행 중에는 플레이어 클릭이 무시된다
+	 * (걸어가는 도중에 대사를 건너뛰어 연출이 어긋나는 걸 막기 위함).
+	 * Choices가 있는 노드에서는 무시된다 - 선택지는 반드시 골라야 하므로.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue|AutoAdvance")
+	EDialogueAutoAdvance AutoAdvance = EDialogueAutoAdvance::None;
+
+	/** AfterDelay면 초, WhenPlayerNearNpc / WhenNpcArrived면 거리(cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue|AutoAdvance")
+	float AutoAdvanceValue = 0.f;
+
+	/**
+	 * 자동 진행을 기다리는 동안 대화창을 닫아둔다. 이 노드의 Text는 출력되지 않는다.
+	 *
+	 * "따라와" -> (대화창 닫힘, 플레이어가 자유롭게 따라감) -> 도착하면 대화 재개
+	 * 같은 이동 구간을 만들 때 쓰는 "이동 대기 노드"용 플래그다.
+	 * OnEnterActions는 정상적으로 실행되므로 여기서 NpcStartGuide / NpcResumeAI를 걸면 된다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue|AutoAdvance")
+	bool bHideBoxWhileWaiting = false;
 };
 
 /**

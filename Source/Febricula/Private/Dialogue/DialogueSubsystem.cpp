@@ -14,6 +14,87 @@
 #include "NPC/MainNpc/MainNpcCharacter.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
 
+TStatId UDialogueSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UDialogueSubsystem, STATGROUP_Tickables);
+}
+
+void UDialogueSubsystem::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// 자동 진행을 기다리는 중일 때만 일이 있다.
+	if (!bDialogueActive || bWaitingForChoice || PendingAutoAdvance == EDialogueAutoAdvance::None)
+	{
+		return;
+	}
+
+	if (!IsAutoAdvanceSatisfied(DeltaTime))
+	{
+		return;
+	}
+
+	PendingAutoAdvance = EDialogueAutoAdvance::None;
+	AutoAdvanceElapsed = 0.f;
+
+	if (bRunningSimpleLines)
+	{
+		// 즉석 대사 모드에서도 자동 진행을 쓸 수 있게 같은 경로를 탄다.
+		if (SimpleLineQueue.Num() > 0)
+		{
+			const FText Next = SimpleLineQueue[0];
+			SimpleLineQueue.RemoveAt(0);
+			OnDialogueLine.Broadcast(SimpleLineSpeaker, Next);
+		}
+		else
+		{
+			FinishDialogue();
+		}
+		return;
+	}
+
+	ResolveNodeExit();
+}
+
+bool UDialogueSubsystem::IsAutoAdvanceSatisfied(float DeltaTime)
+{
+	switch (PendingAutoAdvance)
+	{
+	case EDialogueAutoAdvance::AfterDelay:
+		AutoAdvanceElapsed += DeltaTime;
+		return AutoAdvanceElapsed >= AutoAdvanceValue;
+
+	case EDialogueAutoAdvance::WhenPlayerNearNpc:
+		{
+			const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+			if (!PlayerPawn || !CurrentInstigator)
+			{
+				return false;
+			}
+			const float RadiusSq = FMath::Square(FMath::Max(AutoAdvanceValue, 1.f));
+			return FVector::DistSquared2D(PlayerPawn->GetActorLocation(), CurrentInstigator->GetActorLocation()) <= RadiusSq;
+		}
+
+	case EDialogueAutoAdvance::WhenNpcArrived:
+		{
+			const ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(CurrentInstigator);
+			if (!Npc)
+			{
+				return false;
+			}
+			const AMainNpcAIController* AI = Cast<AMainNpcAIController>(Npc->GetController());
+			if (!AI)
+			{
+				return false;
+			}
+			return AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f));
+		}
+
+	default:
+		return false;
+	}
+}
+
 void UDialogueSubsystem::SetDataTables(UDataTable* InEventTable, UDataTable* InDialogueTable)
 {
 	EventTable = InEventTable;
@@ -142,6 +223,13 @@ void UDialogueSubsystem::Advance()
 		return;
 	}
 
+	// 자동 진행 대기 중에도 클릭을 막는다.
+	// 걸어가는 도중에 대사를 건너뛰면 "도착했을 때 나와야 할 대사"가 미리 나와서 연출이 어긋난다.
+	if (PendingAutoAdvance != EDialogueAutoAdvance::None)
+	{
+		return;
+	}
+
 	if (bRunningSimpleLines)
 	{
 		if (SimpleLineQueue.Num() > 0)
@@ -218,6 +306,8 @@ void UDialogueSubsystem::FinishDialogue()
 	bRunningSimpleLines = false;
 	CurrentNodeId = NAME_None;
 	ActiveEventId = NAME_None;
+	PendingAutoAdvance = EDialogueAutoAdvance::None;
+	AutoAdvanceElapsed = 0.f;
 	PendingChoices.Reset();
 	SimpleLineQueue.Reset();
 
@@ -256,6 +346,26 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	bWaitingForChoice = false;
 
 	ExecuteActions(Row->OnEnterActions);
+
+	// 선택지가 있는 노드는 반드시 골라야 하므로 자동 진행을 걸지 않는다.
+	if (Row->Choices.Num() > 0)
+	{
+		PendingAutoAdvance = EDialogueAutoAdvance::None;
+	}
+	else
+	{
+		PendingAutoAdvance = Row->AutoAdvance;
+		AutoAdvanceValue = Row->AutoAdvanceValue;
+	}
+	AutoAdvanceElapsed = 0.f;
+
+	// 이동 대기 노드: 대사를 띄우지 않고 창만 닫아둔 채 조건이 만족될 때까지 기다린다.
+	// 플레이어는 그동안 자유롭게 NPC를 따라간다.
+	if (Row->bHideBoxWhileWaiting && PendingAutoAdvance != EDialogueAutoAdvance::None)
+	{
+		OnDialogueBoxHidden.Broadcast();
+		return;
+	}
 
 	OnDialogueLine.Broadcast(Row->SpeakerName, Row->Text);
 }
@@ -440,6 +550,20 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			{
 				AI->StopRouteMovement();
 			}
+		}
+		break;
+
+	case EGameActionType::NpcResumeAI:
+		if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(FindNpcById(Action.Key)))
+		{
+			MainNpc->ResumeAIDuringTalk();
+		}
+		break;
+
+	case EGameActionType::NpcPauseAI:
+		if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(FindNpcById(Action.Key)))
+		{
+			MainNpc->PauseAIDuringTalk();
 		}
 		break;
 

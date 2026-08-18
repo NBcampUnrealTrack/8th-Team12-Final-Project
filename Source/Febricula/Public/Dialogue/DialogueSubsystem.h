@@ -29,12 +29,24 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDialogueChoices, const TArray<FDi
 /** 대화가 완전히 끝났을 때 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
 
+/**
+ * 대화는 계속 진행 중이지만 창을 잠시 닫아야 할 때 (이동 대기 구간).
+ * OnDialogueFinished와 달리 대화가 끝난 게 아니므로, HUD는 창만 숨기고 상태는 유지해야 한다.
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueBoxHidden);
+
 UCLASS()
-class FEBRICULA_API UDialogueSubsystem : public UWorldSubsystem
+class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 
 public:
+	//~ Begin FTickableGameObject
+	// 자동 진행(AutoAdvance) 조건을 매 틱 검사해야 해서 Tickable 서브시스템으로 둔다.
+	virtual void Tick(float DeltaTime) override;
+	virtual TStatId GetStatId() const override;
+	//~ End FTickableGameObject
+
 	// ---- 데이터 테이블 주입 ----
 
 	/**
@@ -86,6 +98,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsWaitingForChoice() const { return bWaitingForChoice; }
 
+	/**
+	 * 자동 진행 조건을 기다리는 중인가.
+	 * true면 "클릭해서 넘기기" 표시를 감추는 게 자연스럽다 (어차피 클릭이 안 먹으므로).
+	 */
+	UFUNCTION(BlueprintPure, Category = "Dialogue")
+	bool IsWaitingForAutoAdvance() const { return PendingAutoAdvance != EDialogueAutoAdvance::None; }
+
 	// ---- HUD가 구독할 델리게이트 ----
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
@@ -96,6 +115,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
 	FOnDialogueFinished OnDialogueFinished;
+
+	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
+	FOnDialogueBoxHidden OnDialogueBoxHidden;
 
 protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
@@ -127,9 +149,17 @@ protected:
 	FName ActiveEventId;
 	bool bCompleteEventOnFinish = false;
 
+	/** 자동 진행 조건이 만족됐는지 검사한다 */
+	bool IsAutoAdvanceSatisfied(float DeltaTime);
+
 	FName CurrentNodeId;
 	bool bDialogueActive = false;
 	bool bWaitingForChoice = false;
+
+	/** 현재 노드가 요구하는 자동 진행 방식. None이면 플레이어 클릭 대기 */
+	EDialogueAutoAdvance PendingAutoAdvance = EDialogueAutoAdvance::None;
+	float AutoAdvanceValue = 0.f;
+	float AutoAdvanceElapsed = 0.f;
 
 	/** 지금 표시 중인 선택지의 원본 (SelectChoice에서 참조) */
 	TArray<FDialogueChoice> PendingChoices;

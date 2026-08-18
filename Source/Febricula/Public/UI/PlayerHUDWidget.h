@@ -83,6 +83,10 @@ protected:
 	UFUNCTION()
 	void HandleDialogueFinished();
 
+	/** 이동 대기 구간: 대화는 계속되지만 창만 잠시 닫는다 */
+	UFUNCTION()
+	void HandleDialogueBoxHidden();
+
 	UDialogueSubsystem* GetDialogueSubsystem() const;
 
 	/** 대화 중에는 상호작용 프롬프트를 가린다 (겹쳐 보이면 지저분하므로) */

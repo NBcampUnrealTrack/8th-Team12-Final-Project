@@ -176,6 +176,39 @@ void AMainNpcCharacter::EndTalk()
 	OnTalkEnded();
 }
 
+void AMainNpcCharacter::ResumeAIDuringTalk()
+{
+	SetBehaviorTreePaused(false);
+
+	// Talk 상태로 두면 애니메이션이 대화 포즈에 묶여서 걷는 게 어색해진다.
+	// 실제 이동은 BT의 Move To가 하므로 여기선 표시 상태만 Walk로 바꿔준다.
+	if (GetMovementState() == ENpcMovementState::Talk)
+	{
+		SetMovementState(ENpcMovementState::Walk);
+	}
+}
+
+void AMainNpcCharacter::PauseAIDuringTalk()
+{
+	if (AAIController* AIController = GetNpcAIController())
+	{
+		AIController->StopMovement();
+	}
+
+	SetBehaviorTreePaused(true);
+	SetMovementState(ENpcMovementState::Talk);
+
+	// 다시 멈춰 설 때는 대화 상대를 바라보게 한다.
+	if (CurrentTalker)
+	{
+		const FVector ToTalker = (CurrentTalker->GetActorLocation() - GetActorLocation());
+		if (!ToTalker.IsNearlyZero())
+		{
+			SetActorRotation(FRotator(0.f, ToTalker.Rotation().Yaw, 0.f));
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // 호감도 조회
 // ---------------------------------------------------------------------------

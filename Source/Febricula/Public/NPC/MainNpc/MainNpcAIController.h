@@ -76,6 +76,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NPC|AI")
 	void StopChase();
 
+	/**
+	 * 현재 경로 목표 지점에 도착했는지 (수평 거리 기준).
+	 * 대화 자동 진행(WhenNpcArrived)에서 "NPC가 다음 지점에 닿았나"를 판정하는 데 쓴다.
+	 * 경로가 설정돼 있지 않으면 false.
+	 */
+	UFUNCTION(BlueprintPure, Category = "NPC|AI")
+	bool HasReachedRouteTarget(float AcceptanceRadius = 150.f) const;
+
 	// ---- Blackboard 키 이름 (Blackboard 애셋에서 만드는 키 이름과 반드시 일치해야 함) ----
 	static const FName BBKey_AIState;
 	static const FName BBKey_Route;

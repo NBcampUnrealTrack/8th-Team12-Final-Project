@@ -111,3 +111,23 @@ void AMainNpcAIController::StopChase()
 	}
 	SetAIState(ENpcAIState::Idle);
 }
+
+bool AMainNpcAIController::HasReachedRouteTarget(float AcceptanceRadius) const
+{
+	const APawn* MyPawn = GetPawn();
+	const UBlackboardComponent* BBComp = GetBlackboardComponent();
+	if (!MyPawn || !BBComp)
+	{
+		return false;
+	}
+
+	// 경로가 아예 없으면 "도착"을 논할 수 없다.
+	if (!BBComp->GetValueAsObject(BBKey_Route))
+	{
+		return false;
+	}
+
+	const FVector Target = BBComp->GetValueAsVector(BBKey_RouteTargetLocation);
+	// 높이 차이(계단, 캡슐 오프셋)는 무시하고 수평 거리로만 판정한다.
+	return FVector::DistSquared2D(MyPawn->GetActorLocation(), Target) <= FMath::Square(AcceptanceRadius);
+}

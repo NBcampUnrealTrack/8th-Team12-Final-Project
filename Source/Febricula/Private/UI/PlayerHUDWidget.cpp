@@ -14,6 +14,7 @@ void UPlayerHUDWidget::NativeConstruct()
 		Dialogue->OnDialogueLine.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueLine);
 		Dialogue->OnDialogueChoices.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueChoices);
 		Dialogue->OnDialogueFinished.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueFinished);
+		Dialogue->OnDialogueBoxHidden.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueBoxHidden);
 	}
 
 	BP_HideDialogue();
@@ -28,6 +29,7 @@ void UPlayerHUDWidget::NativeDestruct()
 		Dialogue->OnDialogueLine.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueLine);
 		Dialogue->OnDialogueChoices.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueChoices);
 		Dialogue->OnDialogueFinished.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueFinished);
+		Dialogue->OnDialogueBoxHidden.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueBoxHidden);
 	}
 
 	Super::NativeDestruct();
@@ -75,6 +77,14 @@ void UPlayerHUDWidget::HandleDialogueLine(const FText& Speaker, const FText& Bod
 void UPlayerHUDWidget::HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices)
 {
 	BP_ShowChoices(Choices);
+}
+
+void UPlayerHUDWidget::HandleDialogueBoxHidden()
+{
+	// 대화 자체는 계속 진행 중이다. 창만 닫고 플레이어가 이동할 수 있게 비켜준다.
+	// 상호작용 프롬프트도 띄우지 않는다 - 이동 중에 "E - 대화하기"가 뜨면 혼란스럽다.
+	BP_HideChoices();
+	BP_HideDialogue();
 }
 
 void UPlayerHUDWidget::HandleDialogueFinished()
