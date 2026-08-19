@@ -72,7 +72,7 @@ void AFebriculaCharacter::Interact(const FInputActionValue& InputActionValue)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("SomethingFind!"));
 
-			if (ADoorMapActor* Openable = Cast<ADoorMapActor>(Hit))
+			if (AMovableMapActor* Openable = Cast<AMovableMapActor>(Hit))
 			{
 				Openable->StartMove();
 				break;
