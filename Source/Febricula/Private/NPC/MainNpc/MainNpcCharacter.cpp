@@ -5,42 +5,94 @@
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BrainComponent.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
-#include "NPC/MainNpc/NpcPatrolRoute.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcRoute.h"
 
 AMainNpcCharacter::AMainNpcCharacter()
 {
+	// Idle/Patrol/Chase Behavior Tree를 돌릴 전용 컨트롤러를 붙인다.
 	AIControllerClass = AMainNpcAIController::StaticClass();
 }
 
 void AMainNpcCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	if (!bAutoStartPatrol || !DefaultPatrolRoute)
+
+	// 레벨 디테일 패널에서 DefaultRoute와 AutoStartMode만 지정해두면 여기서 알아서 시작한다.
+	// (AIController 빙의와 RunBehaviorTree는 PostInitializeComponents 단계에서 이미 끝나 있으므로
+	//  BeginPlay 시점엔 Blackboard가 준비된 상태다.)
+	if (AutoStartMode == ENpcAutoStartMode::None || !DefaultRoute)
 	{
 		return;
 	}
 
-	if (AMainNpcAIController* NpcAIController = Cast<AMainNpcAIController>(GetController()))
-	{
-		NpcAIController->StartPatrol(DefaultPatrolRoute);
-	}
-	else
+	AMainNpcAIController* NpcAIController = Cast<AMainNpcAIController>(GetController());
+	if (!NpcAIController)
 	{
 		UE_LOG(LogTemp, Warning,
-			TEXT("%s: AMainNpcAIController를 찾지 못해 자동 순찰을 시작하지 못했습니다. "
+			TEXT("%s: AMainNpcAIController를 찾지 못해 자동 시작에 실패했습니다. "
 				 "AI Controller Class가 MainNpcAIController인지, Auto Possess AI 설정이 켜져 있는지 확인하세요."),
 			*GetNameSafe(this));
+		return;
+	}
+
+	switch (AutoStartMode)
+	{
+	case ENpcAutoStartMode::Patrol:
+		NpcAIController->StartPatrol(DefaultRoute);
+		break;
+
+	case ENpcAutoStartMode::Guide:
+		NpcAIController->StartGuide(DefaultRoute);
+		break;
+
+	default:
+		break;
 	}
 }
 
 FText AMainNpcCharacter::GetInteractionPrompt_Implementation(AActor* Interactor) const
 {
-	return NSLOCTEXT("Npc", "TalkPrompt", "대화하기");
+	return NSLOCTEXT("Npc", "TalkPrompt", "E - 대화하기");
+}
+
+void AMainNpcCharacter::Interact_Implementation(AActor* Interactor)
+{
+	// 부모가 OnNpcInteracted 브로드캐스트 + OnInteracted 블루프린트 훅까지 처리한다.
+	Super::Interact_Implementation(Interactor);
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>();
+	if (!Dialogue || Dialogue->IsDialogueActive())
+	{
+		return;
+	}
+
+	// 대화 시작 전에 먼저 멈춰 세우고 플레이어를 바라보게 한다.
+	// (BT 일시정지도 StartTalk 안에서 처리되므로 대화 도중 순찰로 걸어가 버리지 않는다)
+	StartTalk(Interactor);
+
+	// 조건을 만족하는 이벤트를 찾아 시작. 없으면 기본 잡담으로 폴백.
+	bool bStarted = Dialogue->TryStartEventForNpc(GetNpcId(), this);
+	if (!bStarted && !DefaultIdleNodeId.IsNone())
+	{
+		bStarted = Dialogue->StartDialogueAtNode(DefaultIdleNodeId, this);
+	}
+
+	if (!bStarted)
+	{
+		// 할 말이 없으면 Talk 상태를 바로 풀어준다 (안 그러면 계속 멈춰 서 있게 된다).
+		EndTalk();
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +116,8 @@ void AMainNpcCharacter::StartFollowTarget(AActor* TargetToFollow)
 	{
 		if (UBlackboardComponent* Blackboard = AIController->GetBlackboardComponent())
 		{
+			// 매 틱 재계산은 BT 쪽 "Move To (Blackboard Object)" 노드가 담당한다.
+			// 여긴 대상만 밀어주고, 실제 추적 갱신 로직은 BT 애셋 책임으로 둔다.
 			Blackboard->SetValueAsObject(FollowTargetBlackboardKey, TargetToFollow);
 		}
 	}
@@ -122,6 +176,39 @@ void AMainNpcCharacter::EndTalk()
 	OnTalkEnded();
 }
 
+void AMainNpcCharacter::ResumeAIDuringTalk()
+{
+	SetBehaviorTreePaused(false);
+
+	// Talk 상태로 두면 애니메이션이 대화 포즈에 묶여서 걷는 게 어색해진다.
+	// 실제 이동은 BT의 Move To가 하므로 여기선 표시 상태만 Walk로 바꿔준다.
+	if (GetMovementState() == ENpcMovementState::Talk)
+	{
+		SetMovementState(ENpcMovementState::Walk);
+	}
+}
+
+void AMainNpcCharacter::PauseAIDuringTalk()
+{
+	if (AAIController* AIController = GetNpcAIController())
+	{
+		AIController->StopMovement();
+	}
+
+	SetBehaviorTreePaused(true);
+	SetMovementState(ENpcMovementState::Talk);
+
+	// 다시 멈춰 설 때는 대화 상대를 바라보게 한다.
+	if (CurrentTalker)
+	{
+		const FVector ToTalker = (CurrentTalker->GetActorLocation() - GetActorLocation());
+		if (!ToTalker.IsNearlyZero())
+		{
+			SetActorRotation(FRotator(0.f, ToTalker.Rotation().Yaw, 0.f));
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // 호감도 조회
 // ---------------------------------------------------------------------------
@@ -171,6 +258,8 @@ UNpcRelationshipSubsystem* AMainNpcCharacter::GetRelationshipSubsystem() const
 
 void AMainNpcCharacter::SetBehaviorTreePaused(bool bPaused) const
 {
+	// GetNpcAIController()가 반환하는 포인터는 원래 비const이므로 그대로 받는다.
+	// (직전에 겪었던 "const 지역변수로 받아서 GetXxxComponent()가 const 포인터를 반환하는" 문제를 되풀이하지 않기 위함)
 	if (AAIController* AIController = GetNpcAIController())
 	{
 		if (UBrainComponent* Brain = AIController->GetBrainComponent())

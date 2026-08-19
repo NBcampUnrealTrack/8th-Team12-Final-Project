@@ -56,15 +56,34 @@ enum class ENpcSpawnMode : uint8
 /**
  * 메인 NPC의 자율 AI 행동 상태. BehaviorTree 최상위 분기(Selector)가 이 값을 기준으로 갈라진다.
  * ENpcMovementState(애니메이션/스크립트 상태)와는 별개의 축이다:
- *   - ENpcAIState      = "지금 AI가 스스로 뭘 하려고 하는가" (Idle/Patrol/Chase)
+ *   - ENpcAIState       = "지금 AI가 스스로 뭘 하려고 하는가"
  *   - ENpcMovementState = "지금 캐릭터가 어떤 모션을 재생해야 하는가" (Idle/Walk/Talk/...)
+ *
+ * Patrol과 Guide는 둘 다 ANpcRoute의 지점들을 순서대로 도는 점은 같지만 성격이 완전히 다르다:
+ *   - Patrol : 혼자서 계속 돈다. 플레이어를 신경쓰지 않는다. (평소 학생회장 순찰 등)
+ *   - Guide  : 한 지점에 도착하면 멈춰서 플레이어가 따라올 때까지 기다렸다가 다음 지점으로 간다.
+ *              (학교 안내, 산책 동행처럼 플레이어를 데리고 다니는 연출)
+ *
  * Talk나 Follow처럼 게임플레이가 직접 개입하는 상황에서는 BehaviorTree 실행 자체를
  * 일시정지(PauseLogic)하므로, 그 사이엔 이 상태값이 그대로 있어도 실제로는 아무것도 하지 않는다.
  */
 UENUM(BlueprintType)
 enum class ENpcAIState : uint8
 {
-	Idle	UMETA(DisplayName = "Idle"),
-	Patrol	UMETA(DisplayName = "Patrol"),
-	Chase	UMETA(DisplayName = "Chase"),
+	Idle	UMETA(DisplayName = "Idle (대기)"),
+	Patrol	UMETA(DisplayName = "Patrol (혼자 순찰)"),
+	Guide	UMETA(DisplayName = "Guide (플레이어 안내)"),
+	Chase	UMETA(DisplayName = "Chase (추적)"),
+};
+
+/**
+ * BeginPlay에서 NPC가 자동으로 시작할 행동.
+ * 레벨에 배치만 해두고 블루프린트 배선 없이 동작을 확인하기 위한 편의 기능이다.
+ */
+UENUM(BlueprintType)
+enum class ENpcAutoStartMode : uint8
+{
+	None	UMETA(DisplayName = "자동 시작 안 함"),
+	Patrol	UMETA(DisplayName = "순찰 시작"),
+	Guide	UMETA(DisplayName = "안내 시작"),
 };

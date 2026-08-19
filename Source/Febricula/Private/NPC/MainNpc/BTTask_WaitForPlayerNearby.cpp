@@ -10,6 +10,8 @@
 UBTTask_WaitForPlayerNearby::UBTTask_WaitForPlayerNearby()
 {
 	NodeName = TEXT("Wait For Player Nearby");
+
+	// TickTask가 호출되도록 켜준다 (기본값은 꺼져 있음)
 	bNotifyTick = true;
 }
 
