@@ -1,0 +1,84 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "Interaction/InteractableProp.h"
+
+#include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Dialogue/DialogueSubsystem.h"
+#include "Engine/World.h"
+
+AInteractableProp::AInteractableProp()
+{
+	PrimaryActorTick.bCanEverTick = false;
+
+	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+	SetRootComponent(Mesh);
+
+	InteractionVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionVolume"));
+	InteractionVolume->SetupAttachment(Mesh);
+	InteractionVolume->SetBoxExtent(FVector(60.f));
+	// 상호작용 컴포넌트의 오버랩 검사에만 걸리면 되므로 물리 충돌은 끈다.
+	InteractionVolume->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	InteractionVolume->SetCollisionResponseToAllChannels(ECR_Overlap);
+
+	InteractionPrompt = NSLOCTEXT("Prop", "InspectPrompt", "E - 조사하기");
+}
+
+bool AInteractableProp::CanInteract_Implementation(AActor* Interactor) const
+{
+	if (bSingleUse && bUsed)
+	{
+		return false;
+	}
+
+	// 이미 대화 중이면 새 조사를 시작하지 않는다.
+	if (const UWorld* World = GetWorld())
+	{
+		if (const UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>())
+		{
+			if (Dialogue->IsDialogueActive())
+			{
+				return false;
+			}
+		}
+	}
+
+	return InspectLines.Num() > 0 || !DialogueNodeId.IsNone();
+}
+
+void AInteractableProp::Interact_Implementation(AActor* Interactor)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>();
+	if (!Dialogue)
+	{
+		return;
+	}
+
+	bool bStarted = false;
+
+	if (!DialogueNodeId.IsNone())
+	{
+		// 선택지가 필요한 사물은 대화 테이블 노드를 그대로 재생한다.
+		bStarted = Dialogue->StartDialogueAtNode(DialogueNodeId, this);
+	}
+	else
+	{
+		bStarted = Dialogue->StartSimpleLines(SpeakerName, InspectLines, this);
+	}
+
+	if (bStarted)
+	{
+		bUsed = true;
+	}
+}
+
+FText AInteractableProp::GetInteractionPrompt_Implementation(AActor* Interactor) const
+{
+	return InteractionPrompt;
+}

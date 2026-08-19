@@ -1,0 +1,35 @@
+[
+	{
+		"Name": "HSY_EV01",
+		"NpcId": "NPC_HanSeoYun",
+		"Priority": 100,
+		"bRepeatable": false,
+		"Preconditions": [],
+		"RootNodeId": "HSY_E1_010",
+		"bCompleteOnFinish": true
+	},
+	{
+		"Name": "HSY_EV02",
+		"NpcId": "NPC_HanSeoYun",
+		"Priority": 90,
+		"bRepeatable": false,
+		"Preconditions": [
+			{ "Type": "DayAtLeast", "Key": "None", "Value": 14 },
+			{ "Type": "EventCompleted", "Key": "HSY_EV01", "Value": 0 },
+			{ "Type": "RelationshipAtLeast", "Key": "NPC_HanSeoYun", "Value": 0 }
+		],
+		"RootNodeId": "HSY_E2_010",
+		"bCompleteOnFinish": true
+	},
+	{
+		"Name": "KDY_EV01",
+		"NpcId": "NPC_KimDoYun",
+		"Priority": 100,
+		"bRepeatable": false,
+		"Preconditions": [
+			{ "Type": "EventCompleted", "Key": "HSY_EV01", "Value": 0 }
+		],
+		"RootNodeId": "KDY_E1_010",
+		"bCompleteOnFinish": true
+	}
+]

@@ -1,0 +1,534 @@
+[
+	{
+		"Name": "HSY_E1_010",
+		"SpeakerName": "한서윤",
+		"Text": "네가 이번에 전학 온 학생이구나. 학생회장 한서윤이야. 학생부장 선생님 지시로 내가 학교를 안내하게 됐어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_020",
+		"SpeakerName": "한서윤",
+		"Text": "따라와. 30분이면 한 바퀴 다 돌 수 있으니까.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_025",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_025",
+		"SpeakerName": "",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStartGuide",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			},
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_030",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "HSY_E1_030",
+		"SpeakerName": "한서윤",
+		"Text": "여기가 본관이야. 1학년 교실이랑 교무실이 전부 이 건물에 있어.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_040",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_040",
+		"SpeakerName": "한서윤",
+		"Text": "그런데, 어쩌다 이 시기에 소프트웨어고로 전학을 오게 된 거야? 보통은 신입생 때 들어오는 학교인데.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			}
+		],
+		"Choices": [
+			{
+				"Text": "사정이 좀 있었어.",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "HSY_E1_050"
+			},
+			{
+				"Text": "솔직히 말하면, 이전 학교에서 문제를 일으켰거든.",
+				"Conditions": [
+					{
+						"Type": "StatAtLeast",
+						"Key": "Courage",
+						"Value": 3
+					}
+				],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Value": 3
+					}
+				],
+				"NextNodeId": "HSY_E1_051"
+			},
+			{
+				"Text": "...말하고 싶지 않아.",
+				"Conditions": [],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Value": -2
+					}
+				],
+				"NextNodeId": "HSY_E1_052"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_050",
+		"SpeakerName": "한서윤",
+		"Text": "그래. 캐묻지는 않을게. 여기 오기 전엔 임베디드과였다고 들었는데, 커리큘럼이 많이 다를 거야. 각오는 해 두는 게 좋아.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_060",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_051",
+		"SpeakerName": "한서윤",
+		"Text": "...솔직하네. 그 점은 높이 사. 다만 여기서는 같은 일이 없기를 바랄게. 이 학교는 그런 일에 특히 민감하거든.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_060",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_052",
+		"SpeakerName": "한서윤",
+		"Text": "...알겠어. 사생활이니까. 하지만 학교 생활에 지장이 가는 일이라면 언젠가는 알려줘야 할 거야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_060",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_060",
+		"SpeakerName": "한서윤",
+		"Text": "계속 가자. 실습동 쪽도 봐 둬야 하니까.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_065",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_065",
+		"SpeakerName": "",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_070",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "HSY_E1_070",
+		"SpeakerName": "한서윤",
+		"Text": "저쪽이 실습동. 3학년이 되면 저기서 살다시피 하게 될 거야. 도서관은 자유시간에도 열려 있으니까 자주 이용하는 걸 추천해.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_080",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_080",
+		"SpeakerName": "한서윤",
+		"Text": "...잠깐.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStopRouteMove",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			},
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_090",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 1.5,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_090",
+		"SpeakerName": "",
+		"Text": "한서윤이 걸음을 멈췄다. 잠겨 있어야 할 체력단련실 문이 열려 있고, 안에서 인기척이 났다.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_100",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_100",
+		"SpeakerName": "한서윤",
+		"Text": "2학년 3반 김도윤. 시설 무단 사용이야. 학번이랑 이름 적어 둘 테니까 나와.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_110",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_110",
+		"SpeakerName": "한서윤",
+		"Text": "너도 잘 들어. 교칙은 예외 없이 적용돼. 전학생이라서, 몰랐어서 같은 건 이유가 안 돼. 한 번 더 말할 필요 없게 해 줘.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E1_120",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E1_120",
+		"SpeakerName": "한서윤",
+		"Text": "안내는 여기까지야. 교무실로 돌아가자. 앞으로 잘 지내보자, 전학생.",
+		"OnEnterActions": [
+			{
+				"Type": "AddAffinity",
+				"Key": "NPC_HanSeoYun",
+				"Value": 5
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_010",
+		"SpeakerName": "한서윤",
+		"Text": "마침 잘 만났네. 전학 온 지 2주쯤 됐지? 학교 생활은 좀 적응했어?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_020",
+		"SpeakerName": "한서윤",
+		"Text": "...사실 물어보나 마나이긴 해. 학생회에 기록이 다 올라오니까.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [
+			{
+				"Conditions": [
+					{
+						"Type": "CounterAtLeast",
+						"Key": "Violation",
+						"Value": 3
+					}
+				],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Value": -8
+					}
+				],
+				"NextNodeId": "HSY_E2_030_BAD"
+			},
+			{
+				"Conditions": [
+					{
+						"Type": "CounterAtLeast",
+						"Key": "Merit",
+						"Value": 3
+					}
+				],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Value": 10
+					}
+				],
+				"NextNodeId": "HSY_E2_030_GOOD"
+			},
+			{
+				"Conditions": [],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Value": 3
+					}
+				],
+				"NextNodeId": "HSY_E2_030_NEUTRAL"
+			}
+		],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_030_BAD",
+		"SpeakerName": "한서윤",
+		"Text": "2주 만에 벌점이 이만큼 쌓이는 것도 재주야. 무단 이용에 무단 이탈까지... 적응을 한 게 아니라 나쁜 것만 골라서 배운 것 같은데.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_040_BAD",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_040_BAD",
+		"SpeakerName": "한서윤",
+		"Text": "경고는 이미 했어. 다음엔 경고로 안 끝나. ...실망이야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_030_GOOD",
+		"SpeakerName": "한서윤",
+		"Text": "성적도 상위권이고, 선생님들 사이에서도 이야기가 좋더라. 솔직히 좀 놀랐어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_040_GOOD",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_040_GOOD",
+		"SpeakerName": "한서윤",
+		"Text": "타 학교 출신이면 커리큘럼이 달라서 한 학기는 헤매는 게 보통인데... 생각보다 빨리 자리를 잡았네. 계속 그렇게 해 줘.",
+		"OnEnterActions": [
+			{
+				"Type": "GrantTopic",
+				"Key": "Topic_HanSeoYun",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_030_NEUTRAL",
+		"SpeakerName": "한서윤",
+		"Text": "큰 문제는 없었네. 무난하다는 건 이 학교에서 나쁜 평가가 아니야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_040_NEUTRAL",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_040_NEUTRAL",
+		"SpeakerName": "한서윤",
+		"Text": "다만 무난한 걸로는 취업에서 밀려. ...조언이야. 참고만 해.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_IDLE_010",
+		"SpeakerName": "한서윤",
+		"Text": "지금은 순찰 중이야. 용건 없으면 나중에 하자.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_010",
+		"SpeakerName": "김도윤",
+		"Text": "야, 전학생! 여기 여기.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_020",
+		"SpeakerName": "",
+		"Text": "교무실에서 나오자마자 누군가 손을 흔들었다. 조금 전 체력단련실에서 벌점을 받은 그 학생이다.",
+		"OnEnterActions": [],
+		"Choices": [
+			{
+				"Text": "아까 체단실에서 걸린 애 아니야?",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "KDY_E1_030"
+			},
+			{
+				"Text": "(모른 척한다)",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "KDY_E1_031"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_030",
+		"SpeakerName": "김도윤",
+		"Text": "어, 맞아. 나야 나. 부끄러울 것도 없지 뭐.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_040",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_031",
+		"SpeakerName": "김도윤",
+		"Text": "아, 아까 그거? 맞아, 나야. 굳이 안 물어봐 주는 것도 배려긴 한데 어차피 다 알 텐데 뭘.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_040",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_040",
+		"SpeakerName": "김도윤",
+		"Text": "이런 재미없는 곳에서 제정신으로 지내려면 룰을 '조금은' 어겨 줘야 하거든. 벌점 좀 받는다고 인생 안 끝나.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_050",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_050",
+		"SpeakerName": "김도윤",
+		"Text": "올해 신입생들은 하나같이 재미없는 녀석들뿐이라 망한 한 해가 될 줄 알았는데, 너 같은 변수가 나타났네. 앞으로 잘 부탁한다?",
+		"OnEnterActions": [
+			{
+				"Type": "AddAffinity",
+				"Key": "NPC_KimDoYun",
+				"Value": 5
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"bHideBoxWhileWaiting": false
+	}
+]
