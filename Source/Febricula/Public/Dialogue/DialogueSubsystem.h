@@ -123,8 +123,11 @@ protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
 	void EnterNode(FName NodeId);
 
-	/** 대사를 다 읽은 뒤 다음 목적지(선택지/분기/다음노드)를 결정 */
+	/** 대사를 다 읽은 뒤 다음 목적지(분기/다음노드)를 결정 */
 	void ResolveNodeExit();
+
+	/** 선택지를 HUD에 표시하고 입력을 선택 대기 상태로 바꾼다 */
+	void PresentChoices(const TArray<FDialogueChoice>& InChoices);
 
 	void ExecuteActions(const TArray<FGameAction>& Actions);
 	void ExecuteAction(const FGameAction& Action);

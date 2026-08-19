@@ -368,6 +368,35 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	}
 
 	OnDialogueLine.Broadcast(Row->SpeakerName, Row->Text);
+
+	// 선택지가 있는 노드는 질문 대사와 선택지를 "동시에" 띄운다.
+	// 대사를 먼저 보여주고 한 번 더 클릭해야 선택지가 나오면 클릭이 낭비되고,
+	// 질문을 읽은 플레이어는 선택지가 바로 나올 거라고 기대하기 때문이다.
+	if (Row->Choices.Num() > 0)
+	{
+		PresentChoices(Row->Choices);
+	}
+}
+
+void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices)
+{
+	const UGameProgressSubsystem* Progress = GetProgress();
+
+	PendingChoices = InChoices;
+	bWaitingForChoice = true;
+
+	TArray<FDialogueChoiceView> Views;
+	Views.Reserve(PendingChoices.Num());
+	for (const FDialogueChoice& Choice : PendingChoices)
+	{
+		FDialogueChoiceView View;
+		View.Text = Choice.Text;
+		// 조건 미달이면 목록엔 보이되 못 고르게 한다 (매력/담력 부족 선택지 노출용)
+		View.bEnabled = Progress ? Progress->EvaluateConditions(Choice.Conditions) : true;
+		Views.Add(View);
+	}
+
+	OnDialogueChoices.Broadcast(Views);
 }
 
 void UDialogueSubsystem::ResolveNodeExit()
@@ -388,24 +417,10 @@ void UDialogueSubsystem::ResolveNodeExit()
 
 	const UGameProgressSubsystem* Progress = GetProgress();
 
-	// 1) 선택지가 있으면 선택지 표시
+	// 1) 선택지는 EnterNode에서 이미 띄웠으므로 여기 오면 안 되지만, 안전장치로 남겨둔다
 	if (Row->Choices.Num() > 0)
 	{
-		PendingChoices = Row->Choices;
-		bWaitingForChoice = true;
-
-		TArray<FDialogueChoiceView> Views;
-		Views.Reserve(PendingChoices.Num());
-		for (const FDialogueChoice& Choice : PendingChoices)
-		{
-			FDialogueChoiceView View;
-			View.Text = Choice.Text;
-			// 조건 미달이면 목록엔 보이되 못 고르게 한다 (매력/담력 부족 선택지 노출용)
-			View.bEnabled = Progress ? Progress->EvaluateConditions(Choice.Conditions) : true;
-			Views.Add(View);
-		}
-
-		OnDialogueChoices.Broadcast(Views);
+		PresentChoices(Row->Choices);
 		return;
 	}
 
