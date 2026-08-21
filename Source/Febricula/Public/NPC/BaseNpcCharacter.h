@@ -10,6 +10,7 @@
 
 class UBehaviorTree;
 class AAIController;
+class UAnimSequenceBase;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnNpcMovementStateChanged, ENpcMovementState, OldState, ENpcMovementState, NewState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNpcInteracted, AActor*, Interactor);
@@ -93,6 +94,32 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NPC|Movement")
 	virtual void StopMovementAndIdle();
 
+	/** 지정한 액터 쪽을 바라보도록 즉시 회전 (Yaw만, 수평) */
+	UFUNCTION(BlueprintCallable, Category = "NPC|Movement")
+	void FaceTowards(const AActor* TargetActor);
+
+	// ---- 애니메이션 -------------------------------------------------------
+
+	/**
+	 * AnimLibrary에 등록된 AnimId를 슬롯 애니메이션으로 재생한다.
+	 *
+	 * AnimMontage 애셋이 없어도 AnimSequence만으로 동작한다.
+	 * PlaySlotAnimationAsDynamicMontage가 시퀀스를 런타임에 몽타주로 감싸서 슬롯에 얹어주기 때문에,
+	 * 애니메이터가 몽타주를 따로 만들어주지 않아도 된다.
+	 *
+	 * 전제 조건: 이 NPC의 애님 블루프린트 그래프에 Slot 노드(기본 이름 "DefaultSlot")가 있어야 한다.
+	 * 슬롯이 없으면 재생은 되지만 화면에 반영되지 않는다.
+	 *
+	 * @param AnimId  AnimLibrary의 키
+	 * @param bLoop   true면 계속 반복 (앉아있기 같은 지속 포즈), false면 한 번만
+	 */
+	UFUNCTION(BlueprintCallable, Category = "NPC|Animation")
+	bool PlayNpcAnim(FName AnimId, bool bLoop = false);
+
+	/** 재생 중인 슬롯 애니메이션을 중단하고 원래 상태로 블렌드 아웃 */
+	UFUNCTION(BlueprintCallable, Category = "NPC|Animation")
+	void StopNpcAnim(float BlendOutTime = 0.25f);
+
 	UPROPERTY(BlueprintAssignable, Category = "NPC|Movement")
 	FOnNpcMovementStateChanged OnNpcMovementStateChanged;
 
@@ -128,6 +155,35 @@ protected:
 	/** Blackboard의 이동 상태 키 이름 (Enum 키로 구성해서 BT에서 상태별 분기) */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|AI")
 	FName MovementStateBlackboardKey = TEXT("MovementState");
+
+	/**
+	 * 대화 데이터에서 이름으로 호출할 애니메이션 목록.
+	 * 키는 데이터에서 쓸 짧은 이름(예: "Sit", "Think", "Write"), 값은 AnimSequence 애셋.
+	 * AnimMontage를 넣어도 동작한다.
+	 *
+	 * 이렇게 이름으로 한 단계 감싸두면, 나중에 애니메이션 애셋이 교체돼도
+	 * 대화 JSON은 그대로 두고 이 맵만 바꾸면 된다.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation")
+	TMap<FName, TObjectPtr<UAnimSequenceBase>> AnimLibrary;
+
+	/** 슬롯 애니메이션을 재생할 슬롯 이름. 애님 블루프린트의 Slot 노드 이름과 일치해야 한다 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation")
+	FName AnimSlotName = TEXT("DefaultSlot");
+
+	/** 슬롯 애니메이션 블렌드 인/아웃 시간 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation")
+	float AnimBlendTime = 0.25f;
+
+	/**
+	 * 애님 블루프린트를 거치지 않고 시퀀스를 직접 재생한다 (단일 노드 모드).
+	 *
+	 * 애님 BP가 아직 없는 NPC에서도 애니메이션 테스트를 할 수 있게 만든 폴백이다.
+	 * 단점: 재생하는 동안 로코모션이 사라지고 그 시퀀스만 나온다.
+	 * 애님 BP가 붙어 있지 않으면 이 값과 상관없이 자동으로 이 방식이 쓰인다.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation")
+	bool bPreferSingleNodeAnim = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "NPC|Movement")
 	ENpcMovementState CurrentMovementState = ENpcMovementState::Idle;

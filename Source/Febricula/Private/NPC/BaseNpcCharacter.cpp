@@ -3,8 +3,11 @@
 #include "NPC/BaseNpcCharacter.h"
 
 #include "AIController.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimSequenceBase.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -141,6 +144,90 @@ void ABaseNpcCharacter::StopMovementAndIdle()
 		AIController->StopMovement();
 	}
 	SetMovementState(ENpcMovementState::Idle);
+}
+
+void ABaseNpcCharacter::FaceTowards(const AActor* TargetActor)
+{
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	const FVector ToTarget = TargetActor->GetActorLocation() - GetActorLocation();
+	// 위아래로 기울어지면 안 되므로 Yaw만 반영한다.
+	if (!ToTarget.IsNearlyZero())
+	{
+		SetActorRotation(FRotator(0.f, ToTarget.Rotation().Yaw, 0.f));
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 애니메이션
+// ---------------------------------------------------------------------------
+
+bool ABaseNpcCharacter::PlayNpcAnim(FName AnimId, bool bLoop)
+{
+	const TObjectPtr<UAnimSequenceBase>* Found = AnimLibrary.Find(AnimId);
+	if (!Found || !*Found)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: AnimLibrary에 '%s' 항목이 없습니다."),
+			*GetNameSafe(this), *AnimId.ToString());
+		return false;
+	}
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		return false;
+	}
+
+	UAnimInstance* AnimInstance = MeshComp->GetAnimInstance();
+
+	// 애님 블루프린트가 붙어 있고 단일 노드 모드를 강제하지 않았으면 슬롯 재생을 쓴다.
+	// 슬롯 위에서 재생되므로 그 아래 로코모션(걷기/대기)이 그대로 유지된다.
+	if (AnimInstance && !bPreferSingleNodeAnim)
+	{
+		// AnimSequence를 런타임에 몽타주로 감싸 슬롯에 얹는다. 몽타주 애셋이 없어도 된다.
+		// LoopCount는 반복 횟수라서 무한 루프가 없다. 지속 포즈는 큰 값으로 깔아두고
+		// StopNpcAnim으로 끊는 방식이 안전하다.
+		const int32 LoopCount = bLoop ? 1000 : 1;
+
+		UAnimMontage* Played = AnimInstance->PlaySlotAnimationAsDynamicMontage(
+			*Found, AnimSlotName, AnimBlendTime, AnimBlendTime, /*InPlayRate=*/1.f, LoopCount);
+
+		if (Played)
+		{
+			return true;
+		}
+
+		UE_LOG(LogTemp, Warning,
+			TEXT("%s: 슬롯 '%s' 재생에 실패했습니다. 애님 블루프린트 그래프에 같은 이름의 Slot 노드가 있는지 확인하세요. 단일 노드 모드로 대체합니다."),
+			*GetNameSafe(this), *AnimSlotName.ToString());
+	}
+
+	// 폴백: 애님 블루프린트를 거치지 않고 시퀀스를 직접 재생한다.
+	// 애님 BP가 아직 없는 NPC(T포즈 상태)에서도 애니메이션 확인이 가능하다.
+	// 재생 중에는 로코모션이 나오지 않지만, 애초에 애님 BP가 없으면 로코모션도 없으므로 손해가 없다.
+	MeshComp->PlayAnimation(*Found, bLoop);
+	return true;
+}
+
+void ABaseNpcCharacter::StopNpcAnim(float BlendOutTime)
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	if (UAnimInstance* AnimInstance = MeshComp->GetAnimInstance())
+	{
+		AnimInstance->StopSlotAnimation(BlendOutTime, AnimSlotName);
+		return;
+	}
+
+	// 단일 노드 모드로 재생 중이던 경우 (애님 BP가 없는 NPC)
+	MeshComp->Stop();
 }
 
 // ---------------------------------------------------------------------------

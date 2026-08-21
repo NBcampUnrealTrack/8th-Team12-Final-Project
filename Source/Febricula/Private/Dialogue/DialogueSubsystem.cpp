@@ -35,6 +35,7 @@ void UDialogueSubsystem::Tick(float DeltaTime)
 	}
 
 	PendingAutoAdvance = EDialogueAutoAdvance::None;
+	AutoAdvanceNpcId = NAME_None;
 	AutoAdvanceElapsed = 0.f;
 
 	if (bRunningSimpleLines)
@@ -67,17 +68,26 @@ bool UDialogueSubsystem::IsAutoAdvanceSatisfied(float DeltaTime)
 	case EDialogueAutoAdvance::WhenPlayerNearNpc:
 		{
 			const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
-			if (!PlayerPawn || !CurrentInstigator)
+			// 기준 NPC를 따로 지정했으면 그쪽, 아니면 상호작용한 상대
+			const AActor* Reference = AutoAdvanceNpcId.IsNone()
+				? ToRawPtr(CurrentInstigator)
+				: Cast<AActor>(FindNpcById(AutoAdvanceNpcId));
+
+			if (!PlayerPawn || !Reference)
 			{
 				return false;
 			}
 			const float RadiusSq = FMath::Square(FMath::Max(AutoAdvanceValue, 1.f));
-			return FVector::DistSquared2D(PlayerPawn->GetActorLocation(), CurrentInstigator->GetActorLocation()) <= RadiusSq;
+			return FVector::DistSquared2D(PlayerPawn->GetActorLocation(), Reference->GetActorLocation()) <= RadiusSq;
 		}
 
 	case EDialogueAutoAdvance::WhenNpcArrived:
 		{
-			const ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(CurrentInstigator);
+			// 여러 NPC가 동시에 이동할 때 누구의 도착을 기다릴지 고를 수 있다.
+			const ABaseNpcCharacter* Npc = AutoAdvanceNpcId.IsNone()
+				? Cast<ABaseNpcCharacter>(CurrentInstigator)
+				: FindNpcById(AutoAdvanceNpcId);
+
 			if (!Npc)
 			{
 				return false;
@@ -161,8 +171,64 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator)
 	bDialogueActive = true;
 	bRunningSimpleLines = false;
 
+	// 여러 NPC가 함께 나오는 장면이면 전원을 Talk 상태로 세운다.
+	// 상호작용한 NPC는 이미 AMainNpcCharacter::Interact에서 StartTalk을 호출했지만,
+	// StartTalk은 중복 호출해도 안전하므로 목록에 같이 넣어 끝날 때 한꺼번에 풀어준다.
+	{
+		TArray<FName> Participants = BestRow->ParticipantNpcIds;
+		Participants.AddUnique(NpcId);
+		EnterTalkForParticipants(Participants, InInstigator);
+	}
+
 	EnterNode(BestRow->RootNodeId);
 	return true;
+}
+
+void UDialogueSubsystem::EnterTalkForParticipants(const TArray<FName>& NpcIds, AActor* Interactor)
+{
+	for (const FName& ParticipantId : NpcIds)
+	{
+		ABaseNpcCharacter* Npc = FindNpcById(ParticipantId);
+		if (!Npc)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UDialogueSubsystem: 참가자 NPC '%s'를 월드에서 찾지 못했습니다."),
+				*ParticipantId.ToString());
+			continue;
+		}
+
+		ActiveParticipants.AddUnique(Npc);
+
+		// 메인 NPC만 Talk 상태(=BT 정지 + 상대 응시)를 가진다.
+		// 서브 NPC는 그냥 플레이어 쪽을 보게만 해준다.
+		if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(Npc))
+		{
+			MainNpc->StartTalk(Interactor);
+		}
+		else
+		{
+			Npc->FaceTowards(Interactor);
+		}
+	}
+}
+
+void UDialogueSubsystem::ReleaseParticipants()
+{
+	for (ABaseNpcCharacter* Npc : ActiveParticipants)
+	{
+		if (!Npc)
+		{
+			continue;
+		}
+
+		// 대사 중에 재생시킨 슬롯 애니메이션이 남아있지 않도록 정리한다.
+		Npc->StopNpcAnim();
+
+		if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(Npc))
+		{
+			MainNpc->EndTalk();
+		}
+	}
+	ActiveParticipants.Reset();
 }
 
 bool UDialogueSubsystem::StartDialogueAtNode(FName NodeId, AActor* InInstigator)
@@ -307,11 +373,15 @@ void UDialogueSubsystem::FinishDialogue()
 	CurrentNodeId = NAME_None;
 	ActiveEventId = NAME_None;
 	PendingAutoAdvance = EDialogueAutoAdvance::None;
+	AutoAdvanceNpcId = NAME_None;
 	AutoAdvanceElapsed = 0.f;
 	PendingChoices.Reset();
 	SimpleLineQueue.Reset();
 
-	// NPC를 Talk 상태에서 풀어준다 (BT도 여기서 다시 돌기 시작한다).
+	// 참가자 전원을 Talk 상태에서 풀어준다 (BT도 여기서 다시 돌기 시작한다).
+	ReleaseParticipants();
+
+	// 참가자 목록에 안 들어간 경우(사물 조사, 단발 노드 재생 등)를 위한 보정.
 	if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(CurrentInstigator))
 	{
 		MainNpc->EndTalk();
@@ -345,6 +415,16 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	CurrentNodeId = NodeId;
 	bWaitingForChoice = false;
 
+	// 이 대사를 말하는 NPC가 지정돼 있으면 플레이어를 바라보게 한다.
+	// 여러 NPC가 함께 있는 장면에서 "지금 말하는 쪽"이 자연스럽게 드러난다.
+	if (!Row->SpeakerNpcId.IsNone())
+	{
+		if (ABaseNpcCharacter* Speaker = FindNpcById(Row->SpeakerNpcId))
+		{
+			Speaker->FaceTowards(UGameplayStatics::GetPlayerPawn(this, 0));
+		}
+	}
+
 	ExecuteActions(Row->OnEnterActions);
 
 	// 선택지가 있는 노드는 반드시 골라야 하므로 자동 진행을 걸지 않는다.
@@ -356,6 +436,7 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	{
 		PendingAutoAdvance = Row->AutoAdvance;
 		AutoAdvanceValue = Row->AutoAdvanceValue;
+		AutoAdvanceNpcId = Row->AutoAdvanceNpcId;
 	}
 	AutoAdvanceElapsed = 0.f;
 
@@ -543,7 +624,8 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		{
 			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(MainNpc->GetController()))
 			{
-				AI->StartPatrol(MainNpc->GetDefaultRoute());
+				// Key2 = RouteId. 비워두면 NPC의 기본 경로를 쓴다.
+				AI->StartPatrol(MainNpc->GetRoute(Action.Key2));
 			}
 		}
 		break;
@@ -553,7 +635,8 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		{
 			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(MainNpc->GetController()))
 			{
-				AI->StartGuide(MainNpc->GetDefaultRoute());
+				// 이벤트마다 다른 경로를 쓸 수 있도록 Key2로 경로를 지정한다.
+				AI->StartGuide(MainNpc->GetRoute(Action.Key2));
 			}
 		}
 		break;
@@ -579,6 +662,29 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(FindNpcById(Action.Key)))
 		{
 			MainNpc->PauseAIDuringTalk();
+		}
+		break;
+
+	// ---- 애니메이션 ----
+
+	case EGameActionType::NpcPlayAnim:
+		if (ABaseNpcCharacter* Npc = FindNpcById(Action.Key))
+		{
+			Npc->PlayNpcAnim(Action.Key2, /*bLoop=*/Action.Value != 0);
+		}
+		break;
+
+	case EGameActionType::NpcStopAnim:
+		if (ABaseNpcCharacter* Npc = FindNpcById(Action.Key))
+		{
+			Npc->StopNpcAnim();
+		}
+		break;
+
+	case EGameActionType::NpcFacePlayer:
+		if (ABaseNpcCharacter* Npc = FindNpcById(Action.Key))
+		{
+			Npc->FaceTowards(UGameplayStatics::GetPlayerPawn(this, 0));
 		}
 		break;
 

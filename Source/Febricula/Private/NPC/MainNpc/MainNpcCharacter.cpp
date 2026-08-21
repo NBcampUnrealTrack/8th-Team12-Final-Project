@@ -8,6 +8,7 @@
 #include "Dialogue/DialogueSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
 #include "NPC/MainNpc/NpcRoute.h"
@@ -155,14 +156,7 @@ void AMainNpcCharacter::StartTalk(AActor* Talker)
 	OnNpcTalkStateChanged.Broadcast(true);
 
 	// 대화 상대를 바라보도록 회전 (스냅. 부드럽게 돌리고 싶으면 여기 대신 Tick/타임라인에서 보간)
-	if (Talker)
-	{
-		const FVector ToTalker = (Talker->GetActorLocation() - GetActorLocation());
-		if (!ToTalker.IsNearlyZero())
-		{
-			SetActorRotation(FRotator(0.f, ToTalker.Rotation().Yaw, 0.f));
-		}
-	}
+	FaceTowards(Talker);
 
 	OnTalkStarted(Talker);
 }
@@ -174,6 +168,43 @@ void AMainNpcCharacter::EndTalk()
 	SetBehaviorTreePaused(false);
 	OnNpcTalkStateChanged.Broadcast(false);
 	OnTalkEnded();
+}
+
+ANpcRoute* AMainNpcCharacter::GetRoute(FName RouteId) const
+{
+	// 이름을 안 줬으면 기본 경로
+	if (RouteId.IsNone())
+	{
+		return DefaultRoute;
+	}
+
+	// 1) NPC에 직접 등록해둔 경로
+	if (const TObjectPtr<ANpcRoute>* Found = RouteLibrary.Find(RouteId))
+	{
+		if (*Found)
+		{
+			return *Found;
+		}
+	}
+
+	// 2) 레벨에서 같은 이름의 Actor Tag를 가진 경로를 찾는다.
+	//    경로가 많아졌을 때 NPC마다 일일이 등록하는 수고를 덜기 위한 폴백이다.
+	if (UWorld* World = GetWorld())
+	{
+		for (TActorIterator<ANpcRoute> It(World); It; ++It)
+		{
+			if (It->ActorHasTag(RouteId))
+			{
+				return *It;
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Warning,
+		TEXT("%s: 경로 '%s'를 찾지 못했습니다. RouteLibrary에 등록했는지, 또는 경로 액터에 같은 Actor Tag를 달았는지 확인하세요. 기본 경로로 대체합니다."),
+		*GetNameSafe(this), *RouteId.ToString());
+
+	return DefaultRoute;
 }
 
 void AMainNpcCharacter::ResumeAIDuringTalk()
@@ -199,14 +230,7 @@ void AMainNpcCharacter::PauseAIDuringTalk()
 	SetMovementState(ENpcMovementState::Talk);
 
 	// 다시 멈춰 설 때는 대화 상대를 바라보게 한다.
-	if (CurrentTalker)
-	{
-		const FVector ToTalker = (CurrentTalker->GetActorLocation() - GetActorLocation());
-		if (!ToTalker.IsNearlyZero())
-		{
-			SetActorRotation(FRotator(0.f, ToTalker.Rotation().Yaw, 0.f));
-		}
-	}
+	FaceTowards(CurrentTalker);
 }
 
 // ---------------------------------------------------------------------------

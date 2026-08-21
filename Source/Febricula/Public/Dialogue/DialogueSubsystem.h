@@ -138,6 +138,16 @@ protected:
 	/** 월드에서 NpcId가 일치하는 NPC 액터를 찾는다 (AI 액션 실행용) */
 	ABaseNpcCharacter* FindNpcById(FName NpcId) const;
 
+	/** 이벤트 참가자들을 Talk 상태로 넣는다 (여러 NPC가 함께 나오는 장면용) */
+	void EnterTalkForParticipants(const TArray<FName>& NpcIds, AActor* Interactor);
+
+	/** 참가자 전원을 Talk 상태에서 풀어준다 */
+	void ReleaseParticipants();
+
+	/** 이번 대화에 참여 중인 NPC들. 끝날 때 한꺼번에 풀어주기 위해 들고 있는다 */
+	UPROPERTY()
+	TArray<TObjectPtr<ABaseNpcCharacter>> ActiveParticipants;
+
 	UPROPERTY()
 	TObjectPtr<UDataTable> EventTable;
 
@@ -163,6 +173,9 @@ protected:
 	EDialogueAutoAdvance PendingAutoAdvance = EDialogueAutoAdvance::None;
 	float AutoAdvanceValue = 0.f;
 	float AutoAdvanceElapsed = 0.f;
+
+	/** 도착/근접 판정의 기준 NPC. 비어 있으면 CurrentInstigator 기준 */
+	FName AutoAdvanceNpcId;
 
 	/** 지금 표시 중인 선택지의 원본 (SelectChoice에서 참조) */
 	TArray<FDialogueChoice> PendingChoices;

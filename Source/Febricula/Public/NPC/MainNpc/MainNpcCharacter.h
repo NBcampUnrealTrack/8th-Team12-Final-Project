@@ -39,9 +39,24 @@ public:
 	 */
 	virtual void Interact_Implementation(AActor* Interactor) override;
 
-	/** 이동 경로 조회 (대화 액션 NpcStartPatrol / NpcStartGuide에서 사용) */
+	/** 기본 이동 경로 (RouteId를 지정하지 않았을 때 쓰는 것) */
 	UFUNCTION(BlueprintPure, Category = "NPC|AI")
 	ANpcRoute* GetDefaultRoute() const { return DefaultRoute; }
+
+	/**
+	 * RouteId로 경로를 찾는다. 이벤트마다 다른 경로를 쓰기 위한 것.
+	 *
+	 * 찾는 순서:
+	 *   1) RouteId가 비어 있으면 DefaultRoute
+	 *   2) RouteLibrary에 등록된 경로
+	 *   3) 레벨에서 RouteId와 같은 액터 태그를 가진 ANpcRoute
+	 *   4) 못 찾으면 경고 후 DefaultRoute
+	 *
+	 * 3번 덕분에 경로가 많아져도 NPC마다 일일이 등록하지 않고
+	 * 경로 액터에 태그만 달아두면 됩니다.
+	 */
+	UFUNCTION(BlueprintPure, Category = "NPC|AI")
+	ANpcRoute* GetRoute(FName RouteId) const;
 
 	// ---- 추적/동행 ----
 
@@ -126,6 +141,16 @@ protected:
 	 */
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "NPC|AI")
 	TObjectPtr<ANpcRoute> DefaultRoute;
+
+	/**
+	 * 이벤트별로 다른 경로를 쓰기 위한 목록.
+	 * 키는 대화 데이터에서 쓸 이름(예: "TourA", "Patrol_Night"), 값은 레벨의 ANpcRoute 액터.
+	 * 경로는 레벨마다 다르므로 EditInstanceOnly(레벨에 배치된 NPC에서만 편집)로 둔다.
+	 *
+	 * 여기 등록하지 않아도, 경로 액터에 같은 이름의 Actor Tag를 달아두면 자동으로 찾는다.
+	 */
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "NPC|AI")
+	TMap<FName, TObjectPtr<ANpcRoute>> RouteLibrary;
 
 	/**
 	 * DefaultRoute가 지정되어 있을 때 BeginPlay에서 무엇을 자동으로 시작할지.

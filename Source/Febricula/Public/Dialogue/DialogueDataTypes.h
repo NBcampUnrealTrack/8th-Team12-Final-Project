@@ -97,14 +97,15 @@ enum class EGameActionType : uint8
 	NpcStopFollow			UMETA(DisplayName = "NPC 추적 중단"),
 
 	/**
-	 * Key(NpcId) NPC가 자기 DefaultRoute를 혼자 계속 돈다.
-	 * 지점에 도착하면 바로 다음 지점으로 간다. 플레이어를 기다리지 않는다.
+	 * Key(NpcId) NPC가 경로를 혼자 계속 돈다. 지점에 도착하면 바로 다음 지점으로 간다.
+	 * Key2 = RouteId (비우면 NPC의 DefaultRoute). 이벤트마다 다른 경로를 쓸 수 있다.
 	 */
 	NpcStartPatrol			UMETA(DisplayName = "NPC 순찰 시작 (혼자)"),
 
 	/**
-	 * Key(NpcId) NPC가 자기 DefaultRoute를 따라가되, 각 지점에서 플레이어가
-	 * 따라올 때까지 기다린다. 학교 안내, 산책 동행 같은 "데리고 다니는" 연출용.
+	 * Key(NpcId) NPC가 경로를 따라가되, 각 지점에서 플레이어가 따라올 때까지 기다린다.
+	 * 학교 안내, 산책 동행 같은 "데리고 다니는" 연출용.
+	 * Key2 = RouteId (비우면 NPC의 DefaultRoute).
 	 */
 	NpcStartGuide			UMETA(DisplayName = "NPC 안내 시작 (플레이어 대기)"),
 
@@ -120,6 +121,22 @@ enum class EGameActionType : uint8
 
 	/** Key(NpcId) 다시 제자리에 세운다 */
 	NpcPauseAI				UMETA(DisplayName = "대화 중 NPC AI 정지"),
+
+	// ---- 애니메이션 ----
+
+	/**
+	 * Key(NpcId) NPC가 Key2(AnimId) 애니메이션을 재생한다.
+	 * AnimId는 NPC 블루프린트의 AnimLibrary 맵에 등록해둔 이름이다.
+	 * Value: 0 = 한 번만, 1 = 반복 (앉아있기 같은 지속 포즈)
+	 * AnimSequence를 슬롯에 얹어 재생하므로 이동/로코모션은 아래에서 계속 돈다.
+	 */
+	NpcPlayAnim				UMETA(DisplayName = "NPC 애니메이션 재생"),
+
+	/** Key(NpcId) 재생 중인 슬롯 애니메이션을 중단하고 원래 상태로 블렌드 */
+	NpcStopAnim				UMETA(DisplayName = "NPC 애니메이션 중단"),
+
+	/** Key(NpcId) NPC가 플레이어 쪽을 바라보게 한다 */
+	NpcFacePlayer			UMETA(DisplayName = "NPC가 플레이어 바라보기"),
 };
 
 /**
@@ -179,6 +196,13 @@ struct FGameAction
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action")
 	FName Key;
+
+	/**
+	 * 식별자가 두 개 필요한 액션에서 쓰는 보조 키.
+	 * 예: NpcPlayAnim은 Key=NpcId, Key2=AnimId. 나머지 액션에서는 비워둔다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action")
+	FName Key2;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action")
 	int32 Value = 0;
@@ -251,6 +275,15 @@ struct FDialogueNodeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	FText SpeakerName;
 
+	/**
+	 * 이 대사를 말하는 NPC의 NpcId. 여러 NPC가 함께 등장하는 장면에서 누가 말하는지 지정한다.
+	 * 지정하면 그 NPC가 플레이어를 바라보도록 자동으로 회전한다.
+	 * 비워두면 아무도 회전하지 않는다 (나레이션이거나 회전이 불필요한 경우).
+	 * SpeakerName(표시용 텍스트)과는 별개다 - 이쪽은 실제 월드의 액터를 찾기 위한 키다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+	FName SpeakerNpcId;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	FText Text;
 
@@ -277,6 +310,16 @@ struct FDialogueNodeRow : public FTableRowBase
 	/** AfterDelay면 초, WhenPlayerNearNpc / WhenNpcArrived면 거리(cm) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue|AutoAdvance")
 	float AutoAdvanceValue = 0.f;
+
+	/**
+	 * WhenNpcArrived / WhenPlayerNearNpc 판정의 기준이 될 NPC.
+	 * 비워두면 상호작용한 NPC를 기준으로 삼는다.
+	 *
+	 * 여러 NPC가 동시에 이동하는 장면에서 "누가 도착할 때까지 기다릴지"를 고를 수 있다.
+	 * (SpeakerNpcId와 달리 회전에는 영향을 주지 않는다 - 걷는 도중에 홱 돌아보면 어색하므로)
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue|AutoAdvance")
+	FName AutoAdvanceNpcId;
 
 	/**
 	 * 자동 진행을 기다리는 동안 대화창을 닫아둔다. 이 노드의 Text는 출력되지 않는다.
@@ -313,6 +356,15 @@ struct FNpcEventRow : public FTableRowBase
 	/** 전제 조건 + 발생 조건. 전부 만족해야 이 이벤트가 후보가 된다 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")
 	TArray<FGameCondition> Preconditions;
+
+	/**
+	 * 이 이벤트에 함께 등장하는 NPC들의 NpcId 목록 (상호작용 대상 NPC는 자동 포함).
+	 * 여기 적힌 NPC들은 이벤트가 시작될 때 전부 Talk 상태로 들어가 제자리에 멈추고,
+	 * 이벤트가 끝나면 한꺼번에 풀려난다.
+	 * 예: 체력단련실 장면 = [NPC_HanSeoYun, NPC_KimDoYun]
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")
+	TArray<FName> ParticipantNpcIds;
 
 	/** 시작할 대화 노드 (대화 DataTable의 행 이름) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")

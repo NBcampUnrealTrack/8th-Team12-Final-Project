@@ -1,11 +1,43 @@
 [
 	{
-		"Name": "HSY_EV01",
+		"Name": "EV_TEST_MULTI",
+		"NpcId": "NPC_KimDoYun",
+		"Priority": 999,
+		"bRepeatable": true,
+		"Preconditions": [],
+		"ParticipantNpcIds": [
+			"NPC_HanSeoYun"
+		],
+		"RootNodeId": "M_010",
+		"bCompleteOnFinish": false
+	},
+	{
+		"Name": "EV_TEST",
 		"NpcId": "NPC_HanSeoYun",
+		"Priority": 999,
+		"bRepeatable": true,
+		"Preconditions": [],
+		"ParticipantNpcIds": [],
+		"RootNodeId": "T_010",
+		"bCompleteOnFinish": false
+	},
+	{
+		"Name": "EV01_SchoolTour",
+		"NpcId": "NPC_StudentDean",
 		"Priority": 100,
 		"bRepeatable": false,
-		"Preconditions": [],
-		"RootNodeId": "HSY_E1_010",
+		"Preconditions": [
+			{
+				"Type": "DayAtLeast",
+				"Key": "None",
+				"Value": 1
+			}
+		],
+		"ParticipantNpcIds": [
+			"NPC_HanSeoYun",
+			"NPC_KimDoYun"
+		],
+		"RootNodeId": "E1_010",
 		"bCompleteOnFinish": true
 	},
 	{
@@ -14,12 +46,25 @@
 		"Priority": 90,
 		"bRepeatable": false,
 		"Preconditions": [
-			{ "Type": "DayAtLeast", "Key": "None", "Value": 14 },
-			{ "Type": "EventCompleted", "Key": "HSY_EV01", "Value": 0 },
-			{ "Type": "RelationshipAtLeast", "Key": "NPC_HanSeoYun", "Value": 0 }
+			{
+				"Type": "DayAtLeast",
+				"Key": "None",
+				"Value": 14
+			},
+			{
+				"Type": "EventCompleted",
+				"Key": "EV01_SchoolTour",
+				"Value": 0
+			},
+			{
+				"Type": "RelationshipAtLeast",
+				"Key": "NPC_HanSeoYun",
+				"Value": 0
+			}
 		],
 		"RootNodeId": "HSY_E2_010",
-		"bCompleteOnFinish": true
+		"bCompleteOnFinish": true,
+		"ParticipantNpcIds": []
 	},
 	{
 		"Name": "KDY_EV01",
@@ -27,9 +72,14 @@
 		"Priority": 100,
 		"bRepeatable": false,
 		"Preconditions": [
-			{ "Type": "EventCompleted", "Key": "HSY_EV01", "Value": 0 }
+			{
+				"Type": "EventCompleted",
+				"Key": "EV01_SchoolTour",
+				"Value": 0
+			}
 		],
 		"RootNodeId": "KDY_E1_010",
-		"bCompleteOnFinish": true
+		"bCompleteOnFinish": true,
+		"ParticipantNpcIds": []
 	}
 ]
