@@ -15,18 +15,10 @@ AMovableMapActor::AMovableMapActor()
 
 void AMovableMapActor::StartMove()
 {
-	switch (NowState)
+	if (NowState == EMoveState::NONE)
 	{
-	case EMoveState::NONE:
 		NowState = EMoveState::OPENING;
-		break;
-	case EMoveState::CLOSING:
-		NowState = EMoveState::OPENING;
-		break;
-	case EMoveState::OPENING:
-		NowState = EMoveState::CLOSING;
-		break;
-	}
+	}		
 	GetWorldTimerManager().ClearTimer(MoveTimer);
 	if (NowState == EMoveState::OPENING)
 	{

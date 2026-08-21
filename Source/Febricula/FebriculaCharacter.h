@@ -7,6 +7,8 @@
 #include "Logging/LogMacros.h"
 #include "FebriculaCharacter.generated.h"
 
+class AInteractableActor;
+class USphereComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
@@ -33,6 +35,12 @@ class AFebriculaCharacter : public ACharacter
 	
 protected:
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
+	float InteractionAngle;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
+	USphereComponent* InteractionCollider;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<AInteractableActor>> OverlappedActors; 
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* JumpAction;
@@ -51,16 +59,23 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* InteractAction;
+	
 public:
-
+	UFUNCTION()
+	void OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+	                             const FHitResult& SweepResult);
+	UFUNCTION()
+	void OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Constructor */
 	AFebriculaCharacter();	
-
+	virtual void BeginPlay() override;
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 protected:
 	void Interact(const FInputActionValue& InputActionValue);
+	AInteractableActor* GetBestInteractable();
+
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
 protected:
 
 	/** Called for movement input */
@@ -94,5 +109,10 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction | Debug", meta = (AllowPrivateAccess = "true"))
+	float InteractionCos;
+
 };
 

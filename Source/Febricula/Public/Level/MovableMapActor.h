@@ -3,13 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InteractableInterface.h"
-#include "MapActorBase.h"
+#include "InteractableActor.h"
 #include "MoveState.h"
 #include "MovableMapActor.generated.h"
 
 UCLASS()
-class FEBRICULA_API AMovableMapActor : public AMapActorBase
+class FEBRICULA_API AMovableMapActor : public AInteractableActor
 {
 	GENERATED_BODY()
 

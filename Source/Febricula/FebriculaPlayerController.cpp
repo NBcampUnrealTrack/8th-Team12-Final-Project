@@ -9,6 +9,11 @@
 #include "Febricula.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 
+AFebriculaPlayerController::AFebriculaPlayerController()
+{
+	CheatClass = UFebriculaCheatManager::StaticClass();
+}
+
 void AFebriculaPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -30,6 +35,11 @@ void AFebriculaPlayerController::BeginPlay()
 
 		}
 
+	}
+	DateWidget = CreateWidget<UUserWidget>(this, DateWidgetClass);
+	if (DateWidget)
+	{
+		DateWidget->AddToViewport();
 	}
 }
 

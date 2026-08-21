@@ -11,8 +11,36 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Febricula.h"
+#include "Components/SphereComponent.h"
 #include "Engine/World.h"
 #include "Public/Level/DoorMapActor.h"
+
+void AFebriculaCharacter::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Green, FString::Printf(TEXT("%s Interact Start Overlap!"), *OtherActor->GetName()));
+	}
+	if (AInteractableActor* InteractableActor = Cast<AInteractableActor>(OtherActor))
+	{
+		OverlappedActors.AddUnique(InteractableActor);
+	}
+}
+
+void AFebriculaCharacter::OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Green, FString::Printf(TEXT("%s Interact End Overlap!"), *OtherActor->GetName()));
+	}
+	if (AInteractableActor* InteractableActor = Cast<AInteractableActor>(OtherActor))
+	{
+		OverlappedActors.Remove(InteractableActor);
+	}
+
+}
 
 AFebriculaCharacter::AFebriculaCharacter()
 {
@@ -47,38 +75,98 @@ AFebriculaCharacter::AFebriculaCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
-
+	
+	InteractionCollider = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollider"));
+	InteractionCollider->SetupAttachment(RootComponent);
+	
+	InteractionCollider->OnComponentBeginOverlap.AddDynamic(this, &AFebriculaCharacter::OnComponentBeginOverlap);
+	InteractionCollider->OnComponentEndOverlap.AddDynamic(this, &AFebriculaCharacter::OnComponentEndOverlap);
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+	
+	InteractionAngle = 78.f;
+	InteractionCos = .2f;
+	
+}
+
+void AFebriculaCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	InteractionCos = FMath::Cos(FMath::DegreesToRadians(InteractionAngle));
+	
+}
+
+#if  WITH_EDITOR
+void AFebriculaCharacter::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+	InteractionCos = FMath::Cos(FMath::DegreesToRadians(InteractionCos));
+}
+#endif
+
+AInteractableActor* AFebriculaCharacter::GetBestInteractable()
+{
+	const FVector PlayerLocation = GetActorLocation();
+	const FVector Forward = GetControlRotation().Vector();
+
+	AInteractableActor* BestInteractable = nullptr;
+	float BestScore = -1.f;
+	UE_LOG(LogTemp, Warning, TEXT("GetBestInteractable()"))
+	for (const TObjectPtr<AInteractableActor>& Interactable : OverlappedActors)
+	{
+		if (!IsValid(Interactable)) continue;
+		if (!Interactable->Execute_CanInteract(Interactable, this)) continue;
+		FVector Direction = Interactable->GetActorLocation() - PlayerLocation;
+		const float Distance = Direction.Size();
+		Direction = Direction.GetSafeNormal();
+		
+		if (Direction.IsNearlyZero()) continue;
+		const float Dot = FVector::DotProduct(Forward, Direction);
+		if (Dot < InteractionCos) continue;
+		
+		const float Score = Dot * (1.f - Distance / InteractionCollider->GetScaledSphereRadius());
+		if (Score > BestScore)
+		{
+			BestScore = Score;
+			BestInteractable = Interactable;
+		}
+	}	
+	return BestInteractable;
 }
 
 void AFebriculaCharacter::Interact(const FInputActionValue& InputActionValue)
 {
-	TArray<FHitResult> Result;
-	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(this);
-	GetWorld()->LineTraceMultiByChannel
-	(
-		Result,
-		GetActorLocation(),
-		GetActorLocation() + GetActorForwardVector() * 1000.f,
-		ECollisionChannel::ECC_Visibility,
-		CollisionParams
-	);
-	DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + GetActorForwardVector() * 100.f, FColor::Green);
-	for (FHitResult HitResult : Result)
-	{
-		if (AActor* Hit = HitResult.GetActor())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("SomethingFind!"));
-
-			if (ADoorMapActor* Openable = Cast<ADoorMapActor>(Hit))
-			{
-				Openable->StartMove();
-				break;
-			}
-		}
-	}
+	
+	AInteractableActor* InteractableActor = GetBestInteractable();
+	if (!IsValid(InteractableActor)) return;
+	InteractableActor->Execute_DoInteract(InteractableActor, this);
+	
+	// TArray<FHitResult> Result;
+	// FCollisionQueryParams CollisionParams;
+	// CollisionParams.AddIgnoredActor(this);
+	// GetWorld()->LineTraceMultiByChannel
+	// (
+	// 	Result,
+	// 	GetActorLocation(),
+	// 	GetActorLocation() + GetActorForwardVector() * 1000.f,
+	// 	ECollisionChannel::ECC_Visibility,
+	// 	CollisionParams
+	// );
+	// DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + GetActorForwardVector() * 100.f, FColor::Green);
+	// for (FHitResult HitResult : Result)
+	// {
+	// 	if (AActor* Hit = HitResult.GetActor())
+	// 	{
+	// 		UE_LOG(LogTemp, Warning, TEXT("SomethingFind!"));
+	//
+	// 		if (AMovableMapActor* Openable = Cast<AMovableMapActor>(Hit))
+	// 		{
+	// 			Openable->StartMove();
+	// 			break;
+	// 		}
+	// 	}
+	// }
 }
 
 void AFebriculaCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
