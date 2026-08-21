@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Cheat/FebriculaCheatManager.h"
 #include "GameFramework/PlayerController.h"
 #include "FebriculaPlayerController.generated.h"
 
@@ -17,6 +18,7 @@ UCLASS(abstract)
 class AFebriculaPlayerController : public APlayerController
 {
 	GENERATED_BODY()
+	AFebriculaPlayerController();
 	
 protected:
 
@@ -48,5 +50,9 @@ protected:
 
 	/** Returns true if the player should use UMG touch controls */
 	bool ShouldUseTouchControls() const;
-
+	
+	UPROPERTY(EditAnywhere, Category = "UI | Date Print")
+	TSubclassOf<UUserWidget> DateWidgetClass;
+	UPROPERTY()
+	TObjectPtr<UUserWidget> DateWidget;
 };

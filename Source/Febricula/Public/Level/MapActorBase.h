@@ -21,6 +21,4 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = MapActorBase)
 	bool bLocked;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = MapActorBase)
-	bool bCanInteract;
 };

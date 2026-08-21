@@ -8,7 +8,7 @@
 #include "DoorMapActor.generated.h"
 
 UCLASS()
-class FEBRICULA_API ADoorMapActor : public AMovableMapActor, public IInteractableInterface
+class FEBRICULA_API ADoorMapActor : public AMovableMapActor
 {
 	GENERATED_BODY()
 

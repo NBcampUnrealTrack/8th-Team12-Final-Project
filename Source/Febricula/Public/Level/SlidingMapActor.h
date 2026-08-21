@@ -8,7 +8,7 @@
 #include "SlidingMapActor.generated.h"
 
 UCLASS()
-class FEBRICULA_API ASlidingMapActor : public AMovableMapActor, public IInteractableInterface
+class FEBRICULA_API ASlidingMapActor : public AMovableMapActor
 {
 	GENERATED_BODY()
 
