@@ -65,6 +65,7 @@
 		{
 			"Name": "MetaHumanCharacter",
 			"Enabled": true
+<<<<<<< Updated upstream
 		},
 		{
 			"Name": "SMSystem",
@@ -74,6 +75,8 @@
 		{
 			"Name": "GitSourceControl",
 			"Enabled": false
+=======
+>>>>>>> Stashed changes
 		}
 	]
 }
