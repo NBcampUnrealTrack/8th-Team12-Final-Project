@@ -11,6 +11,12 @@ Saved/
 *.VC.db
 *.VC.VC.opendb
 
+*.slnx
+*.user
+*.DotSettings
+*.DotSettings.user
+.vsconfig
+
 *.log
 *.tmp
 
