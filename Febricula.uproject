@@ -65,18 +65,6 @@
 		{
 			"Name": "MetaHumanCharacter",
 			"Enabled": true
-<<<<<<< Updated upstream
-		},
-		{
-			"Name": "SMSystem",
-			"Enabled": false,
-			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/9d8db9962594400988f8ddd3fb83cd88"
-		},
-		{
-			"Name": "GitSourceControl",
-			"Enabled": false
-=======
->>>>>>> Stashed changes
 		}
 	]
 }
