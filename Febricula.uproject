@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{DA111979-4A95-1CC2-2817-688DEBCE0DE4}",
+	"EngineAssociation": "5.8",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -70,6 +70,5 @@
 			"Name": "MotionWarping",
 			"Enabled": true
 		}
-
 	]
 }
