@@ -1,0 +1,60 @@
+[
+	{
+		"Name": "DAYTEST_D1_Solo",
+		"NpcId": "NPC_HanSeoYun",
+		"Priority": 100,
+		"bRepeatable": true,
+		"Preconditions": [
+			{ "Type": "DayEquals", "Key": "None", "Value": 1 }
+		],
+		"ParticipantNpcIds": [],
+		"RootNodeId": "D1_010",
+		"bCompleteOnFinish": false
+	},
+	{
+		"Name": "DAYTEST_D2_Multi",
+		"NpcId": "NPC_HanSeoYun",
+		"Priority": 100,
+		"bRepeatable": true,
+		"Preconditions": [
+			{ "Type": "DayEquals", "Key": "None", "Value": 2 }
+		],
+		"ParticipantNpcIds": [
+			"NPC_KimDoYun"
+		],
+		"RootNodeId": "D2_010",
+		"bCompleteOnFinish": false
+	},
+	{
+		"Name": "DAYTEST_D3_Other",
+		"NpcId": "NPC_KimDoYun",
+		"Priority": 100,
+		"bRepeatable": true,
+		"Preconditions": [
+			{ "Type": "DayEquals", "Key": "None", "Value": 3 }
+		],
+		"ParticipantNpcIds": [],
+		"RootNodeId": "D3_010",
+		"bCompleteOnFinish": false
+	},
+	{
+		"Name": "DAYTEST_Idle_HSY",
+		"NpcId": "NPC_HanSeoYun",
+		"Priority": 0,
+		"bRepeatable": true,
+		"Preconditions": [],
+		"ParticipantNpcIds": [],
+		"RootNodeId": "IDLE_HSY_010",
+		"bCompleteOnFinish": false
+	},
+	{
+		"Name": "DAYTEST_Idle_KDY",
+		"NpcId": "NPC_KimDoYun",
+		"Priority": 0,
+		"bRepeatable": true,
+		"Preconditions": [],
+		"ParticipantNpcIds": [],
+		"RootNodeId": "IDLE_KDY_010",
+		"bCompleteOnFinish": false
+	}
+]
