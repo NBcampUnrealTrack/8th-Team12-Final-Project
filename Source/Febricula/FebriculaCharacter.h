@@ -36,11 +36,12 @@ class AFebriculaCharacter : public ACharacter
 	UCameraComponent* FollowCamera;
 	
 protected:
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
-	float InteractionAngle;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
-	USphereComponent* InteractionCollider;
+	UPROPERTY(EditAnywhere, Category="Speed")
+	float WalkSpeed;
+	UPROPERTY(EditAnywhere, Category="Speed")
+	float SprintSpeed;
+	
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
 	TArray<TObjectPtr<AInteractableProp>> OverlappedActors; 
 	/** Jump Input Action */
@@ -51,6 +52,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MoveAction;
 
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* SprintAction;
+	
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* LookAction;
@@ -73,14 +77,11 @@ public:
 	void OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Constructor */
 	virtual void BeginPlay() override;
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInteractionComponent> InteractComponent;
 	
 protected:
-	void Interact(const FInputActionValue& InputActionValue);
-	AInteractableProp* GetBestInteractable();
 	
 	
 	/** Initialize input action bindings */
@@ -91,6 +92,9 @@ protected:
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+	
+	void StartSprint(const FInputActionValue& Value);
+	void EndSprint(const FInputActionValue& Value);
 
 public:
 

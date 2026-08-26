@@ -54,13 +54,17 @@ AFebriculaCharacter::AFebriculaCharacter()
 
 	// Note: For faster iteration times these variables, and many more, can be tweaked in the Character Blueprint
 	// instead of recompiling to adjust them
+	WalkSpeed = 500.f;
+	SprintSpeed = 1000.f;
 	GetCharacterMovement()->JumpZVelocity = 500.f;
 	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 
+	
+	
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -73,99 +77,14 @@ AFebriculaCharacter::AFebriculaCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 	
 	InteractComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractComponent"));
-	
-	InteractionCollider = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollider"));
-	InteractionCollider->SetupAttachment(RootComponent);
-	
-	InteractionCollider->OnComponentBeginOverlap.AddDynamic(this, &AFebriculaCharacter::OnComponentBeginOverlap);
-	InteractionCollider->OnComponentEndOverlap.AddDynamic(this, &AFebriculaCharacter::OnComponentEndOverlap);
-	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
-	
-	InteractionAngle = 78.f;
-	InteractionCos = .2f;
-	
 }
 
 void AFebriculaCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	InteractionCos = FMath::Cos(FMath::DegreesToRadians(InteractionAngle));
-	
 }
 
-#if  WITH_EDITOR
-void AFebriculaCharacter::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-	InteractionCos = FMath::Cos(FMath::DegreesToRadians(InteractionCos));
-}
-#endif
-
-AInteractableProp* AFebriculaCharacter::GetBestInteractable()
-{
-	const FVector PlayerLocation = GetActorLocation();
-	const FVector Forward = GetControlRotation().Vector();
-
-	AInteractableProp* BestInteractable = nullptr;
-	float BestScore = -1.f;
-	UE_LOG(LogTemp, Warning, TEXT("GetBestInteractable()"))
-	for (const TObjectPtr<AInteractableProp>& Interactable : OverlappedActors)
-	{
-		if (!IsValid(Interactable)) continue;
-		if (!Interactable->Execute_CanInteract(Interactable, this)) continue;
-		FVector Direction = Interactable->GetActorLocation() - PlayerLocation;
-		const float Distance = Direction.Size();
-		Direction = Direction.GetSafeNormal();
-		
-		if (Direction.IsNearlyZero()) continue;
-		const float Dot = FVector::DotProduct(Forward, Direction);
-		if (Dot < InteractionCos) continue;
-		
-		const float Score = Dot * (1.f - Distance / InteractionCollider->GetScaledSphereRadius());
-		if (Score > BestScore)
-		{
-			BestScore = Score;
-			BestInteractable = Interactable;
-		}
-	}	
-	return BestInteractable;
-}
-
-void AFebriculaCharacter::Interact(const FInputActionValue& InputActionValue)
-{
-	
-	AInteractableProp* InteractableActor = GetBestInteractable();
-	if (!IsValid(InteractableActor)) return;
-	InteractableActor->Execute_Interact(InteractableActor, this);
-	
-	// TArray<FHitResult> Result;
-	// FCollisionQueryParams CollisionParams;
-	// CollisionParams.AddIgnoredActor(this);
-	// GetWorld()->LineTraceMultiByChannel
-	// (
-	// 	Result,
-	// 	GetActorLocation(),
-	// 	GetActorLocation() + GetActorForwardVector() * 1000.f,
-	// 	ECollisionChannel::ECC_Visibility,
-	// 	CollisionParams
-	// );
-	// DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + GetActorForwardVector() * 100.f, FColor::Green);
-	// for (FHitResult HitResult : Result)
-	// {
-	// 	if (AActor* Hit = HitResult.GetActor())
-	// 	{
-	// 		UE_LOG(LogTemp, Warning, TEXT("SomethingFind!"));
-	//
-	// 		if (AMovableMapActor* Openable = Cast<AMovableMapActor>(Hit))
-	// 		{
-	// 			Openable->StartMove();
-	// 			break;
-	// 		}
-	// 	}
-	// }
-}
 
 void AFebriculaCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -180,10 +99,14 @@ void AFebriculaCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AFebriculaCharacter::Move);
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AFebriculaCharacter::Look);
 
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AFebriculaCharacter::StartSprint);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &AFebriculaCharacter::EndSprint);
+		
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AFebriculaCharacter::Look);
 		
-		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this , &AFebriculaCharacter::Interact);
+	//	EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this , &AFebriculaCharacter::Interact);
+		
 	}
 	else
 	{
@@ -207,6 +130,16 @@ void AFebriculaCharacter::Look(const FInputActionValue& Value)
 
 	// route the input
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
+}
+
+void AFebriculaCharacter::StartSprint(const FInputActionValue& Value)
+{
+	GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+}
+
+void AFebriculaCharacter::EndSprint(const FInputActionValue& Value)
+{
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
 void AFebriculaCharacter::DoMove(float Right, float Forward)
