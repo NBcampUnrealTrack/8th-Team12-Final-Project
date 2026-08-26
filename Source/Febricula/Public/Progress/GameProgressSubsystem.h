@@ -99,6 +99,7 @@ public:
 	bool EvaluateCondition(const FGameCondition& Condition) const;
 
 	/** 조건 배열 전체를 AND로 평가한다. 배열이 비어 있으면 true */
+	UFUNCTION(BlueprintCallable, Category = "Progress|Condition")
 	bool EvaluateConditions(const TArray<FGameCondition>& Conditions) const;
 
 protected:

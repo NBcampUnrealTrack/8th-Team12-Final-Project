@@ -5,6 +5,7 @@
 #include "Engine/GameInstance.h"
 #include "GameMode/TimeSubsystem.h"
 #include "GameplayTagContainer.h"
+#include "Activity/ActivitySubsystem.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
 
 const UTimeSubsystem* UGameProgressSubsystem::GetTime() const
@@ -193,7 +194,14 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 			const int32 Roll = FMath::RandRange(1, 20);
 			return (Roll + Bonus) >= Condition.Value;
 		}
+		
 
+	/** 
+	 * 이지민 수정(2026. 08. 26)
+	 *  NPC가 아닌 상호작용 가능한 일반 액터와의 액션도 처리하기 위해 추가된 로직	 
+	 *  문 / 노트북 / 기타 액티비티용 액터 등이 FGameAction 체계 공유하기 위해 추가됨
+	 */
+	
 	default:
 		return true;
 	}

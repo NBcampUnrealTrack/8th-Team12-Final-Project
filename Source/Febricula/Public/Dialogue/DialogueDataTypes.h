@@ -16,6 +16,7 @@
 // 그래서 DialogueTypes.h가 아니라 DialogueDataTypes.h로 둔다.
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Engine/DataTable.h"
 #include "DialogueDataTypes.generated.h"
 
@@ -94,6 +95,13 @@ enum class EGameConditionType : uint8
 
 	/** 평일인가 */
 	IsWeekday				UMETA(DisplayName = "평일"),
+	
+	// --- 기타(이지민 수정(2026. 08. 26)) ---
+	
+	/**  
+	 *  NPC가 아닌 상호작용 가능한 일반 액터와의 액션도 처리하기 위해 추가된 Condition	 
+	 *  문 / 노트북 / 기타 액티비티용 액터 등이 FGameAction 체계 공유하기 위해 추가됨
+	 */
 };
 
 /**
@@ -189,6 +197,23 @@ enum class EGameActionType : uint8
 	 * 시간표 끝에 닿으면 내부에서 알아서 하루가 넘어간다.
 	 */
 	TimeAdvanceSchedule		UMETA(DisplayName = "다음 시간대로"),
+	
+	// --- 기타(이지민 수정(2026. 08. 26)) ---
+	
+	/**  
+	 *  NPC가 아닌 상호작용 가능한 일반 액터와의 액션도 처리하기 위해 추가된 Action	 
+	 *  문 / 노트북 / 기타 액티비티용 액터 등이 FGameAction 체계 공유하기 위해 추가됨
+	 */
+	
+	/**
+	 * 특정 레벨로 이동한다.
+	 * 레벨명은 Project Setting - Activity Setting - Levels 에 맵핑되어 있다.
+	 * Key는 목적지가 되는 레벨 
+	 * Key2는 PlayerSpawn 구분용 Schedule FGamePlayTag 전문을 적는다
+	 */
+		
+	ChangeLevel				UMETA(DisplayName= "레벨 이동")
+
 };
 
 /**

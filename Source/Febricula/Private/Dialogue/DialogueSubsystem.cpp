@@ -6,6 +6,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Activity/ActivitySetting.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Kismet/GameplayStatics.h"
@@ -719,6 +720,22 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			Npc->FaceTowards(UGameplayStatics::GetPlayerPawn(this, 0));
 		}
 		break;
+		
+	case EGameActionType::ChangeLevel:
+		if (!Action.Key2.IsNone())
+		{
+			if (const UGameInstance* GI = GetWorld()->GetGameInstance())
+			{
+				if (UTimeSubsystem* TimeSub = GI->GetSubsystem<UTimeSubsystem>())
+				{
+					TimeSub->SpendSchedule();
+				}
+			}
+		}
+		if (const UActivitySetting* ActivitySetting = GetDefault<UActivitySetting>())
+		{
+			UGameplayStatics::OpenLevelBySoftObjectPtr(this, *ActivitySetting->Levels.Find(Action.Key));
+		}
 
 	default:
 		break;

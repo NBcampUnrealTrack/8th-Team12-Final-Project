@@ -1,9 +1,9 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "GameMode/ActivitySubsystem.h"
-#include "GameMode/ActivitySetting.h"
-#include "GameMode/TestActivityAsset.h"
+#include "Activity/ActivitySubsystem.h"
+#include "Activity/ActivitySetting.h"
+#include "Activity/TestActivityAsset.h"
 #include "GameMode/TimeSubsystem.h"
 
 void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -54,6 +54,11 @@ void UActivitySubsystem::FindRunnableActivities()
 		}
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, FString::Printf(TEXT("Founded Activities")));
 	}
+}
+
+FGameplayTag UActivitySubsystem::GetNowScheduleTag() const 
+{
+	return NowSchedule;
 }
 
 

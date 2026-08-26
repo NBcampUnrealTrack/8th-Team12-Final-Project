@@ -25,6 +25,8 @@ public:
 	// UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)	
 	// void RunActivity();
 	
+	FGameplayTag GetNowScheduleTag() const;
+	
 protected:
 	UFUNCTION()
 	void OnChangeSchedule(FGameplayTag ChangedSchedule);

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "MovableMapActor.h"
 #include "MoveState.h"
+#include "Dialogue/DialogueDataTypes.h"
 #include "DoorMapActor.generated.h"
 
 UCLASS()
@@ -24,13 +25,9 @@ protected:
 	// bool bCanChangeLevel;
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta = (AllowedClasses="/Script/Engine.World"))
 	// TSoftObjectPtr<UWorld> ConnectedLevel;
-	EMoveState NowState;
 		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	TArray<float> MinRotation;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Change")
-	TSoftObjectPtr<UWorld> TargetLevel;
-
 };
 

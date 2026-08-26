@@ -7,6 +7,8 @@
 #include "GameFramework/Actor.h"
 #include "SlidingMapActor.generated.h"
 
+enum class EMoveAxis : uint8;
+
 UCLASS()
 class FEBRICULA_API ASlidingMapActor : public AMovableMapActor
 {
@@ -24,7 +26,4 @@ protected:
 	EMoveAxis CurrentAxis;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	TArray<FVector> MinLocation;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Change")
-	TSoftObjectPtr<UWorld> TargetLevel;
 };

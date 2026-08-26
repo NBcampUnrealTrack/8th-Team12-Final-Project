@@ -105,6 +105,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsWaitingForAutoAdvance() const { return PendingAutoAdvance != EDialogueAutoAdvance::None; }
 
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Action")
+	void ExecuteAction(const FGameAction& Action);
+
+	void ExecuteActions(const TArray<FGameAction>& Actions);
+
+	
+	
 	// ---- HUD가 구독할 델리게이트 ----
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
@@ -128,9 +135,6 @@ protected:
 
 	/** 선택지를 HUD에 표시하고 입력을 선택 대기 상태로 바꾼다 */
 	void PresentChoices(const TArray<FDialogueChoice>& InChoices);
-
-	void ExecuteActions(const TArray<FGameAction>& Actions);
-	void ExecuteAction(const FGameAction& Action);
 
 	UGameProgressSubsystem* GetProgress() const;
 	UNpcRelationshipSubsystem* GetRelationship() const;

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "TestActivityAsset.h"
+#include "Activity/TestActivityAsset.h"
 #include "Engine/DeveloperSettings.h"
 #include "TimeSettings.generated.h"
 
