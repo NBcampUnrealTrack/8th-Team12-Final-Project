@@ -28,7 +28,7 @@ enum class EGameConditionType : uint8
 {
 	None					UMETA(DisplayName = "없음(항상 참)"),
 
-	/** Value일차 이상 진행됐는가 (예: 14일차 이상) */
+	/** Value일차 이상 진행됐는가 (예: 14일차 이상). 기준은 UTimeSubsystem의 누적 일차 */
 	DayAtLeast				UMETA(DisplayName = "N일차 이상"),
 
 	/** Key 이벤트를 이미 완료했는가 */
@@ -57,6 +57,43 @@ enum class EGameConditionType : uint8
 
 	/** 주사위 판정. Key 능력치를 보정으로 쓰고 Value를 목표치로 삼는다 */
 	RollCheck				UMETA(DisplayName = "판정(주사위)"),
+
+	// ---- 시간/날짜 (UTimeSubsystem 연동) ----
+	// 여기서 말하는 "일차"는 전부 누적 일차(GetAbsoluteDay)다.
+	// 달이 바뀌어도 리셋되지 않으므로 "14일차 이벤트"를 그대로 표현할 수 있다.
+
+	/** 정확히 Value일차인가 (예: 3일차에만 발생하는 이벤트) */
+	DayEquals				UMETA(DisplayName = "N일차 정확히"),
+
+	/** Value일차 이하인가 (예: 7일차까지만 유효한 튜토리얼) */
+	DayAtMost				UMETA(DisplayName = "N일차 이하"),
+
+	/** 현재 달이 Value인가 */
+	MonthEquals				UMETA(DisplayName = "N월"),
+
+	/**
+	 * 현재 시간대가 Key와 같은가.
+	 * Key에는 스케줄의 GameplayTag 전체 이름을 그대로 적는다 (예: Schedule.MorningClass).
+	 */
+	ScheduleIs				UMETA(DisplayName = "현재 시간대가 O"),
+
+	/** 현재 시간대가 Key 태그의 하위인가 (예: Key=Schedule.FreeTime 이면 FreeTime.1/2/3 전부 통과) */
+	ScheduleIsChildOf		UMETA(DisplayName = "현재 시간대가 O 계열"),
+
+	/**
+	 * 오늘의 "날 종류"가 Key와 같은가. Key에는 DayType.WeekDay 같은 태그 이름을 적는다.
+	 * 시간대(Schedule.*)와는 독립된 축이라, 시험기간/방학처럼 종류가 늘어나도 조건은 그대로 쓴다.
+	 */
+	DayTypeIs				UMETA(DisplayName = "오늘이 O 종류의 날"),
+
+	/** 오늘의 날 종류가 Key 태그 계열인가 (예: Key=DayType.Holiday 면 그 하위 전부) */
+	DayTypeIsChildOf		UMETA(DisplayName = "오늘이 O 계열의 날"),
+
+	/** 주말인가 (누적 일차 기준 6, 7일째). 단순 요일 계산이라 DayTypeIs와는 별개다 */
+	IsWeekend				UMETA(DisplayName = "주말"),
+
+	/** 평일인가 */
+	IsWeekday				UMETA(DisplayName = "평일"),
 };
 
 /**
@@ -137,6 +174,21 @@ enum class EGameActionType : uint8
 
 	/** Key(NpcId) NPC가 플레이어 쪽을 바라보게 한다 */
 	NpcFacePlayer			UMETA(DisplayName = "NPC가 플레이어 바라보기"),
+
+	// ---- 시간 진행 (UTimeSubsystem 연동) ----
+
+	/**
+	 * 하루를 넘긴다 (UTimeSubsystem::SpendDay). Value가 2 이상이면 그만큼 반복.
+	 * 이벤트 마지막 노드에 걸어두면 "이벤트가 끝나면 다음 날"이 되어 날짜별 테스트가 쉬워진다.
+	 * 시간대 인덱스는 그대로이므로, 시간표 순서까지 정확히 맞춰야 하면 TimeAdvanceSchedule을 쓴다.
+	 */
+	TimeAdvanceDay			UMETA(DisplayName = "다음 날로"),
+
+	/**
+	 * 시간대를 한 칸 넘긴다 (UTimeSubsystem::SpendSchedule). Value가 2 이상이면 그만큼 반복.
+	 * 시간표 끝에 닿으면 내부에서 알아서 하루가 넘어간다.
+	 */
+	TimeAdvanceSchedule		UMETA(DisplayName = "다음 시간대로"),
 };
 
 /**

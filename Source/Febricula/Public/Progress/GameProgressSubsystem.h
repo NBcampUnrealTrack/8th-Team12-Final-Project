@@ -13,6 +13,8 @@
 #include "Dialogue/DialogueDataTypes.h"
 #include "GameProgressSubsystem.generated.h"
 
+class UTimeSubsystem;
+
 UCLASS(BlueprintType)
 class FEBRICULA_API UGameProgressSubsystem : public UGameInstanceSubsystem
 {
@@ -20,15 +22,26 @@ class FEBRICULA_API UGameProgressSubsystem : public UGameInstanceSubsystem
 
 public:
 	// ---- 일차 ----
+	//
+	// [변경] 일차의 주인이 이 클래스에서 UTimeSubsystem으로 넘어갔다.
+	// 팀원이 만든 시간 시스템과 이쪽이 각자 일차를 세고 있으면 반드시 어긋나기 때문에,
+	// 여기서는 값을 소유하지 않고 UTimeSubsystem::GetAbsoluteDay()를 읽기만 한다.
+	// 덕분에 기존 이벤트 테이블의 DayAtLeast 조건이 코드 수정 없이 그대로 날짜와 연동된다.
 
+	/** UTimeSubsystem의 누적 일차. 시간 시스템이 없으면 아래 FallbackDay를 쓴다 */
 	UFUNCTION(BlueprintPure, Category = "Progress")
-	int32 GetCurrentDay() const { return CurrentDay; }
+	int32 GetCurrentDay() const;
+
+	/**
+	 * 시간 시스템이 없는 테스트 레벨에서만 의미가 있는 폴백 값 설정.
+	 * UTimeSubsystem이 살아 있으면 이 값은 무시된다 - 날짜를 실제로 넘기려면
+	 * UTimeSubsystem::SpendDay()를 호출해야 한다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Progress")
+	void SetFallbackDay(int32 NewDay) { FallbackDay = NewDay; }
 
 	UFUNCTION(BlueprintCallable, Category = "Progress")
-	void SetCurrentDay(int32 NewDay) { CurrentDay = NewDay; }
-
-	UFUNCTION(BlueprintCallable, Category = "Progress")
-	void AdvanceDay(int32 Days = 1) { CurrentDay += Days; }
+	void AdvanceFallbackDay(int32 Days = 1) { FallbackDay += Days; }
 
 	// ---- 태그 (일름보 / 철두철미 / 다정다감 / 불요불굴 ...) ----
 
@@ -89,8 +102,15 @@ public:
 	bool EvaluateConditions(const TArray<FGameCondition>& Conditions) const;
 
 protected:
+	/** 시간 조건 판정에 쓰는 UTimeSubsystem 접근자. 없으면 nullptr */
+	const UTimeSubsystem* GetTime() const;
+
+public:
+
+protected:
+	/** UTimeSubsystem이 없을 때만 쓰는 폴백 일차 */
 	UPROPERTY()
-	int32 CurrentDay = 1;
+	int32 FallbackDay = 1;
 
 	UPROPERTY()
 	TSet<FName> Tags;
