@@ -18,11 +18,6 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	void OpenActor() override;
-	void CloseActor() override;
-	
-	virtual void DoInteract_Implementation(AActor* Interactor) override;
-	virtual bool CanInteract_Implementation(AActor* Interactor) const override;
 	
 
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")

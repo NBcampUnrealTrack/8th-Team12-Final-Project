@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "TestActivityAsset.h"
 #include "Engine/DeveloperSettings.h"
 #include "TimeSettings.generated.h"
 
@@ -29,5 +30,6 @@ public:
 	
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Schedule Default")
 	TSoftObjectPtr<UDayScheduleAsset> WeekEndSchedule;
+	
 	
 };

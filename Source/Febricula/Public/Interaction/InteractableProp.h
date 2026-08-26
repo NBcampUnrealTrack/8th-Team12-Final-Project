@@ -33,6 +33,9 @@ public:
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop")
+	TObjectPtr<USceneComponent> SceneComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop")
 	TObjectPtr<UStaticMeshComponent> Mesh;
 
 	/** 상호작용 감지용. 메시가 없어도 잡히도록 별도 콜리전을 둔다 */

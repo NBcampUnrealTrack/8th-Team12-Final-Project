@@ -7,6 +7,8 @@
 #include "Logging/LogMacros.h"
 #include "FebriculaCharacter.generated.h"
 
+class UInteractionComponent;
+class AInteractableProp;
 class AInteractableActor;
 class USphereComponent;
 class USpringArmComponent;
@@ -40,7 +42,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
 	USphereComponent* InteractionCollider;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
-	TArray<TObjectPtr<AInteractableActor>> OverlappedActors; 
+	TArray<TObjectPtr<AInteractableProp>> OverlappedActors; 
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* JumpAction;
@@ -61,22 +63,28 @@ protected:
 	UInputAction* InteractAction;
 	
 public:
+	AFebriculaCharacter();	
+
+	
 	UFUNCTION()
 	void OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
 	                             const FHitResult& SweepResult);
 	UFUNCTION()
 	void OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Constructor */
-	AFebriculaCharacter();	
 	virtual void BeginPlay() override;
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInteractionComponent> InteractComponent;
+	
+protected:
 	void Interact(const FInputActionValue& InputActionValue);
-	AInteractableActor* GetBestInteractable();
-
+	AInteractableProp* GetBestInteractable();
+	
+	
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-protected:
 
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);

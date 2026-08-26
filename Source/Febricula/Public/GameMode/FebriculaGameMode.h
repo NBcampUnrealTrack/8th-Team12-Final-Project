@@ -19,7 +19,7 @@ public:
 	
 	/** Constructor */
 	AFebriculaGameMode();
-	
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 	// UFUNCTION(BlueprintCallable)
 	// [[nodiscard]] int32 Year() const
 	// {

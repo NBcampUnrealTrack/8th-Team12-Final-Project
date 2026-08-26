@@ -10,9 +10,11 @@
 AInteractableProp::AInteractableProp()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
+	SceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("SceneComponent"));
+	RootComponent = SceneComponent;
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	SetRootComponent(Mesh);
+	Mesh->SetupAttachment(RootComponent);
+	//SetRootComponent(Mesh);
 
 	InteractionVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionVolume"));
 	InteractionVolume->SetupAttachment(Mesh);

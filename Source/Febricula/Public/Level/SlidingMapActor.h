@@ -19,11 +19,6 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	virtual void OpenActor() override;
-	virtual void CloseActor() override;
-	
-	virtual void DoInteract_Implementation(AActor* Interactor) override;
-	virtual bool CanInteract_Implementation(AActor* Interactor) const override;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Sliding Door")
 	EMoveAxis CurrentAxis;

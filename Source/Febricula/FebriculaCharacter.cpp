@@ -13,16 +13,15 @@
 #include "Febricula.h"
 #include "Components/SphereComponent.h"
 #include "Engine/World.h"
+#include "Interaction/InteractableProp.h"
+#include "Interaction/InteractionComponent.h"
 #include "Public/Level/DoorMapActor.h"
 
 void AFebriculaCharacter::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Green, FString::Printf(TEXT("%s Interact Start Overlap!"), *OtherActor->GetName()));
-	}
-	if (AInteractableActor* InteractableActor = Cast<AInteractableActor>(OtherActor))
+	UE_LOG(LogTemp, Warning, TEXT("%s Interact Start Overlap!"), *OtherActor->GetName());
+	if (AInteractableProp* InteractableActor = Cast<AInteractableProp>(OtherActor))
 	{
 		OverlappedActors.AddUnique(InteractableActor);
 	}
@@ -31,11 +30,8 @@ void AFebriculaCharacter::OnComponentBeginOverlap(UPrimitiveComponent* Overlappe
 void AFebriculaCharacter::OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Green, FString::Printf(TEXT("%s Interact End Overlap!"), *OtherActor->GetName()));
-	}
-	if (AInteractableActor* InteractableActor = Cast<AInteractableActor>(OtherActor))
+	UE_LOG(LogTemp, Warning, TEXT("%s Interact End Overlap!"), *OtherActor->GetName());
+	if (AInteractableProp* InteractableActor = Cast<AInteractableProp>(OtherActor))
 	{
 		OverlappedActors.Remove(InteractableActor);
 	}
@@ -76,6 +72,8 @@ AFebriculaCharacter::AFebriculaCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 	
+	InteractComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractComponent"));
+	
 	InteractionCollider = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollider"));
 	InteractionCollider->SetupAttachment(RootComponent);
 	
@@ -105,15 +103,15 @@ void AFebriculaCharacter::PostEditChangeProperty(struct FPropertyChangedEvent& P
 }
 #endif
 
-AInteractableActor* AFebriculaCharacter::GetBestInteractable()
+AInteractableProp* AFebriculaCharacter::GetBestInteractable()
 {
 	const FVector PlayerLocation = GetActorLocation();
 	const FVector Forward = GetControlRotation().Vector();
 
-	AInteractableActor* BestInteractable = nullptr;
+	AInteractableProp* BestInteractable = nullptr;
 	float BestScore = -1.f;
 	UE_LOG(LogTemp, Warning, TEXT("GetBestInteractable()"))
-	for (const TObjectPtr<AInteractableActor>& Interactable : OverlappedActors)
+	for (const TObjectPtr<AInteractableProp>& Interactable : OverlappedActors)
 	{
 		if (!IsValid(Interactable)) continue;
 		if (!Interactable->Execute_CanInteract(Interactable, this)) continue;
@@ -138,9 +136,9 @@ AInteractableActor* AFebriculaCharacter::GetBestInteractable()
 void AFebriculaCharacter::Interact(const FInputActionValue& InputActionValue)
 {
 	
-	AInteractableActor* InteractableActor = GetBestInteractable();
+	AInteractableProp* InteractableActor = GetBestInteractable();
 	if (!IsValid(InteractableActor)) return;
-	InteractableActor->Execute_DoInteract(InteractableActor, this);
+	InteractableActor->Execute_Interact(InteractableActor, this);
 	
 	// TArray<FHitResult> Result;
 	// FCollisionQueryParams CollisionParams;

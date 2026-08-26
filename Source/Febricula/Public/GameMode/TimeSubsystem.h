@@ -25,8 +25,6 @@ public:
 	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
-	void InitScheduleBlock();
-	
 	UPROPERTY(BlueprintAssignable)
 	FDayChangedDelegate OnDayChanged;
 	

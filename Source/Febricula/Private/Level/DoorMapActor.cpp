@@ -4,8 +4,6 @@
 #include "Public/Level/DoorMapActor.h"
 
 #include "TimerManager.h"
-#include "Components/TimelineComponent.h"
-#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
@@ -43,59 +41,6 @@ ADoorMapActor::ADoorMapActor()
 // 	}
 // 	bNowMove = true;
 // }
-
-void ADoorMapActor::OpenActor()
-{
-	if (!bLocked)
-	{
-		for (int i = 0; i < Hinges.Num(); i++)
-		{
-			Hinges[i]->AddRelativeRotation(FRotator(0, MoveSpeed, 0));// AddLocalRotation(FRotator(0.0f, 1.0f, 0.0f));
-			CurrentMove += MoveSpeed;
-			if (CurrentMove >= MaxMovement)
-			{
-				GetWorldTimerManager().ClearTimer(MoveTimer);
-				CurrentMove = MaxMovement;
-				Hinges[i]->SetRelativeRotation(FRotator(Hinges[i]->GetRelativeRotation().Pitch, MinRotation[i] + MaxMovement, Hinges[i]->GetRelativeRotation().Roll));
-				NowState = EMoveState::CLOSING;
-				bNowMove = false;
-				DoInteract_Implementation(GetOwner());
-			}
-		}
-	}
-}
-
-void ADoorMapActor::CloseActor()
-{
-	if (!bLocked)
-	{
-		for (int i = 0; i < Hinges.Num(); i++)
-		{
-			Hinges[i]->AddRelativeRotation(FRotator(0, -MoveSpeed, 0));// AddLocalRotation(FRotator(0.0f, 1.0f, 0.0f));
-			CurrentMove -= MoveSpeed;
-			if (CurrentMove <= 0)
-			{
-				GetWorldTimerManager().ClearTimer(MoveTimer);
-				Hinges[i]->SetRelativeRotation(FRotator(Hinges[i]->GetRelativeRotation().Pitch, MinRotation[i], Hinges[i]->GetRelativeRotation().Roll));
-				CurrentMove = 0;
-				NowState = EMoveState::OPENING;
-				bNowMove = false;
-			}
-		}
-	}
-}
-
-void ADoorMapActor::DoInteract_Implementation(AActor* Interactor)
-{
-	if (!Execute_CanInteract(this, Interactor)) { return;} 
-	if (TargetLevel.IsNull()) { return; }
-	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
-}
-
-bool ADoorMapActor::CanInteract_Implementation(AActor* Interactor) const
-{
-	return bCanInteract;
-}
 
 // Called when the game starts or when spawned
 void ADoorMapActor::BeginPlay()
