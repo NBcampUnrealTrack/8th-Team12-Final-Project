@@ -208,8 +208,7 @@ enum class EGameActionType : uint8
 	/**
 	 * 특정 레벨로 이동한다.
 	 * 레벨명은 Project Setting - Activity Setting - Levels 에 맵핑되어 있다.
-	 * Key는 목적지가 되는 레벨 
-	 * Key2는 PlayerSpawn 구분용 Schedule FGamePlayTag 전문을 적는다
+	 * Key는 목적지가 되는 레벨명
 	 */
 		
 	ChangeLevel				UMETA(DisplayName= "레벨 이동")

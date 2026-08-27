@@ -6,6 +6,7 @@
 #include "MovableMapActor.h"
 #include "MoveState.h"
 #include "Dialogue/DialogueDataTypes.h"
+#include "Interaction/InteractableProp.h"
 #include "DoorMapActor.generated.h"
 
 UCLASS()

@@ -722,16 +722,6 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		break;
 		
 	case EGameActionType::ChangeLevel:
-		if (!Action.Key2.IsNone())
-		{
-			if (const UGameInstance* GI = GetWorld()->GetGameInstance())
-			{
-				if (UTimeSubsystem* TimeSub = GI->GetSubsystem<UTimeSubsystem>())
-				{
-					TimeSub->SpendSchedule();
-				}
-			}
-		}
 		if (const UActivitySetting* ActivitySetting = GetDefault<UActivitySetting>())
 		{
 			UGameplayStatics::OpenLevelBySoftObjectPtr(this, *ActivitySetting->Levels.Find(Action.Key));

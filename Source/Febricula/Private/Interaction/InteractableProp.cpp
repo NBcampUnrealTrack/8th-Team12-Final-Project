@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "Engine/World.h"
+#include "Progress/GameProgressSubsystem.h"
 
 AInteractableProp::AInteractableProp()
 {
@@ -73,14 +74,42 @@ void AInteractableProp::Interact_Implementation(AActor* Interactor)
 	{
 		bStarted = Dialogue->StartSimpleLines(SpeakerName, InspectLines, this);
 	}
-
 	if (bStarted)
 	{
 		bUsed = true;
+	}
+	if (!bWaitForSequence)
+	{
+		ExecuteActionsWrapper();
 	}
 }
 
 FText AInteractableProp::GetInteractionPrompt_Implementation(AActor* Interactor) const
 {
 	return InteractionPrompt;
+}
+
+void AInteractableProp::ExecuteActionsWrapper()
+{
+	FInteractionBranch NowBranch;
+	if (const UGameInstance* GI = GetGameInstance())
+	{
+		if (const UGameProgressSubsystem* GSP = GI->GetSubsystem<UGameProgressSubsystem>())
+		{
+			for (FInteractionBranch Branch : InteractionBranches)
+			{
+				if (GSP->EvaluateConditions(Branch.Conditions))
+				{
+					NowBranch = Branch;
+				}
+			}
+		}
+		if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+		{
+			if (NowBranch.Actions.Num() > 0)
+			{
+				Dialogue->ExecuteActions(NowBranch.Actions);
+			}
+		}
+	}
 }

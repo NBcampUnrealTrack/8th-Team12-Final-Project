@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "MapActorBase.h"
-#include "Dialogue/DialogueDataTypes.h"
+#include "Interaction/InteractionBranch.h"
 #include "MovableMapActor.generated.h"
 
 UCLASS()
-class FEBRICULA_API AMovableMapActor : public AMapActorBase
+class FEBRICULA_API AMovableMapActor : public AInteractableProp
 {
 	GENERATED_BODY()
 
@@ -17,6 +17,8 @@ public:
 	AMovableMapActor();
 
 protected:
+	
+	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta=(UseComponentPicker, AllowedClasses="/Script/Engine.SceneComponent"))
@@ -25,17 +27,14 @@ protected:
 	float MaxMovement;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")
 	float MoveSpeed;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Activity")
+	TArray<FInteractionBranch> Branches;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	TArray<USceneComponent*> Hinges;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	bool bNowMove;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	float CurrentMove;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Activity")
-	TArray<FGameCondition> Conditions;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Activity")
-	TArray<FGameAction> Actions;	
-	
-
 };
