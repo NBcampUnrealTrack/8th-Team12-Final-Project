@@ -7,6 +7,7 @@
 #include "Dialogue/DialogueSubsystem.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "NPC/SubNpc/NpcActivitySpot.h"
@@ -191,6 +192,13 @@ void ASubNpcCharacter::ClearRuntimeState()
 	GroupFollowGap = 0.f;
 	ActivityEndTime = 0.f;
 	DodgeTargetOffset = 0.f;
+
+	// [중요] 부딪힘 기록도 반드시 지운다.
+	// 이 액터는 풀에서 재사용되므로, 안 지우면 방금 회수된 개체의 기록을 물려받은 채
+	// 새 행인이 등장해서 "방금 부딪혀놓고..." 같은 말을 한다.
+	// 플레이어 입장에서는 처음 보는 사람이 없던 일을 따지는 셈이라 바로 티가 난다.
+	LastBumpTime = -1000.f;
+	LastReactionTime = -1000.f;
 }
 
 // ---------------------------------------------------------------------------

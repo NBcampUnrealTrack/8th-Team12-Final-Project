@@ -2,9 +2,9 @@
 	{
 		"Name": "Student",
 		"AppearanceTag": "Student",
-		"SpawnWeight": 4.0,
+		"SpawnWeight": 6.0,
 		"WalkSpeedMin": 150.0,
-		"WalkSpeedMax": 210.0,
+		"WalkSpeedMax": 215.0,
 		"ScaleMin": 0.95,
 		"ScaleMax": 1.03,
 		"DodgeWeight": 3.0,
@@ -17,14 +17,15 @@
 		"IdleBarks": [
 			"어? 무슨 일이야?",
 			"미안, 나 지금 좀 급해서.",
-			"저기 앞에 사람 엄청 많더라.",
-			"아직 수업 안 끝났어?"
+			"다음 시간 어디였지...",
+			"매점 벌써 줄 섰더라.",
+			"쟤네 또 뭐 하고 있대?"
 		],
 		"BumpedBarks": [
-			"방금 부딪혀놓고 뭘 또 물어봐요?",
-			"어깨 아직 얼얼한데...",
-			"...사과는 안 해요?",
-			"지금 그렇게 뛰면 위험하잖아요."
+			"어깨 얼얼한데...",
+			"...사과는 안 해?",
+			"복도에서 그렇게 뛰면 위험하잖아.",
+			"뭐야, 급한 일 있어?"
 		],
 		"BumpShouts": [
 			"악!",
@@ -33,97 +34,100 @@
 		]
 	},
 	{
-		"Name": "Office",
-		"AppearanceTag": "Office",
+		"Name": "StudentQuiet",
+		"AppearanceTag": "StudentQuiet",
 		"SpawnWeight": 3.0,
-		"WalkSpeedMin": 170.0,
-		"WalkSpeedMax": 230.0,
-		"ScaleMin": 0.98,
-		"ScaleMax": 1.05,
-		"DodgeWeight": 2.0,
-		"AngryWeight": 4.0,
-		"SurprisedWeight": 1.0,
-		"DodgeAnimId": "None",
-		"AngryAnimId": "None",
-		"SurprisedAnimId": "None",
-		"DisplayName": "직장인",
-		"IdleBarks": [
-			"바쁘니까 나중에.",
-			"...뭐 필요한 거라도?",
-			"길 좀 비켜줄래요?"
-		],
-		"BumpedBarks": [
-			"지금 부딪혀놓고 할 말이 있어요?",
-			"눈은 어디 두고 다니는 거예요?",
-			"옷 구겨진 거 안 보여요?",
-			"됐고, 바쁘니까 비켜요."
-		],
-		"BumpShouts": [
-			"아이 참!",
-			"조심 좀 해요!",
-			"이봐요!"
-		]
-	},
-	{
-		"Name": "Elder",
-		"AppearanceTag": "Elder",
-		"SpawnWeight": 2.0,
-		"WalkSpeedMin": 90.0,
-		"WalkSpeedMax": 130.0,
-		"ScaleMin": 0.92,
+		"WalkSpeedMin": 120.0,
+		"WalkSpeedMax": 165.0,
+		"ScaleMin": 0.93,
 		"ScaleMax": 1.0,
-		"DodgeWeight": 1.0,
-		"AngryWeight": 3.0,
+		"DodgeWeight": 5.0,
+		"AngryWeight": 0.3,
 		"SurprisedWeight": 4.0,
 		"DodgeAnimId": "None",
 		"AngryAnimId": "None",
 		"SurprisedAnimId": "None",
-		"DisplayName": "어르신",
+		"DisplayName": "학생",
 		"IdleBarks": [
-			"날씨 참 좋구먼.",
-			"요즘 젊은 사람들은 다 바쁘지.",
-			"천천히 다녀, 천천히."
+			"...어, 안녕.",
+			"아, 나한테 물어본 거야?",
+			"난 잘 몰라서...",
+			"...."
 		],
 		"BumpedBarks": [
-			"아이고 허리야... 젊은 사람이 왜 이리 급한가.",
-			"부딪혀놓고 말은 또 왜 거는고.",
-			"다친 데는 없나? ...난 좀 놀랐네."
+			"아, 괜찮아. 괜찮아...",
+			"내가 길 막고 있었나 봐.",
+			"...아니야, 됐어."
 		],
 		"BumpShouts": [
-			"어이쿠!",
-			"아이고!",
-			"조심하게!"
+			"앗",
+			"어...",
+			"미안"
 		]
 	},
 	{
-		"Name": "Tourist",
-		"AppearanceTag": "Tourist",
-		"SpawnWeight": 2.0,
-		"WalkSpeedMin": 110.0,
-		"WalkSpeedMax": 160.0,
-		"ScaleMin": 0.95,
+		"Name": "Teacher",
+		"AppearanceTag": "Teacher",
+		"SpawnWeight": 2.5,
+		"WalkSpeedMin": 140.0,
+		"WalkSpeedMax": 180.0,
+		"ScaleMin": 0.98,
 		"ScaleMax": 1.05,
-		"DodgeWeight": 4.0,
-		"AngryWeight": 0.5,
-		"SurprisedWeight": 3.0,
+		"DodgeWeight": 1.0,
+		"AngryWeight": 5.0,
+		"SurprisedWeight": 1.0,
 		"DodgeAnimId": "None",
 		"AngryAnimId": "None",
 		"SurprisedAnimId": "None",
-		"DisplayName": "관광객",
+		"DisplayName": "선생님",
 		"IdleBarks": [
-			"여기 사진 찍기 좋은 데 어디예요?",
-			"우와, 저 건물 진짜 크다.",
-			"길을 좀 잃은 것 같은데..."
+			"수업 시간 아니니?",
+			"교무실 갈 일 있으면 지금 오고.",
+			"복도에서 뛰지 마라.",
+			"명찰 똑바로 달고 다녀."
 		],
 		"BumpedBarks": [
-			"아, 괜찮아요 괜찮아. 좀 놀라긴 했지만.",
-			"제가 길 한가운데 서 있었죠? 죄송해요.",
-			"방금 카메라 떨어질 뻔했어요..."
+			"복도에서 뛰지 말라고 했지.",
+			"이름이 뭐니? 반은?",
+			"다치면 어쩌려고 그래.",
+			"한 번만 더 그러면 교무실이다."
 		],
 		"BumpShouts": [
-			"어머!",
-			"앗!",
-			"죄송해요!"
+			"어허!",
+			"거기!",
+			"뛰지 마라!"
+		]
+	},
+	{
+		"Name": "Staff",
+		"AppearanceTag": "Staff",
+		"SpawnWeight": 1.0,
+		"WalkSpeedMin": 110.0,
+		"WalkSpeedMax": 150.0,
+		"ScaleMin": 0.96,
+		"ScaleMax": 1.04,
+		"DodgeWeight": 3.0,
+		"AngryWeight": 2.0,
+		"SurprisedWeight": 2.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "교직원",
+		"IdleBarks": [
+			"행정실은 저쪽이란다.",
+			"바닥 방금 닦았으니까 조심하고.",
+			"학생은 이 시간에 여기 있으면 안 될 텐데.",
+			"곧 문 잠글 거야."
+		],
+		"BumpedBarks": [
+			"조심해서 다녀야지.",
+			"들고 있던 거 떨어질 뻔했네.",
+			"어디 다친 데는 없고?"
+		],
+		"BumpShouts": [
+			"어이쿠!",
+			"조심해!",
+			"아이고"
 		]
 	}
 ]

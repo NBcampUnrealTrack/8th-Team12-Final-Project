@@ -4,6 +4,8 @@
 
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
+// TActorIterator를 쓰려면 반드시 필요하다. 없으면 "정의되지 않은 class TActorIterator" 에러가 난다.
+#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
@@ -164,6 +166,50 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 	return Npc;
 }
 
+ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnAtNearestPath(const FVector& WorldLocation, float SearchRadius)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	// 레벨의 모든 경로 중 이 좌표에 가장 가까운 지점을 찾는다.
+	// 경로 개수는 보통 수십 개 수준이라 매번 훑어도 문제없다
+	// (매 프레임 부르는 함수가 아니라 스폰 시점에만 부르는 함수다).
+	ANpcCrowdPath* BestPath = nullptr;
+	float BestDistSq = TNumericLimits<float>::Max();
+	float BestDistanceAlong = 0.f;
+
+	for (TActorIterator<ANpcCrowdPath> It(World); It; ++It)
+	{
+		float DistanceAlong = 0.f;
+		const float DistSq = It->FindClosestPointOnPath(WorldLocation, DistanceAlong);
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			BestDistanceAlong = DistanceAlong;
+			BestPath = *It;
+		}
+	}
+
+	if (!BestPath)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crowd] 레벨에 NpcCrowdPath가 하나도 없어 스폰할 수 없습니다."));
+		return nullptr;
+	}
+
+	if (SearchRadius > 0.f && BestDistSq > FMath::Square(SearchRadius))
+	{
+		// 지정한 위치에서 너무 먼 곳에 세우면 "엉뚱한 데서 튀어나온다"가 된다. 차라리 실패시킨다.
+		UE_LOG(LogTemp, Verbose,
+			TEXT("[Crowd] 지정 위치 %s 주변 %.0fcm 안에 경로가 없습니다."), *WorldLocation.ToString(), SearchRadius);
+		return nullptr;
+	}
+
+	return SpawnOnPath(BestPath, BestDistanceAlong, /*bReversed=*/false);
+}
+
 TArray<ASubNpcCharacter*> USubNpcDirectorSubsystem::SpawnGroupOnPath(ANpcCrowdPath* Path, float StartDistance, bool bReversed, int32 GroupSize)
 {
 	TArray<ASubNpcCharacter*> Group;
@@ -317,8 +363,12 @@ void USubNpcDirectorSubsystem::UpdateLodSlice()
 		{
 			if (!Npc->WasRecentlyRendered(0.5f))
 			{
-				Band = static_cast<ESubNpcLodBand>(FMath::Min(
-					static_cast<uint8>(Band) + 1, static_cast<uint8>(ESubNpcLodBand::Culled)));
+				// uint8 + 1은 int로 승격되므로 FMath::Min의 두 인자 타입이 어긋난다.
+				// 양쪽을 int32로 맞춰서 비교한 뒤 다시 enum으로 되돌린다.
+				const int32 Demoted = FMath::Min(
+					static_cast<int32>(Band) + 1,
+					static_cast<int32>(ESubNpcLodBand::Culled));
+				Band = static_cast<ESubNpcLodBand>(Demoted);
 			}
 		}
 

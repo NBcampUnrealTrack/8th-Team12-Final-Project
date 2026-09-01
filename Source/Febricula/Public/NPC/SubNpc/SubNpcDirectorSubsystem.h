@@ -55,14 +55,30 @@ public:
 	/**
 	 * 풀에서 하나 꺼내 경로 위에 세운다. 정원이 찼거나 풀이 비면 nullptr.
 	 * 반환값이 null인 것은 정상 동작이다 (스포너가 다음 기회에 다시 시도한다).
+	 *
+	 * 밖에서 보면 평범한 스폰이다. 내부에서 새 액터를 만드는 대신 풀에서 꺼낼 뿐이라,
+	 * 스포너를 만드는 쪽은 이 함수만 부르면 되고 풀의 존재를 몰라도 된다.
 	 */
-	ASubNpcCharacter* SpawnOnPath(ANpcCrowdPath* Path, float StartDistance, bool bReversed);
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
+	ASubNpcCharacter* SpawnOnPath(ANpcCrowdPath* Path, float StartDistance, bool bReversed = false);
 
 	/**
 	 * 여러 명을 한 무리로 등장시킨다. 첫 번째가 리더, 나머지는 뒤를 따른다.
 	 * 레퍼런스 영상의 "커플/일행"이 이것이다.
 	 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
 	TArray<ASubNpcCharacter*> SpawnGroupOnPath(ANpcCrowdPath* Path, float StartDistance, bool bReversed, int32 GroupSize);
+
+	/**
+	 * 월드 좌표를 주면 가장 가까운 경로를 찾아 그 지점에 등장시킨다.
+	 *
+	 * "여기에 한 명 세워줘" 식으로 배치 위치 기준으로 스폰하는 쪽을 위한 입구다.
+	 * 스포너를 만드는 사람이 어느 스플라인의 몇 cm 지점인지 계산할 필요가 없다.
+	 *
+	 * @param SearchRadius  이 반경 안에 경로가 없으면 nullptr (0 이하면 거리 제한 없음)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
+	ASubNpcCharacter* SpawnAtNearestPath(const FVector& WorldLocation, float SearchRadius = 2000.f);
 
 	/** 풀로 회수 */
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")

@@ -110,6 +110,26 @@ FVector ANpcCrowdPath::GetDirectionAtDistance(float Distance) const
 	return Dir;
 }
 
+float ANpcCrowdPath::FindClosestPointOnPath(const FVector& WorldLocation, float& OutDistanceAlongPath) const
+{
+	OutDistanceAlongPath = 0.f;
+
+	if (!Spline)
+	{
+		return FVector::DistSquared(WorldLocation, GetActorLocation());
+	}
+
+	// 스플라인의 입력 키(구간 보간 파라미터)를 먼저 구한 뒤 거리로 환산한다.
+	const float Key = Spline->FindInputKeyClosestToWorldLocation(WorldLocation);
+	OutDistanceAlongPath = FMath::Clamp(
+		Spline->GetDistanceAlongSplineAtSplineInputKey(Key), 0.f, Spline->GetSplineLength());
+
+	const FVector Closest = Spline->GetLocationAtDistanceAlongSpline(
+		OutDistanceAlongPath, ESplineCoordinateSpace::World);
+
+	return FVector::DistSquared(WorldLocation, Closest);
+}
+
 ANpcCrowdPath* ANpcCrowdPath::PickNextPath(bool& bOutReversed) const
 {
 	bOutReversed = false;

@@ -46,6 +46,15 @@ public:
 	FVector GetDirectionAtDistance(float Distance) const;
 
 	/**
+	 * 월드 좌표에서 가장 가까운 이 경로 위의 지점을 찾는다.
+	 * 배치 위치 기준으로 스폰할 때, 어느 스플라인의 몇 cm 지점인지 역산하는 용도다.
+	 *
+	 * @param OutDistanceAlongPath  그 지점의 경로 진행 거리 (cm)
+	 * @return                      해당 지점까지의 거리 제곱 (경로 비교용)
+	 */
+	float FindClosestPointOnPath(const FVector& WorldLocation, float& OutDistanceAlongPath) const;
+
+	/**
 	 * 이 경로가 끝났을 때 이어갈 다음 경로를 가중 랜덤으로 고른다.
 	 * 출구가 없으면 nullptr (그 자리에서 회수되거나 되돌아간다).
 	 *

@@ -149,9 +149,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Interaction")
 	bool bAllowTalk = true;
 
-	/** 부딪힌 뒤 이 시간(초) 안에 말을 걸면 다른 대사가 나온다 */
+	/**
+	 * 부딪힌 뒤 이 시간(초) 안에 말을 걸면 BumpedBarks 대사가 나온다.
+	 *
+	 * 짧게 잡는 게 맞다. "방금 부딪힌 일에 대한 반응"이라는 전제로 대사를 쓰기 때문에,
+	 * 창이 길면 한참 뒤에 말을 걸었는데 방금 일처럼 말하는 어색한 상황이 나온다.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Interaction", meta = (ClampMin = "0.0"))
-	float BumpMemoryDuration = 20.f;
+	float BumpMemoryDuration = 12.f;
 
 	/** 이 속도(cm/s) 이상으로 부딪혀야 반응한다. 천천히 스치는 건 무시 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0"))
