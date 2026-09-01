@@ -1,0 +1,129 @@
+[
+	{
+		"Name": "Student",
+		"AppearanceTag": "Student",
+		"SpawnWeight": 4.0,
+		"WalkSpeedMin": 150.0,
+		"WalkSpeedMax": 210.0,
+		"ScaleMin": 0.95,
+		"ScaleMax": 1.03,
+		"DodgeWeight": 3.0,
+		"AngryWeight": 1.0,
+		"SurprisedWeight": 3.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "학생",
+		"IdleBarks": [
+			"어? 무슨 일이야?",
+			"미안, 나 지금 좀 급해서.",
+			"저기 앞에 사람 엄청 많더라.",
+			"아직 수업 안 끝났어?"
+		],
+		"BumpedBarks": [
+			"방금 부딪혀놓고 뭘 또 물어봐요?",
+			"어깨 아직 얼얼한데...",
+			"...사과는 안 해요?",
+			"지금 그렇게 뛰면 위험하잖아요."
+		],
+		"BumpShouts": [
+			"악!",
+			"어어!",
+			"뭐야?"
+		]
+	},
+	{
+		"Name": "Office",
+		"AppearanceTag": "Office",
+		"SpawnWeight": 3.0,
+		"WalkSpeedMin": 170.0,
+		"WalkSpeedMax": 230.0,
+		"ScaleMin": 0.98,
+		"ScaleMax": 1.05,
+		"DodgeWeight": 2.0,
+		"AngryWeight": 4.0,
+		"SurprisedWeight": 1.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "직장인",
+		"IdleBarks": [
+			"바쁘니까 나중에.",
+			"...뭐 필요한 거라도?",
+			"길 좀 비켜줄래요?"
+		],
+		"BumpedBarks": [
+			"지금 부딪혀놓고 할 말이 있어요?",
+			"눈은 어디 두고 다니는 거예요?",
+			"옷 구겨진 거 안 보여요?",
+			"됐고, 바쁘니까 비켜요."
+		],
+		"BumpShouts": [
+			"아이 참!",
+			"조심 좀 해요!",
+			"이봐요!"
+		]
+	},
+	{
+		"Name": "Elder",
+		"AppearanceTag": "Elder",
+		"SpawnWeight": 2.0,
+		"WalkSpeedMin": 90.0,
+		"WalkSpeedMax": 130.0,
+		"ScaleMin": 0.92,
+		"ScaleMax": 1.0,
+		"DodgeWeight": 1.0,
+		"AngryWeight": 3.0,
+		"SurprisedWeight": 4.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "어르신",
+		"IdleBarks": [
+			"날씨 참 좋구먼.",
+			"요즘 젊은 사람들은 다 바쁘지.",
+			"천천히 다녀, 천천히."
+		],
+		"BumpedBarks": [
+			"아이고 허리야... 젊은 사람이 왜 이리 급한가.",
+			"부딪혀놓고 말은 또 왜 거는고.",
+			"다친 데는 없나? ...난 좀 놀랐네."
+		],
+		"BumpShouts": [
+			"어이쿠!",
+			"아이고!",
+			"조심하게!"
+		]
+	},
+	{
+		"Name": "Tourist",
+		"AppearanceTag": "Tourist",
+		"SpawnWeight": 2.0,
+		"WalkSpeedMin": 110.0,
+		"WalkSpeedMax": 160.0,
+		"ScaleMin": 0.95,
+		"ScaleMax": 1.05,
+		"DodgeWeight": 4.0,
+		"AngryWeight": 0.5,
+		"SurprisedWeight": 3.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "관광객",
+		"IdleBarks": [
+			"여기 사진 찍기 좋은 데 어디예요?",
+			"우와, 저 건물 진짜 크다.",
+			"길을 좀 잃은 것 같은데..."
+		],
+		"BumpedBarks": [
+			"아, 괜찮아요 괜찮아. 좀 놀라긴 했지만.",
+			"제가 길 한가운데 서 있었죠? 죄송해요.",
+			"방금 카메라 떨어질 뻔했어요..."
+		],
+		"BumpShouts": [
+			"어머!",
+			"앗!",
+			"죄송해요!"
+		]
+	}
+]
