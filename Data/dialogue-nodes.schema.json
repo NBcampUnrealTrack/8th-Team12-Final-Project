@@ -1,0 +1,456 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Febricula DT_DialogueNodes",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/node"
+  },
+  "definitions": {
+    "npcId": {
+      "description": "NPC 액터 키. 'None'은 미지정.",
+      "enum": [
+        "None",
+        "NPC_HanSeoYun",
+        "NPC_KimDoYun"
+      ]
+    },
+    "nodeId": {
+      "description": "노드 행 이름. 'None'은 다음 노드 없음(대화 종료).",
+      "type": "string",
+      "pattern": "^(None|D[0-9]+_[0-9]{3})$"
+    },
+    "unusedKey2": {
+      "description": "이 액션 타입은 Key2를 쓰지 않는다.",
+      "const": "None"
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Type",
+        "Key",
+        "Key2",
+        "Value"
+      ],
+      "properties": {
+        "Type": {
+          "enum": [
+            "NpcStartGuide",
+            "NpcStopRouteMove",
+            "NpcResumeAI",
+            "NpcPauseAI",
+            "NpcFacePlayer",
+            "NpcPlayAnim",
+            "AddAffinity",
+            "ShowWidget",
+            "CloseWidget",
+            "OpenLevel"
+          ]
+        },
+        "Key": {
+          "type": "string"
+        },
+        "Key2": {
+          "type": "string"
+        },
+        "Value": {
+          "type": "number"
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "NPC를 대상으로 하는 액션은 Key가 유효한 NpcId여야 한다",
+          "if": {
+            "properties": {
+              "Type": {
+                "enum": [
+                  "NpcStartGuide",
+                  "NpcStopRouteMove",
+                  "NpcResumeAI",
+                  "NpcPauseAI",
+                  "NpcFacePlayer",
+                  "NpcPlayAnim",
+                  "AddAffinity"
+                ]
+              }
+            },
+            "required": [
+              "Type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "Key": {
+                "$ref": "#/definitions/npcId"
+              }
+            }
+          }
+        },
+        {
+          "$comment": "NpcStartGuide: Key2 = 순찰 루트 이름",
+          "if": {
+            "properties": {
+              "Type": {
+                "const": "NpcStartGuide"
+              }
+            },
+            "required": [
+              "Type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "Key2": {
+                "enum": [
+                  "TourA",
+                  "TourB"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "$comment": "NpcPlayAnim: Key2 = 몽타주 이름, Value = 루프 여부(0/1)",
+          "if": {
+            "properties": {
+              "Type": {
+                "const": "NpcPlayAnim"
+              }
+            },
+            "required": [
+              "Type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "Key2": {
+                "enum": [
+                  "Test2",
+                  "Idle_Wave",
+                  "Sit_Down"
+                ]
+              },
+              "Value": {
+                "enum": [
+                  0,
+                  1
+                ]
+              }
+            }
+          }
+        },
+        {
+          "$comment": "AddAffinity: Value = 증감치. 0이면 무의미한 액션",
+          "if": {
+            "properties": {
+              "Type": {
+                "const": "AddAffinity"
+              }
+            },
+            "required": [
+              "Type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "Key2": {
+                "$ref": "#/definitions/unusedKey2"
+              },
+              "Value": {
+                "not": {
+                  "const": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "$comment": "OpenLevel: Key = 레벨 이름 (NpcId가 아님)",
+          "if": {
+            "properties": {
+              "Type": {
+                "const": "OpenLevel"
+              }
+            },
+            "required": [
+              "Type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "Key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "Key2": {
+                "$ref": "#/definitions/unusedKey2"
+              }
+            }
+          }
+        },
+        {
+          "$comment": "Key2를 쓰지 않는 액션들 - 남은 쓰레기 값 방지",
+          "if": {
+            "properties": {
+              "Type": {
+                "enum": [
+                  "NpcStopRouteMove",
+                  "NpcResumeAI",
+                  "NpcPauseAI",
+                  "NpcFacePlayer",
+                  "CloseWidget"
+                ]
+              }
+            },
+            "required": [
+              "Type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "Key2": {
+                "$ref": "#/definitions/unusedKey2"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "choice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Text",
+        "Conditions",
+        "Actions",
+        "NextNodeId"
+      ],
+      "properties": {
+        "Text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Conditions": {
+          "type": "array"
+        },
+        "Actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/action"
+          }
+        },
+        "NextNodeId": {
+          "$ref": "#/definitions/nodeId"
+        }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "NextNodeId"
+      ],
+      "properties": {
+        "Conditions": {
+          "type": "array"
+        },
+        "NextNodeId": {
+          "$ref": "#/definitions/nodeId"
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Name",
+        "Text",
+        "NextNodeId"
+      ],
+      "properties": {
+        "Name": {
+          "type": "string",
+          "pattern": "^D[0-9]+_[0-9]{3}$"
+        },
+        "SpeakerName": {
+          "description": "비우면 나레이션으로 취급된다.",
+          "type": "string"
+        },
+        "SpeakerNpcId": {
+          "$ref": "#/definitions/npcId"
+        },
+        "Text": {
+          "type": "string"
+        },
+        "OnEnterActions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/action"
+          }
+        },
+        "Choices": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/definitions/choice"
+          }
+        },
+        "Branches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/branch"
+          }
+        },
+        "NextNodeId": {
+          "$ref": "#/definitions/nodeId"
+        },
+        "AutoAdvance": {
+          "enum": [
+            "None",
+            "AfterDelay",
+            "WhenPlayerNearNpc",
+            "WhenNpcArrived"
+          ]
+        },
+        "AutoAdvanceValue": {
+          "description": "AfterDelay면 초, WhenPlayerNearNpc/WhenNpcArrived면 cm.",
+          "type": "number",
+          "minimum": 0
+        },
+        "AutoAdvanceNpcId": {
+          "$ref": "#/definitions/npcId"
+        },
+        "bHideBoxWhileWaiting": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "소프트락 방지: 대화창을 닫아놓고 진행 조건이 없으면 영구 정지",
+          "if": {
+            "properties": {
+              "bHideBoxWhileWaiting": {
+                "const": true
+              }
+            },
+            "required": [
+              "bHideBoxWhileWaiting"
+            ]
+          },
+          "then": {
+            "properties": {
+              "AutoAdvance": {
+                "not": {
+                  "const": "None"
+                },
+                "$comment": "창이 닫힌 상태에서는 클릭이 무시되므로 자동 진행이 필수"
+              }
+            },
+            "required": [
+              "AutoAdvance"
+            ]
+          }
+        },
+        {
+          "$comment": "거리 판정 모드는 기준 NPC와 유효한 거리가 필요하다",
+          "if": {
+            "properties": {
+              "AutoAdvance": {
+                "enum": [
+                  "WhenPlayerNearNpc",
+                  "WhenNpcArrived"
+                ]
+              }
+            },
+            "required": [
+              "AutoAdvance"
+            ]
+          },
+          "then": {
+            "properties": {
+              "AutoAdvanceValue": {
+                "type": "number",
+                "minimum": 50
+              }
+            },
+            "required": [
+              "AutoAdvanceValue"
+            ]
+          }
+        },
+        {
+          "$comment": "AfterDelay는 초 단위. 지나치게 크면 cm를 잘못 넣은 것",
+          "if": {
+            "properties": {
+              "AutoAdvance": {
+                "const": "AfterDelay"
+              }
+            },
+            "required": [
+              "AutoAdvance"
+            ]
+          },
+          "then": {
+            "properties": {
+              "AutoAdvanceValue": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 60
+              }
+            },
+            "required": [
+              "AutoAdvanceValue"
+            ]
+          }
+        },
+        {
+          "$comment": "AutoAdvance=None이면 관련 필드는 비어 있어야 한다",
+          "if": {
+            "properties": {
+              "AutoAdvance": {
+                "const": "None"
+              }
+            },
+            "required": [
+              "AutoAdvance"
+            ]
+          },
+          "then": {
+            "properties": {
+              "AutoAdvanceValue": {
+                "const": 0
+              },
+              "AutoAdvanceNpcId": {
+                "const": "None"
+              }
+            }
+          }
+        },
+        {
+          "$comment": "Choices가 있으면 NextNodeId는 무시되므로 None이어야 한다",
+          "if": {
+            "properties": {
+              "Choices": {
+                "type": "array",
+                "minItems": 1
+              }
+            },
+            "required": [
+              "Choices"
+            ]
+          },
+          "then": {
+            "properties": {
+              "NextNodeId": {
+                "const": "None"
+              },
+              "AutoAdvance": {
+                "const": "None"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

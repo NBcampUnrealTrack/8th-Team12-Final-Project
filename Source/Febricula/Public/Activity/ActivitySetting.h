@@ -6,7 +6,6 @@
 #include "Engine/DeveloperSettings.h"
 #include "ActivitySetting.generated.h"
 
-class UTestActivityAsset;
 /**
  * 
  */
@@ -16,7 +15,7 @@ class FEBRICULA_API UActivitySetting : public UDeveloperSettings
 	GENERATED_BODY()
 public:
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Event Default")
-	TSoftObjectPtr<UTestActivityAsset> FixedEventAsset;
+	TSoftObjectPtr<UDataTable> FixedEventAsset;
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Event Default")
 	TMap<FName, TSoftObjectPtr<UWorld>> Levels;
 

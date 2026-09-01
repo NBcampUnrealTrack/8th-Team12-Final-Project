@@ -22,6 +22,11 @@ AMainNpcCharacter::AMainNpcCharacter()
 void AMainNpcCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		Dialogue->AddCharacterByName(NpcId, this);
+	}
 
 	// 레벨 디테일 패널에서 DefaultRoute와 AutoStartMode만 지정해두면 여기서 알아서 시작한다.
 	// (AIController 빙의와 RunBehaviorTree는 PostInitializeComponents 단계에서 이미 끝나 있으므로
@@ -83,6 +88,15 @@ void AMainNpcCharacter::Interact_Implementation(AActor* Interactor)
 	StartTalk(Interactor);
 
 	// 조건을 만족하는 이벤트를 찾아 시작. 없으면 기본 잡담으로 폴백.
+	if (UDataTable* DialogueDT = DefaultDialogueTable.LoadSynchronous())
+	{
+		Dialogue->SetDataTables(ConnectedEventTable, DialogueDT);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 테이블 '%s'의 기본 Dialogue Table '%s'을(를) 찾지 못했습니다."), *GetNameSafe(ConnectedEventTable), *DefaultDialogueTable.GetAssetName());	
+		return;
+	}
 	bool bStarted = Dialogue->TryStartEventForNpc(GetNpcId(), this);
 	if (!bStarted && !DefaultIdleNodeId.IsNone())
 	{

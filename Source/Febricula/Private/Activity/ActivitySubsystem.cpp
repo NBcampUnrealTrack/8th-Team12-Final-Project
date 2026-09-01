@@ -3,7 +3,6 @@
 
 #include "Activity/ActivitySubsystem.h"
 #include "Activity/ActivitySetting.h"
-#include "Activity/TestActivityAsset.h"
 #include "GameMode/TimeSubsystem.h"
 
 void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -14,6 +13,16 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	FixedEvents = S->FixedEventAsset.LoadSynchronous();
 	
+	TArray<FActivityDefinition*> Rows;
+	FixedEvents->GetAllRows(TEXT("Fixed Event"), Rows);
+	
+	for (const FName& RowName : FixedEvents->GetRowNames())
+	{
+		if (const FActivityDefinition* Row = FixedEvents->FindRow<FActivityDefinition>(RowName, TEXT("Make Activity Map"), false))
+		{
+			AllActivities.Add(Row->ActivityNameTag, *Row);
+		}
+	}
 	
 	if (UTimeSubsystem* TimeSub = GetGameInstance()->GetSubsystem<UTimeSubsystem>())
 	{
@@ -31,7 +40,7 @@ void UActivitySubsystem::FindRunnableActivities()
 	
 	if (!World || !FixedEvents) return;
 	
-	for (const auto& Pair : FixedEvents->Activities)
+	for (const auto& Pair : AllActivities)
 	{
 		for (const FActivityLocation& Loc : Pair.Value.ActivityLocations)
 		{

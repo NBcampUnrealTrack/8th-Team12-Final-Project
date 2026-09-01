@@ -32,13 +32,13 @@ void UInteractionComponent::BeginPlay()
 
 	// 대화 서브시스템에 데이터 테이블을 등록한다.
 	// GameMode/HUD 클래스를 따로 세팅하지 않아도 이 컴포넌트 하나로 테스트가 되도록 여기서 처리.
-	if (UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>())
-	{
-		if (EventTable || DialogueTable)
-		{
-			Dialogue->SetDataTables(EventTable, DialogueTable);
-		}
-	}
+	// if (UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>())
+	// {
+	// 	if (EventTable || DialogueTable)
+	// 	{
+	// 		Dialogue->SetDataTables(EventTable, DialogueTable);
+	// 	}
+	// }
 
 	// HUD 위젯 생성
 	if (HUDWidgetClass)

@@ -12,6 +12,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CineCameraActor.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Dialogue/DialogueDataTypes.h"
 #include "DialogueSubsystem.generated.h"
@@ -107,10 +108,28 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Action")
 	void ExecuteAction(const FGameAction& Action);
+	void ChangeActorHidden(FName Name, bool bHidden);
 
 	void ExecuteActions(const TArray<FGameAction>& Actions);
 
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Input")
+	void BlockPlayerInput(bool bLock);
 	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
+	void CameraToCinematicCam(const FVector Loc, const FRotator Rot, const float MoveTime);
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
+	void CameraToPlayerCam(const float MoveTime);
+	 
+	//지연 생성된 위젯을 위한 함수
+	UFUNCTION(BlueprintCallable, Category= "Dialogue | Dialogue Holder")
+	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine);
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
+	ACharacter* GetCharacterByName(FName Name) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
+	void AddCharacterByName(FName Name, ACharacter* Character);
 	
 	// ---- HUD가 구독할 델리게이트 ----
 
@@ -188,4 +207,27 @@ protected:
 	TArray<FText> SimpleLineQueue;
 	FText SimpleLineSpeaker;
 	bool bRunningSimpleLines = false;
+	
+	//인 게임 시네마틱용 카메라
+	UPROPERTY()
+	TObjectPtr<ACineCameraActor> CinematicCamera[2];
+	
+	int32 ActiveCamIndex;
+	
+	//자동재생 대사 홀더. 위젯 생성보다 Broadcast가 빨랐을 때 대비
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	bool bHasHoldingLine;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	FText HoldingSpeaker;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	FText HoldingDialogue;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	TArray<FDialogueChoice> HoldingChoices;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	bool bBlockPlayerInput;
+	
+	UPROPERTY()
+	TMap<FName, TWeakObjectPtr<ACharacter>> CachedCharacter;
+	
 };

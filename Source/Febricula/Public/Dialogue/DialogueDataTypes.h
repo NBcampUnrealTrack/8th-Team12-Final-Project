@@ -175,10 +175,14 @@ enum class EGameActionType : uint8
 	 * Value: 0 = 한 번만, 1 = 반복 (앉아있기 같은 지속 포즈)
 	 * AnimSequence를 슬롯에 얹어 재생하므로 이동/로코모션은 아래에서 계속 돈다.
 	 */
-	NpcPlayAnim				UMETA(DisplayName = "NPC 애니메이션 재생"),
+	
+	/* 
+	 * NPC 외 플레이어도 공유할 수 있도록 리팩토링
+	 */
+	PlayAnim				UMETA(DisplayName = "애니메이션 재생"),
 
 	/** Key(NpcId) 재생 중인 슬롯 애니메이션을 중단하고 원래 상태로 블렌드 */
-	NpcStopAnim				UMETA(DisplayName = "NPC 애니메이션 중단"),
+	StopAnim				UMETA(DisplayName = "애니메이션 중단"),
 
 	/** Key(NpcId) NPC가 플레이어 쪽을 바라보게 한다 */
 	NpcFacePlayer			UMETA(DisplayName = "NPC가 플레이어 바라보기"),
@@ -198,7 +202,6 @@ enum class EGameActionType : uint8
 	 */
 	TimeAdvanceSchedule		UMETA(DisplayName = "다음 시간대로"),
 	
-	// --- 기타(이지민 수정(2026. 08. 26)) ---
 	
 	/**  
 	 *  NPC가 아닌 상호작용 가능한 일반 액터와의 액션도 처리하기 위해 추가된 Action	 
@@ -211,8 +214,19 @@ enum class EGameActionType : uint8
 	 * Key는 목적지가 되는 레벨명
 	 */
 		
-	ChangeLevel				UMETA(DisplayName= "레벨 이동")
+	ChangeLevel				UMETA(DisplayName= "레벨 이동"),
 
+	MoveCamera				UMETA(DisplayName= "카메라 이동"),
+	
+	FadeOut					UMETA(DisplayName= "페이드 아웃"),
+	
+	FadeIn					UMETA(DisplayName = "페이드 인"),
+	
+	ShowActor				UMETA(DisplayName = "캐릭터 보임"),
+	
+	HideActor				UMETA(DisplayName = "캐릭터 숨김"),	
+	
+	Teleport				UMETA(DisplayName = "특정 위치로 순간이동")
 };
 
 /**
@@ -236,6 +250,14 @@ enum class EDialogueAutoAdvance : uint8
 	 * "따라와" 대사를 띄운 채로 NPC가 다음 지점까지 걸어가게 만들 때 쓴다.
 	 */
 	WhenNpcArrived		UMETA(DisplayName = "NPC가 경로 지점에 도착하면"),
+};
+
+UENUM(BlueprintType)
+enum class EGameCameraType : uint8
+{
+	None,	
+	Player,
+	Cinematic
 };
 
 /**
@@ -282,6 +304,20 @@ struct FGameAction
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action")
 	int32 Value = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FGameCamera
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	EGameCameraType CameraType = EGameCameraType::None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	FVector Location = FVector::ZeroVector;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	FRotator Rotation = FRotator::ZeroRotator;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float MoveTime = 0.f;
 };
 
 /**
@@ -371,7 +407,11 @@ struct FDialogueNodeRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	TArray<FDialogueBranch> Branches;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue | Camera")
+	FGameCamera Camera;
+	
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	FName NextNodeId;
 
@@ -420,6 +460,9 @@ struct FNpcEventRow : public FTableRowBase
 	/** 이 이벤트의 주인 NPC (ABaseNpcCharacter의 NpcId와 일치해야 함) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")
 	FName NpcId;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")
+	TSoftObjectPtr<UDataTable> DialogueTable;
 
 	/** 여러 이벤트가 동시에 조건을 만족하면 이 값이 큰 쪽이 먼저 실행된다 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")
@@ -441,7 +484,7 @@ struct FNpcEventRow : public FTableRowBase
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")
 	TArray<FName> ParticipantNpcIds;
-
+	
 	/** 시작할 대화 노드 (대화 DataTable의 행 이름) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Event")
 	FName RootNodeId;

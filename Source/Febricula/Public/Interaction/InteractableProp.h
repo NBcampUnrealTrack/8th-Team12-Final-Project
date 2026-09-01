@@ -50,6 +50,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
 	bool bWaitForSequence;
 	
+	/*
+	 * 연관된 이벤트 DT. Interaction Component에서 여기로 이동
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
+	TObjectPtr<UDataTable> ConnectedEventTable;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
+	TSoftObjectPtr<UDataTable> DefaultDialogueTable;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop")
 	TObjectPtr<USceneComponent> SceneComponent;
 	

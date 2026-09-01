@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "FebriculaCharacter.generated.h"
 
+class UCharacterAnimationComponent;
 class UInteractionComponent;
 class AInteractableProp;
 class AInteractableActor;
@@ -66,6 +67,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* InteractAction;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Character Animation Component")
+	TObjectPtr<UCharacterAnimationComponent> CharacterAnimationComponent;
+
 public:
 	AFebriculaCharacter();	
 

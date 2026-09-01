@@ -11,6 +11,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Febricula.h"
+#include "Animation/CharacterAnimationComponent.h"
 #include "Components/SphereComponent.h"
 #include "Engine/World.h"
 #include "Interaction/InteractableProp.h"
@@ -77,6 +78,8 @@ AFebriculaCharacter::AFebriculaCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 	
 	InteractComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractComponent"));
+	CharacterAnimationComponent = CreateDefaultSubobject<UCharacterAnimationComponent>(TEXT("CharacterAnimationComponent"));
+	
 }
 
 void AFebriculaCharacter::BeginPlay()

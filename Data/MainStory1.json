@@ -1,0 +1,931 @@
+[
+  {
+    "Name": "D1_010",
+    "SpeakerName": "판사",
+    "SpeakerNpcId": "NPC_Judge",
+    "Text": "주문. 피고인 강천율에게 징역 1년을 선고한다. 다만 그 집행을 2년간 유예한다.",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_010_001",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": ".......",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Player",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.5
+    }
+  },
+  {
+    "Name": "D1_010_002",
+    "SpeakerName": "판사",
+    "SpeakerNpcId": "NPC_Judge",
+    "Text": "피고인에게 프로그래밍 교육 제3학년 과정 이수를 명한다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_010_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "고개를 들었다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_010_004",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "주변을 살폈다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_010_005",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "살풍경한 모습. 판사는 자리에서 꿈쩍하지 않은 채 나를 내려다보고 있다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_006",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_010_006",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "옆을 바라봤다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_007",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_010_007",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "변호사는 예상했다는 듯 표정 하나 구겨지지 않은 채 노트북을 정리한다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_010_008",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_010_008",
+    "SpeakerName": "판사",
+    "SpeakerNpcId": "NPC_Judge",
+    "Text": "피고인은 위 유예기간 내에 프로그래밍 면허를 취득하여야 한다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "주차되어 있던 차의 조수석 문을 열었다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "숨이 턱 막히는 것만 같은 텁텁한 공기가 차 안에 가득하다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_002",
+    "SpeakerName": "???",
+    "SpeakerNpcId": "None",
+    "Text": "축하해.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_003",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": ".......",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_004",
+    "SpeakerName": "???",
+    "SpeakerNpcId": "None",
+    "Text": "내가 말한대로 됐지?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_005",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": ".......",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_006",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_006",
+    "SpeakerName": "기사",
+    "SpeakerNpcId": "None",
+    "Text": "출발하겠습니다, 도련님.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_007",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_007",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "마치 호수 속으로 잠기어 가듯 풍경은 물빛으로 물들며 천천히 가라앉아 간다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_008",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_008",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "\"....... ...하아....\"",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_009",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_009",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "나는 눈을 떴다.",
+    "OnEnterActions": [
+      {
+        "Type": "HideActor",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_010",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": -195.7,
+        "Y": -74.6,
+        "Z": 157.7
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 90.0,
+        "Yaw": -90.0
+      },
+      "MoveTime": 0.01
+    }
+  },
+  {
+    "Name": "D1_020_010",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "꿈이라 해도 나는 여전히 떠올릴 수 있었다.",
+    "OnEnterActions": [
+      {
+        "Type": "FadeIn",
+        "Key": ".5",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_011",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_011",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "얼굴이 기억나지 않고, 체격 또한 잊었으나.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_012",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_012",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "이상하리만치 정숙했던 공간.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_013",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_013",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "나를 쏘아보는 차가운 시선.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_020_014",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_020_014",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "Teleport",
+        "Key": "Player",
+        "Key2": "BedTarget",
+        "Value": 0
+      },
+      {
+        "Type": "PlayAnim",
+        "Key": "Player",
+        "Key2": "SitMale",
+        "Value": 1
+      },
+      {
+        "Type": "ShowActor",
+        "Key": "Player",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_030",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 2.9,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": 43.8,
+        "Y": 24.8,
+        "Z": 102.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": -130.0
+      },
+      "MoveTime": 2.0
+    }
+  },
+  {
+    "Name": "D1_030",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "호흡한다. 의식적으로.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_030_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_030_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "숨은 목구멍 어디선가 턱, 하고 걸린 듯 폐까지는 닿지 못한 채 불쾌한 간질거림만을 남긴 채 흩어졌다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_030_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_030_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "찰칵이는 시계 소리.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_030_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_030_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "형광등이 내는 웅웅거림.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_030_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_030_004",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_040",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 3.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_040",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "StopAnim",
+        "Key": "Player",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_050",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 1.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_050",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "가볍게 한숨을 내뱉고 자리를 털고 일어났다.",
+    "OnEnterActions": [
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Player",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  }
+]

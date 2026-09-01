@@ -4,7 +4,10 @@
 
 #include "EngineUtils.h"
 #include "Activity/ActivitySubsystem.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/FebriculaPlayerStart.h"
+#include "GameMode/LevelAutoEventSetting.h"
+#include "Kismet/GameplayStatics.h"
 
 AFebriculaGameMode::AFebriculaGameMode()
 {
@@ -47,4 +50,36 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 	if (Fallback) return Fallback;
 	
 	return Super::ChoosePlayerStart_Implementation(Player);
+}
+
+void AFebriculaGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
+	PlayEvent();
+}
+
+void AFebriculaGameMode::PlayEvent()
+{
+	if (ALevelAutoEventSetting* AES = Cast<ALevelAutoEventSetting>(GetWorldSettings()))
+	{
+		AutoEventTable = AES->AutoEventRow;
+		AutoDialogueTable = AES->AutoDialogueRow;
+		if (AutoEventTable)
+		{
+			if(UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("WOW!!!!!"));
+				if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+				{
+					if (PC->GetPawn())
+					{
+						DialogueSubsystem->SetDataTables(AutoEventTable, AutoDialogueTable);
+						DialogueSubsystem->TryStartEventForNpc("", UGameplayStatics::GetPlayerController(this, 0)->GetPawn());		
+					}
+				}
+			}
+		}
+	}
+
 }

@@ -8,7 +8,6 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ActivitySubsystem.generated.h"
 
-class UTestActivityAsset;
 /**
  * 
  */
@@ -34,9 +33,13 @@ protected:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Activity")
 	FGameplayTag NowSchedule;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Activity")
+	TMap<FGameplayTag, FActivityDefinition> AllActivities;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Activity")
 	TMap<FGameplayTag, FActivityDefinition> RunnableActivities;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Activity | FixedEventAsset")
-	TObjectPtr<UTestActivityAsset> FixedEvents;
+	TObjectPtr<UDataTable> FixedEvents;
 };

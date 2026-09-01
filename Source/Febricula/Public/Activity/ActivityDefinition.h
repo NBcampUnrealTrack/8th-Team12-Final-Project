@@ -2,13 +2,6 @@
 #include "GameplayTagContainer.h"
 #include "ActivityDefinition.generated.h"
 
-UENUM(BlueprintType)
-enum class EActivityType : uint8
-{
-	AutoEvent,
-	ManualEvent
-};
-
 USTRUCT(BlueprintType)
 struct FActivityLocation
 {
@@ -20,11 +13,11 @@ struct FActivityLocation
 };
 
 USTRUCT(BlueprintType)
-struct FActivityDefinition
+struct FActivityDefinition : public FTableRowBase
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
-	EActivityType ActivityType;
+	FGameplayTag ActivityNameTag;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
 	TArray<FActivityLocation> ActivityLocations;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")

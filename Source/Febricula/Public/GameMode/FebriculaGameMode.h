@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Dialogue/DialogueDataTypes.h"
 #include "GameFramework/GameModeBase.h"
 #include "FebriculaGameMode.generated.h"
 
+class ALevelAutoEventSetting;
 /**
  *  Simple GameMode for a third person game
  */
@@ -20,6 +22,9 @@ public:
 	/** Constructor */
 	AFebriculaGameMode();
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+	
+	virtual void BeginPlay() override;
+	
 	// UFUNCTION(BlueprintCallable)
 	// [[nodiscard]] int32 Year() const
 	// {
@@ -34,7 +39,14 @@ public:
 
 	
 protected:
+	void PlayEvent();
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TObjectPtr<UDataTable> AutoEventTable;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TObjectPtr<UDataTable> AutoDialogueTable;
+	
+	FTimerHandle AutoEventTimer;
 };
 
 
