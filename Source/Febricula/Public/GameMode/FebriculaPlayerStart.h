@@ -16,4 +16,7 @@ public:
 	// Sets default values for this actor's properties
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "APlayerStart | Tag")
 	FGameplayTag SpawnPointTag;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "APlayerStart | Conditions")
+	TArray<FGameCondition> Conditions;
 };

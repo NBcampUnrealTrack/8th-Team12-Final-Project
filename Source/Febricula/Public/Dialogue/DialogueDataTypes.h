@@ -68,7 +68,7 @@ enum class EGameConditionType : uint8
 
 	/** Value일차 이하인가 (예: 7일차까지만 유효한 튜토리얼) */
 	DayAtMost				UMETA(DisplayName = "N일차 이하"),
-
+	
 	/** 현재 달이 Value인가 */
 	MonthEquals				UMETA(DisplayName = "N월"),
 
@@ -96,12 +96,9 @@ enum class EGameConditionType : uint8
 	/** 평일인가 */
 	IsWeekday				UMETA(DisplayName = "평일"),
 	
-	// --- 기타(이지민 수정(2026. 08. 26)) ---
-	
-	/**  
-	 *  NPC가 아닌 상호작용 가능한 일반 액터와의 액션도 처리하기 위해 추가된 Condition	 
-	 *  문 / 노트북 / 기타 액티비티용 액터 등이 FGameAction 체계 공유하기 위해 추가됨
-	 */
+	/** 현재 레벨이 N인가 */
+	NowLevel				UMETA(DisplayName = "현재 레벨이 N")
+
 };
 
 /**
@@ -215,7 +212,7 @@ enum class EGameActionType : uint8
 	 */
 		
 	ChangeLevel				UMETA(DisplayName= "레벨 이동"),
-
+	
 	MoveCamera				UMETA(DisplayName= "카메라 이동"),
 	
 	FadeOut					UMETA(DisplayName= "페이드 아웃"),

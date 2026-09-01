@@ -3,11 +3,13 @@
 #include "GameMode/FebriculaGameMode.h"
 
 #include "EngineUtils.h"
+#include "FebriculaCharacter.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/FebriculaPlayerStart.h"
 #include "GameMode/LevelAutoEventSetting.h"
 #include "Kismet/GameplayStatics.h"
+#include "Progress/GameProgressSubsystem.h"
 
 AFebriculaGameMode::AFebriculaGameMode()
 {
@@ -42,8 +44,14 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 		}
 		if (NowSchedule.IsValid() && NowSchedule.MatchesTag(Now->SpawnPointTag))
 		{
-			Matched = Now;
-			break;
+			if (UGameProgressSubsystem* ProgressSubsystem = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+			{
+				if (ProgressSubsystem->EvaluateConditions(Now->Conditions))
+				{
+					Matched = Now;
+					break;		
+				}
+			}
 		}
 	}
 	if (Matched) return Matched;
@@ -55,6 +63,11 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 void AFebriculaGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		DialogueSubsystem->BlockPlayerInput(false);
+	}
+
 	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
 	PlayEvent();
 }
@@ -75,7 +88,7 @@ void AFebriculaGameMode::PlayEvent()
 					if (PC->GetPawn())
 					{
 						DialogueSubsystem->SetDataTables(AutoEventTable, AutoDialogueTable);
-						DialogueSubsystem->TryStartEventForNpc("", UGameplayStatics::GetPlayerController(this, 0)->GetPawn());		
+						DialogueSubsystem->TryStartEventForNpc("", UGameplayStatics::GetPlayerController(this, 0)->GetPawn());
 					}
 				}
 			}

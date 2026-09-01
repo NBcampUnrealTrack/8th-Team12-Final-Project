@@ -490,9 +490,12 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 
 	// 이동 대기 노드: 대사를 띄우지 않고 창만 닫아둔 채 조건이 만족될 때까지 기다린다.
 	// 플레이어는 그동안 자유롭게 NPC를 따라간다.
-	if (Row->bHideBoxWhileWaiting && PendingAutoAdvance != EDialogueAutoAdvance::None && PendingAutoAdvance != EDialogueAutoAdvance::AfterDelay)
+	if (Row->bHideBoxWhileWaiting && PendingAutoAdvance != EDialogueAutoAdvance::None) //&& PendingAutoAdvance != EDialogueAutoAdvance::AfterDelay)
 	{
-		BlockPlayerInput(false);
+		if (PendingAutoAdvance != EDialogueAutoAdvance::AfterDelay)
+		{
+			BlockPlayerInput(false);
+		}
 		OnDialogueBoxHidden.Broadcast();
 		return;
 	}
@@ -627,11 +630,17 @@ void UDialogueSubsystem::BlockPlayerInput(bool bLock)
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Block Disable!!!"));
-			// if (ACharacter* Char = Cast<ACharacter>(PC->GetPawn()))
-			// {
-			// 	Char->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-			// 	Char->SetActorEnableCollision(true);
-			// }
+			if (ACharacter* Char = Cast<ACharacter>(PC->GetPawn()))
+			{
+				if (UCharacterMovementComponent* Movement = Char->GetCharacterMovement())
+				{
+					Char->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+					Char->SetActorEnableCollision(true);
+					Movement->SetComponentTickEnabled(true);
+					Char->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+					Char->GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+				}
+			}
 		}
 	}
 }

@@ -486,7 +486,7 @@
     "Name": "D1_020_008",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "\"....... ...하아....\"",
+    "Text": "....... ...하아....",
     "OnEnterActions": [],
     "Choices": [],
     "Branches": [],
@@ -561,10 +561,10 @@
     "Choices": [],
     "Branches": [],
     "NextNodeId": "D1_020_011",
-    "AutoAdvance": "None",
-    "AutoAdvanceValue": 0.0,
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 1.0,
     "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": false,
+    "bHideBoxWhileWaiting": true,
     "Camera": {
       "CameraType": "None",
       "Location": {
@@ -908,13 +908,2659 @@
     ],
     "Choices": [],
     "Branches": [],
-    "NextNodeId": "None",
+    "NextNodeId": "D1_060",
     "AutoAdvance": "None",
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": false,
     "Camera": {
       "CameraType": "Player",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_060",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 3.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": -1138.9,
+        "Y": -4884.0,
+        "Z": -76.4
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 12.6,
+        "Yaw": -39.1
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "AI의 끊임없는 발전.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "더더욱 빨라지고 고도화되는 인터넷.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "정보의 범람 속에서 우리는 그 어느 때보다 손쉽게 원하는 지식을 손에 넣을 수 있게 되었다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그러나.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_004",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "아직 어린 학생들은 호기심과 모험심이라는 미명 아래에 섣부른 마음가짐으로 프로그래밍에 접근하고 제대로 된 윤리 의식 없이 감당하지 못할 것들에 손을 뻗기 시작했다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_005",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "불법 프로그램.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_006",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_006",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "해킹.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_007",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_007",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "바이러스.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_008",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_008",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "사태를 보다 못한 정부는 프로그래밍에 뜻을 둔 학생들을 유해 정보로부터 보호하고, 음지에서 활동하며 날이 갈수록 그 수가 늘어나는 사이버 범죄자들을 단속하기 위한 새로운 대책을 내놓았다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_009",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_009",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "프로그래머 면허제.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_010",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_010",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "정부 주도로 개편되며 더욱 체계화된 소프트웨어 고등학교를 졸업하고 국가고시에 합격하지 않는다면.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_011",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_011",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "지위고하를 막론하고 누구도 프로그래머가 될 수 없다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_012",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_012",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "...적어도 떳떳한 방법으로는.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_013",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_013",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "사전에 안내받은 대로 3학년 교무실로 발걸음을 옮겼다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_070_014",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_070_014",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 1
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 1.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그래. 뭔가 힘든 일이 생기거나 언제든지 편하게 찾아오고.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "네. 감사합니다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그리고 음… 그래, 서윤아!",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "네. 부르셨어요?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_004",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "지금 바빠? 안 바쁘면 전학생 학교 소개 좀 부탁해도 될까?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_005",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "알겠습니다. 너, 이리 따라 와.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_006",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_006",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "수업 시간이기 때문일까. 복도는 고요했다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_007",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_007",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "한서윤.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_008",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_008",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "응?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_009",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_009",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "한서윤이라고. 내 이름.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_010",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_010",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "아.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_011",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_011",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "넌 이름이 뭐야?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_012",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_012",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "천율. 강천율.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_013",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_013",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "일단은 내가 학생회장이니 학교 생활하면서 문제가 생기거나  궁금한 게 생기면 나한테 아. 왠만한 것들은 내가 해결해 줄 수 있으니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_014",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_014",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "고마워.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_015",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_015",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "가자. 학교가 생각보다 넓어서 부지런히 움직여야 해.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_016",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_016",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "3학년 때 다른 소프트웨어고로 전학이라… 흔한 일은 아닌데.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_017",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_017",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "사고라도 쳤어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_018",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_018",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "일이 좀 있긴 했어.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_019",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_019",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "선생님한테 들었어. 징계 받았다며?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_020",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_020",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "...응. 알고 있었구나.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_021",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_021",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "학생회장이니까. 어떤 학생이 왜 전학오는지 정도는 알고 있어야지.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_022",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_022",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "아무리 그래도 정확히 무슨 일이 있었는지까진 모르지만.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_023",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_023",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "싸웠어",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_024",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_024",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "누구랑? 같은 반 애랑?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_025",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_025",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "응.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_026",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_026",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "폭력이라… 쉽지 않네…",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_027",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_027",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "아니, 아니지. 미안해.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_028",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_028",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "잘못한 건 잘못한 거고… 앞으로 안 그러면 되는 거지. 응.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_029",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_029",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "원래 학교에선 뭐했었어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_030",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_030",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "별 거 없었어. 그냥 수업 시험 수업 시험 반복이었지 뭐.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_031",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_031",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "지필평가를 되게 중요시했나봐?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_032",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_032",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그것도 없진 않았는데 모의 면접이라던가 팀플 같은걸 3학년에 몰아놨었거든. 2학년 때까진 기껏해야 학기 당 한두 번? 정도 했던 거 같은데.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_033",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_033",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "하긴. 뭘 어떻게 가르치고 평가할지는 학교마다 다 다르니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_034",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_034",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "여긴 많이 달라?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_035",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_035",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "네가 다녔던 학교랑은 정반대인 셈이네. 우린 1, 2학년 때 팀플하고 3학년 때는 면허 시험 대비해서 모의고사를 계속 보니까. 과목 실습이랑. 너한테는 오히려 다행일지도 모르겠다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_036",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_036",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그럼 당장 뭐부터 해야하는 거지?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_037",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_037",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "학사 일정 상으로는 곧 진단평가니까 그거 준비하면 돼.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_038",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_038",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "진단평가라…",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_039",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_039",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "왜? 자신 없어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_040",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_040",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "시험만 쳤다 하면 긴장이 되서 영…",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_041",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_041",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "괜찮아. 낙제가 있다거나 성적이 낮다고 불이익을 받거나 하진 않으니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_042",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_042",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그냥 내가 잘하는 건 뭔지 못하는 건 뭔지 알기 위해서 치르는 시험이니까 그렇게 걱정할 필요는 없어.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_043",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_043",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "진단평가 다음엔 뭐 하지?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_044",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_044",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그 다음엔… 별 거 없어. 중간고사 때까지는.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_045",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_045",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "면허 시험 대비 특강이라던가 모의고사라던가 그런건 다 2학기는 되야 시작할 거고.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_046",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_046",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "과제는? 과제는 어때?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_047",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_047",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "학교 과제는 어디까지나 그날 배운거 실습해보는 수준이니까 크게 어렵거나 시간이 오래 걸리진 않을 거야.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_048",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_048",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "일반 과목은 과제물이 없기도 하고.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_049",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_049",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "여기가 체육관.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_050",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_050",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "여기가? 그럼 저기 앞에 있는 건?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_051",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_051",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "저긴 강당. 학교 행사할 때 쓰는 곳이라 평소에는 잠겨 있어.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_052",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_052",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "분리되어 있구나.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_053",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_053",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "응. 원래는 저 자리에 별관이 있었는데 오래되서 위험하다고 헐어버리고 저렇게 강당을 세웠다 그러더라고.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_054",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_054",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "안에는…",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_055",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_055",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어… 안녕?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_056",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_056",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "하아… 또 너야? 여기서 뭐해?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_057",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_057",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "잠깐 운동…?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_058",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_058",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "옆에 얜 누구야? 전학생?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_059",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_059",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "말 돌리지 말고.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_060",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_060",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "지금 아직 쉬는 시간도 아닌데 여기서 뭐 하냐니까?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_061",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_061",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "잠깐 정돈 괜찮잖아. 어차피 국어쌤이 도서관에서 자습하라고 했는데.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_062",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_062",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "‘도서관’에서 ‘자습’ 하라고 했지 누가 체육관에서 운동해도 된다 그랬어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_063",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_063",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "아 한 번만 봐줘~ 너도 벌점 처리하기 귀찮을 거 아냐~",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_064",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_064",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "안 되는 건 안 돼.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_065",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_065",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "나가.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_066",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_066",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "거 참 까탈스럽네. 간다 가.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_067",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_067",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "누구야?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_068",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_068",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "김도윤. 골 때리는 놈. 넌 될 수 있으면 쟤랑은 어울려 다니지 마..",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_069",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_069",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "왜 그렇게 칼 같이 자르는 거야? 같은 학생끼리인데 좀 봐줄 수도 있을 것 같은데.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_070",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_070",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그건 안 돼.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_071",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_071",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "네 말처럼 김도윤 저 녀석이야 적당히 봐줬다고 치자. 나중에 더 크고 심각한 일이 터지면? 그때 가서 쟤는 봐줬는데 왜 나는 안 돼? 라는 말이 나오면 굉장히 곤란해지지 않겠어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_072",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_072",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "더군다나 우리는 소프트웨어고에 다닌다고 여러가지 특혜를 받잖아?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_073",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_073",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "원래 학생들은 못 가는 학회나 발표회 같은데 참석할 수 있는 것도 그렇고 각종 장학금이나 지원금도 그렇고.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_074",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_074",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "게다가 요즘처럼 일자리 구하기 힘든 시대에 면허 시험만 합격하면 거의 확실하게 취직할 수 있는 우리를 밖에선 일종의 특권층처럼 바라본단 말이야.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_075",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_075",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "최대한 원리원칙 그대로, 빡빡하게 잡아야지 학교 일이 밖으로 세어나가도 군소리가 안 나오지.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_076",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_076",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "학교 탐방은 이쯤 하고 그만 돌아가자.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D1_080_077",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0
+    }
+  },
+  {
+    "Name": "D1_080_077",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "그래.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
       "Location": {
         "X": 0.0,
         "Y": 0.0,

@@ -5,6 +5,7 @@
 #include "Engine/GameInstance.h"
 #include "GameMode/TimeSubsystem.h"
 #include "GameplayTagContainer.h"
+#include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
 
@@ -195,7 +196,23 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 			return (Roll + Bonus) >= Condition.Value;
 		}
 		
-
+	case EGameConditionType::NowLevel:
+	{
+			const UActivitySetting* ActivitySetting = GetDefault<UActivitySetting>();
+			if (!ActivitySetting) return false;
+			
+			if (const TSoftObjectPtr<UWorld>* TargetLevel = ActivitySetting->Levels.Find(Condition.Key))
+			{
+				if (TargetLevel->IsNull()) return false;
+				if (const UWorld* NowLevel = GetWorld())
+				{
+					const FString NowName = UWorld::RemovePIEPrefix(NowLevel->GetOutermost()->GetName());
+					return NowName == TargetLevel->ToSoftObjectPath().GetLongPackageName();
+				}
+			}
+			return false;
+	}
+		
 	/** 
 	 * 이지민 수정(2026. 08. 26)
 	 *  NPC가 아닌 상호작용 가능한 일반 액터와의 액션도 처리하기 위해 추가된 로직	 
