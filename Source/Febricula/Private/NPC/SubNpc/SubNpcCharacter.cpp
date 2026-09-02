@@ -442,10 +442,17 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	{
 		// 막다른 길이다.
 		//
-		// [중요] 여기서 무조건 회수하면 플레이어 눈앞에서 사람이 뻥 사라진다.
-		// 보이는 거리에 있으면 회수하지 말고 **방향만 돌려서 왔던 길을 되돌아가게** 한다.
-		// 실제 거리에서도 막다른 골목에서 돌아 나오는 사람은 자연스럽다.
-		if (CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid)
+		// [설계] 두 가지 끝이 있다.
+		//   1) 퇴장구 (bDespawnAtEnd) - 맵 밖, 출입문, 골목 끝처럼 나가면 사라지는 게 맞는 곳.
+		//      보이든 말든 즉시 회수한다. 사라지는 순간을 가리는 건 경로를 그리는 쪽의 몫이다.
+		//      (문 안쪽으로 몇 미터 더 그려두면 된다)
+		//   2) 그냥 끝난 구간 - 이어붙이는 걸 깜빡했거나 아직 안 만든 길.
+		//      여기서 무조건 회수하면 플레이어 눈앞에서 사람이 뻥 사라지므로,
+		//      보이는 거리면 방향만 돌려서 왔던 길을 되돌아가게 한다.
+		const bool bIsExit = CurrentPath->IsDespawnAtEnd();
+
+		if (!bIsExit &&
+			(CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid))
 		{
 			bReversedOnPath = !bReversedOnPath;
 
@@ -455,7 +462,7 @@ void ASubNpcCharacter::AdvanceToNextPath()
 			return;
 		}
 
-		// 안 보이는 거리면 회수해서 다른 곳에 재활용한다.
+		// 퇴장구이거나, 안 보이는 거리다. 회수해서 다른 곳에 재활용한다.
 		if (const UWorld* World = GetWorld())
 		{
 			if (USubNpcDirectorSubsystem* Director = World->GetSubsystem<USubNpcDirectorSubsystem>())

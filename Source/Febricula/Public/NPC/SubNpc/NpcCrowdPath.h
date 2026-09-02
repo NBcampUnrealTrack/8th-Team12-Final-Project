@@ -73,6 +73,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
 	float GetLaneHalfWidth() const { return LaneHalfWidth; }
 
+	/** 이 경로 끝은 퇴장구인가. 켜면 보이든 말든 끝에 닿는 즉시 풀로 회수한다 */
+	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
+	bool IsDespawnAtEnd() const { return bDespawnAtEnd; }
+
 protected:
 	/** 경로 모양. 에디터에서 점을 찍어 곡선을 만든다 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
@@ -102,6 +106,19 @@ protected:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
 	bool bSpawnEntry = false;
+
+	/**
+	 * 이 경로의 끝을 "퇴장구"로 취급한다.
+	 *
+	 * 기본(끔)은 막다른 길에서 보이는 거리면 되돌아가게 한다. 눈앞에서 사람이 뻥 사라지는 걸
+	 * 막기 위해서다. 하지만 맵 밖으로 나가는 길, 건물 출입문, 골목 끝처럼 "여기로 나가면
+	 * 사라지는 게 맞는" 구간에서는 되돌아가는 쪽이 오히려 어색하다.
+	 *
+	 * 켜면 시야 안이든 밖이든 끝에 닿는 즉시 풀로 회수한다.
+	 * 문 안쪽으로 몇 미터 더 들어가도록 스플라인을 그려두면 사라지는 순간이 가려진다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
+	bool bDespawnAtEnd = false;
 
 #if WITH_EDITOR
 	/** 에디터에서 출구 연결을 선으로 그려서 망 구조를 눈으로 확인할 수 있게 한다 */
