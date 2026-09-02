@@ -136,11 +136,6 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 	CurrentLodBand = ESubNpcLodBand::Culled;
 	ApplyLodBand(ESubNpcLodBand::Far);
 
-	UE_CLOG(bDebugCrowdLog, LogTemp, Warning,
-		TEXT("[CrowdDbg] Activate %s  Path=%s  Len=%.0f  Dist=%.0f  Speed=%.0f  Loc=%s"),
-		*GetName(), *GetNameSafe(StartPath), StartPath->GetPathLength(),
-		PathDistance, WalkSpeed, *GetActorLocation().ToCompactString());
-
 	// 블루프린트에서 외형(메시/머티리얼/의상)을 갈아끼울 기회.
 	OnArchetypeApplied(Archetype);
 
@@ -287,25 +282,6 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bDebugCrowdLog)
-	{
-		DebugLogTimer += DeltaTime;
-	}
-	if (bDebugCrowdLog && DebugLogTimer >= 1.f)
-	{
-		DebugLogTimer = 0.f;
-		UE_LOG(LogTemp, Warning,
-			TEXT("[CrowdDbg] TICK %s  Act=%d  LOD=%d  Dist=%.0f  Loc=%s  Path=%s  MoveTick=%d  Mode=%d"),
-			*GetName(),
-			static_cast<int32>(CurrentActivity),
-			static_cast<int32>(CurrentLodBand),
-			PathDistance,
-			*GetActorLocation().ToCompactString(),
-			*GetNameSafe(CurrentPath),
-			GetCharacterMovement() ? (GetCharacterMovement()->IsComponentTickEnabled() ? 1 : 0) : -1,
-			GetCharacterMovement() ? static_cast<int32>(GetCharacterMovement()->MovementMode.GetValue()) : -1);
-	}
-
 	if (CurrentActivity == ESubNpcActivity::Pooled)
 	{
 		return;
@@ -424,10 +400,15 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	const float PathLength = CurrentPath ? CurrentPath->GetPathLength() : 0.f;
 	if (PathLength < MinUsablePathLength)
 	{
-		UE_LOG(LogTemp, Error,
-			TEXT("[Crowd] 경로 '%s'의 길이가 %.0fcm뿐입니다. 스플라인 점을 벌려 최소 %.0fcm 이상으로 만드세요. "
-				 "이 행인은 제자리에 세웁니다."),
-			*GetNameSafe(CurrentPath), PathLength, MinUsablePathLength);
+		// 같은 경로에 걸린 행인이 여러 명이면 같은 메시지가 도배된다. 경로마다 한 번만 알린다.
+		static TSet<TWeakObjectPtr<const ANpcCrowdPath>> ReportedShortPaths;
+		if (!ReportedShortPaths.Contains(CurrentPath))
+		{
+			ReportedShortPaths.Add(CurrentPath);
+			UE_LOG(LogTemp, Warning,
+				TEXT("[Crowd] 경로 '%s'의 길이가 %.0fcm뿐입니다. 스플라인 점을 벌려 최소 %.0fcm 이상으로 만드세요."),
+				*GetNameSafe(CurrentPath), PathLength, MinUsablePathLength);
+		}
 
 		CurrentPath = nullptr;
 		CurrentActivity = ESubNpcActivity::Walking;

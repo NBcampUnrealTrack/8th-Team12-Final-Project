@@ -204,13 +204,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "1.0"))
 	float TurnAroundNudge = 20.f;
 
-	/**
-	 * 켜면 이 개체의 상태를 1초마다 로그로 찍는다 (경로·LOD·진행거리·위치).
-	 * 원인 파악이 끝나면 꺼두면 된다.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crowd|Debug")
-	bool bDebugCrowdLog = false;
-
 	/** LOD 단계별 틱 간격 (초). Near는 매 프레임 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
 	float MidTickInterval = 0.1f;
@@ -273,7 +266,4 @@ protected:
 
 	/** 이 개체에 적용된 아키타입 (대사·반응 가중치 조회용) */
 	FSubNpcArchetypeRow Archetype;
-
-	/** 디버그 로그 간격 누적 */
-	float DebugLogTimer = 0.f;
 };
