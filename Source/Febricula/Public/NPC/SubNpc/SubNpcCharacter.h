@@ -181,6 +181,36 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float GlanceChance = 0.2f;
 
+	/**
+	 * 이동할 때 캡슐 스윕을 쓸지.
+	 *
+	 * **기본값 false를 권장한다.** 켜면 행인끼리 서로를 막아서, 같은 지점에 두 명이
+	 * 등장하는 순간 둘 다 영영 멈춘다 (진행도만 오르고 몸은 제자리).
+	 * 끄더라도 플레이어와의 부딪힘 반응과 E키 상호작용은 정상 동작한다.
+	 *
+	 * 벽을 절대 통과하면 안 되는 구역에서만, 행인 밀도를 낮춘 뒤 켜는 걸 고려한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
+	bool bSweepWhileMoving = false;
+
+	/**
+	 * 이보다 짧은 경로는 쓸 수 없는 것으로 본다 (cm).
+	 * 길이가 0에 가까우면 도착 판정이 매 틱 성립해서 무한 재활용이 일어난다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "1.0"))
+	float MinUsablePathLength = 50.f;
+
+	/** 막다른 길에서 되돌아설 때 끝점에서 안쪽으로 밀어줄 거리 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "1.0"))
+	float TurnAroundNudge = 20.f;
+
+	/**
+	 * 켜면 이 개체의 상태를 1초마다 로그로 찍는다 (경로·LOD·진행거리·위치).
+	 * 원인 파악이 끝나면 꺼두면 된다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crowd|Debug")
+	bool bDebugCrowdLog = false;
+
 	/** LOD 단계별 틱 간격 (초). Near는 매 프레임 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
 	float MidTickInterval = 0.1f;
@@ -243,4 +273,7 @@ protected:
 
 	/** 이 개체에 적용된 아키타입 (대사·반응 가중치 조회용) */
 	FSubNpcArchetypeRow Archetype;
+
+	/** 디버그 로그 간격 누적 */
+	float DebugLogTimer = 0.f;
 };

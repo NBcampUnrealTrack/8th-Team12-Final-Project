@@ -345,7 +345,9 @@ void USubNpcDirectorSubsystem::UpdateLodSlice()
 
 		const float DistSq = FVector::DistSquared(Npc->GetActorLocation(), ViewerLocation);
 
-		if (DistSq > RecycleSq)
+		// 회수는 "충분히 멀다"만으로는 부족하다. 플레이어가 보고 있는 동안 사라지면
+		// 그게 제일 티가 나는 위화감이다. 최근에 그려진 개체는 거리와 무관하게 남겨둔다.
+		if (DistSq > RecycleSq && !Npc->WasRecentlyRendered(0.5f))
 		{
 			ToRecycle.Add(Npc);
 			continue;
@@ -401,7 +403,8 @@ void USubNpcDirectorSubsystem::UpdateLodSlice()
 			}
 		}
 
-		if (Farthest)
+		// 정원 초과분도 마찬가지로, 화면에 보이는 개체는 건드리지 않는다.
+		if (Farthest && !Farthest->WasRecentlyRendered(0.5f))
 		{
 			ReturnToPool(Farthest);
 		}

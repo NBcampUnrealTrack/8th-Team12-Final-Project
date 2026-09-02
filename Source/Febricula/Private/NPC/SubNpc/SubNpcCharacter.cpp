@@ -28,15 +28,12 @@ ASubNpcCharacter::ASubNpcCharacter()
 
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
-		// RVO 회피는 마리당 비용이 커서 군중에는 못 쓴다.
-		// 행인끼리 겹치는 문제는 차선 오프셋(LaneOffset)으로 푼다.
+		// 행인은 이동을 직접 계산해서 위치를 세팅한다 (TickPathFollow 참고).
+		// 그래서 캐릭터 무브먼트는 통째로 꺼둔다 - 마리당 중력·바닥 스윕 비용이 전부 사라진다.
+		// 컴포넌트 자체는 ACharacter가 요구하므로 지우지 않고 틱만 멈춘다.
 		Move->bUseRVOAvoidance = false;
-
-		// 경로가 정해져 있으므로 네비게이션 관련 처리도 전부 끈다.
-		Move->SetMovementMode(MOVE_Walking);
-		Move->bUseControllerDesiredRotation = false;
-		Move->bOrientRotationToMovement = true;
-		Move->RotationRate = FRotator(0.f, 360.f, 0.f);
+		Move->PrimaryComponentTick.bCanEverTick = false;
+		Move->PrimaryComponentTick.bStartWithTickEnabled = false;
 	}
 
 	bUseControllerRotationYaw = false;
@@ -111,11 +108,6 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 	const float HalfWidth = StartPath->GetLaneHalfWidth();
 	LaneOffset = FMath::FRandRange(-HalfWidth, HalfWidth);
 
-	if (UCharacterMovementComponent* Move = GetCharacterMovement())
-	{
-		Move->MaxWalkSpeed = WalkSpeed;
-	}
-
 	// 시작 위치로 순간이동시킨 뒤 보이게 한다 (순서가 반대면 옛 위치에서 한 프레임 깜빡인다).
 	const FVector StartLoc = StartPath->GetLocationAtDistance(PathDistance, LaneOffset);
 	const FVector Dir = StartPath->GetDirectionAtDistance(PathDistance) * (bReversedOnPath ? -1.f : 1.f);
@@ -123,6 +115,18 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 
 	SetActorHiddenInGame(false);
 	SetActorEnableCollision(true);
+
+	// [중요] 부모 ABaseNpcCharacter가 생성자에서 bCanEverTick = false로 꺼둔다
+	// (메인 NPC는 BehaviorTree로 돌아서 틱이 필요 없기 때문).
+	// ASubNpcCharacter 생성자에서 다시 켜지만, 블루프린트가 그 값을 자기 기본값으로
+	// 저장해버리면 틱 함수가 아예 등록되지 않아 SetActorTickEnabled가 무력해진다.
+	// 행인은 틱이 곧 이동이므로 여기서 등록 여부까지 확실히 보장한다.
+	PrimaryActorTick.bCanEverTick = true;
+	if (!PrimaryActorTick.IsTickFunctionRegistered())
+	{
+		PrimaryActorTick.Target = this;
+		PrimaryActorTick.RegisterTickFunction(GetLevel());
+	}
 	SetActorTickEnabled(true);
 
 	CurrentActivity = ESubNpcActivity::Walking;
@@ -131,6 +135,11 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 	// LOD는 Director가 다음 갱신에서 정한다. 그때까지는 가장 싼 상태로 둔다.
 	CurrentLodBand = ESubNpcLodBand::Culled;
 	ApplyLodBand(ESubNpcLodBand::Far);
+
+	UE_CLOG(bDebugCrowdLog, LogTemp, Warning,
+		TEXT("[CrowdDbg] Activate %s  Path=%s  Len=%.0f  Dist=%.0f  Speed=%.0f  Loc=%s"),
+		*GetName(), *GetNameSafe(StartPath), StartPath->GetPathLength(),
+		PathDistance, WalkSpeed, *GetActorLocation().ToCompactString());
 
 	// 블루프린트에서 외형(메시/머티리얼/의상)을 갈아끼울 기회.
 	OnArchetypeApplied(Archetype);
@@ -157,12 +166,6 @@ void ASubNpcCharacter::DeactivateToPool()
 		// 스켈레탈 메시 컴포넌트는 숨겨도 애니메이션 틱이 살아있을 수 있어서 명시적으로 끈다.
 		MeshComp->SetComponentTickEnabled(false);
 		MeshComp->bPauseAnims = true;
-	}
-
-	if (UCharacterMovementComponent* Move = GetCharacterMovement())
-	{
-		Move->StopMovementImmediately();
-		Move->SetComponentTickEnabled(false);
 	}
 
 	// 화면 밖 먼 곳으로 치워둔다. 안 그러면 마지막 위치에서 충돌/오버랩 질의에 계속 걸린다.
@@ -216,7 +219,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 	CurrentLodBand = NewBand;
 
 	USkeletalMeshComponent* MeshComp = GetMesh();
-	UCharacterMovementComponent* Move = GetCharacterMovement();
 
 	switch (NewBand)
 	{
@@ -230,7 +232,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 			MeshComp->SetCastShadow(true);
 			MeshComp->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 		}
-		if (Move) { Move->SetComponentTickEnabled(true); }
 		break;
 
 	case ESubNpcLodBand::Mid:
@@ -243,7 +244,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 			// 그림자는 메타휴먼에서 가장 비싼 항목 중 하나다. 중간 거리부터 끈다.
 			MeshComp->SetCastShadow(false);
 		}
-		if (Move) { Move->SetComponentTickEnabled(true); }
 		break;
 
 	case ESubNpcLodBand::Far:
@@ -254,13 +254,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 			MeshComp->bPauseAnims = false;
 			MeshComp->SetForcedLOD(FarForcedLod + 1);
 			MeshComp->SetCastShadow(false);
-		}
-		// 먼 거리에서는 캐릭터 무브먼트(중력·캡슐 스윕)를 끄고 위치만 직접 옮긴다.
-		// 어차피 안 보이는 거리에서 물리적으로 정확할 이유가 없고, 이게 CPU 절약의 대부분이다.
-		if (Move)
-		{
-			Move->StopMovementImmediately();
-			Move->SetComponentTickEnabled(false);
 		}
 		break;
 
@@ -275,11 +268,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 			MeshComp->bPauseAnims = true;
 			MeshComp->SetCastShadow(false);
 			MeshComp->SetVisibility(false, /*bPropagateToChildren=*/true);
-		}
-		if (Move)
-		{
-			Move->StopMovementImmediately();
-			Move->SetComponentTickEnabled(false);
 		}
 		break;
 	}
@@ -298,6 +286,25 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 void ASubNpcCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (bDebugCrowdLog)
+	{
+		DebugLogTimer += DeltaTime;
+	}
+	if (bDebugCrowdLog && DebugLogTimer >= 1.f)
+	{
+		DebugLogTimer = 0.f;
+		UE_LOG(LogTemp, Warning,
+			TEXT("[CrowdDbg] TICK %s  Act=%d  LOD=%d  Dist=%.0f  Loc=%s  Path=%s  MoveTick=%d  Mode=%d"),
+			*GetName(),
+			static_cast<int32>(CurrentActivity),
+			static_cast<int32>(CurrentLodBand),
+			PathDistance,
+			*GetActorLocation().ToCompactString(),
+			*GetNameSafe(CurrentPath),
+			GetCharacterMovement() ? (GetCharacterMovement()->IsComponentTickEnabled() ? 1 : 0) : -1,
+			GetCharacterMovement() ? static_cast<int32>(GetCharacterMovement()->MovementMode.GetValue()) : -1);
+	}
 
 	if (CurrentActivity == ESubNpcActivity::Pooled)
 	{
@@ -374,32 +381,81 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	const FVector Target = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
 	FVector Dir = CurrentPath->GetDirectionAtDistance(PathDistance) * (bReversedOnPath ? -1.f : 1.f);
 
-	if (CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid)
-	{
-		// 가까울 때만 캐릭터 무브먼트를 쓴다. 플레이어와의 충돌·중력이 필요한 거리다.
-		const FVector ToTarget = Target - GetActorLocation();
-		FVector MoveDir = ToTarget;
-		MoveDir.Z = 0.f;
-		if (MoveDir.Normalize())
-		{
-			AddMovementInput(MoveDir, 1.f);
-		}
-	}
-	else
-	{
-		// 멀면 위치를 직접 세팅한다 (스윕 없음). 지형을 정확히 밟지 않아도 티가 안 나는 거리다.
-		SetActorLocationAndRotation(Target, Dir.Rotation(), /*bSweep=*/false);
-	}
+	// [설계] 행인은 CharacterMovement를 쓰지 않고 위치를 직접 세팅한다.
+	//
+	// 처음에는 가까운 거리에서만 AddMovementInput을 쓰려 했는데, 두 가지 이유로 바꿨다.
+	//   1) 컨트롤러가 없는 폰에서는 입력 경로가 통째로 무시된다 (bForce로도 실제 이동이 안 됨)
+	//   2) 행인 수십 명에게 캐릭터 무브먼트(중력·바닥 스윕)를 돌리는 건 애초에 너무 비싸다
+	//
+	// 중력이 필요 없는 이유는 **경로의 높이가 곧 바닥**이기 때문이다. 스플라인을 지면에 맞춰
+	// 그려두면 행인은 항상 그 위를 걷는다. 지형을 따라 오르내려야 하면 경로를 그렇게 그리면 된다.
+	//
+	// 플레이어와의 충돌은 그대로 살아 있다. 캡슐 콜리전은 무브먼트와 무관하게 동작하고,
+	// 플레이어가 뛰어와 부딪히면 NotifyHit이 정상적으로 불린다.
+	const bool bIsClose =
+		(CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid);
+
+	// 회전은 살짝 보간한다. 스플라인 방향을 그대로 대입하면 코너에서 홱 돌아 로봇처럼 보인다.
+	const FRotator TargetRot = Dir.Rotation();
+	const FRotator NewRot = bIsClose
+		? FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 8.f)
+		: TargetRot;
+
+	// [스윕을 끄는 이유]
+	//
+	// 스윕을 켜면 행인끼리 캡슐로 서로를 막는다. 같은 지점에 두 명이 등장하는 순간
+	// 둘 다 영영 못 움직이고, PathDistance만 계속 올라 몸과 진행도가 어긋난다.
+	// 인파가 많아질수록 이 정체는 반드시 생긴다.
+	//
+	// 스윕을 꺼도 **플레이어와의 부딪힘 반응은 그대로 동작한다.**
+	// 히트 이벤트를 만드는 건 플레이어 쪽 무브먼트의 스윕이고, 행인 캡슐은 그냥
+	// 막는 물체로 존재하기만 하면 되기 때문이다. E키 상호작용(오버랩 질의)도 마찬가지다.
+	//
+	// 잃는 건 "행인이 벽을 뚫을 수 있다" 하나뿐인데, 경로는 어차피 사람이 그리는 것이라
+	// 벽을 통과하는 선을 안 그리면 그만이다. (레퍼런스 영상의 군중도 서로 통과한다)
+	SetActorLocationAndRotation(Target, NewRot, /*bSweep=*/bSweepWhileMoving);
 }
 
 void ASubNpcCharacter::AdvanceToNextPath()
 {
+	// [방어] 길이가 사실상 0인 경로는 "도착"이 매 틱 성립해서 무한 재활용을 일으킨다.
+	// 등장하자마자 회수되고 스포너가 다시 채우는 게 반복되어, 겉으로는
+	// "안 움직이는데 계속 다른 사람으로 바뀐다"로 보인다.
+	const float PathLength = CurrentPath ? CurrentPath->GetPathLength() : 0.f;
+	if (PathLength < MinUsablePathLength)
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("[Crowd] 경로 '%s'의 길이가 %.0fcm뿐입니다. 스플라인 점을 벌려 최소 %.0fcm 이상으로 만드세요. "
+				 "이 행인은 제자리에 세웁니다."),
+			*GetNameSafe(CurrentPath), PathLength, MinUsablePathLength);
+
+		CurrentPath = nullptr;
+		CurrentActivity = ESubNpcActivity::Walking;
+		SetMovementState(ENpcMovementState::Idle);
+		return;
+	}
+
 	bool bNextReversed = false;
-	ANpcCrowdPath* Next = CurrentPath ? CurrentPath->PickNextPath(bNextReversed) : nullptr;
+	ANpcCrowdPath* Next = CurrentPath->PickNextPath(bNextReversed);
 
 	if (!Next)
 	{
-		// 막다른 길 = 이 행인의 역할이 끝났다. 풀로 돌려보낸다.
+		// 막다른 길이다.
+		//
+		// [중요] 여기서 무조건 회수하면 플레이어 눈앞에서 사람이 뻥 사라진다.
+		// 보이는 거리에 있으면 회수하지 말고 **방향만 돌려서 왔던 길을 되돌아가게** 한다.
+		// 실제 거리에서도 막다른 골목에서 돌아 나오는 사람은 자연스럽다.
+		if (CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid)
+		{
+			bReversedOnPath = !bReversedOnPath;
+
+			// 끝점에 딱 붙어 있으면 다음 틱에 또 도착 판정이 나므로 살짝 안쪽으로 밀어준다.
+			PathDistance = FMath::Clamp(PathDistance, 0.f, PathLength);
+			PathDistance += bReversedOnPath ? -TurnAroundNudge : TurnAroundNudge;
+			return;
+		}
+
+		// 안 보이는 거리면 회수해서 다른 곳에 재활용한다.
 		if (const UWorld* World = GetWorld())
 		{
 			if (USubNpcDirectorSubsystem* Director = World->GetSubsystem<USubNpcDirectorSubsystem>())
@@ -485,11 +541,6 @@ void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActiv
 	}
 
 	SetActorLocationAndRotation(Stand, Facing.Rotation(), /*bSweep=*/false);
-
-	if (UCharacterMovementComponent* Move = GetCharacterMovement())
-	{
-		Move->StopMovementImmediately();
-	}
 
 	SetMovementState(ENpcMovementState::Interacting);
 
@@ -591,10 +642,6 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 		DodgeTargetOffset = LaneOffset;
 		// 화낼 때는 멈춰서 플레이어를 쳐다본다.
 		FaceTowards(Player);
-		if (UCharacterMovementComponent* Move = GetCharacterMovement())
-		{
-			Move->StopMovementImmediately();
-		}
 		break;
 
 	case ESubNpcReaction::Surprised:
@@ -720,10 +767,5 @@ void ASubNpcCharacter::SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap,
 		bReversedOnPath = Leader->bReversedOnPath;
 		PathDistance = Leader->PathDistance - FollowGap;
 		WalkSpeed = Leader->WalkSpeed;
-
-		if (UCharacterMovementComponent* Move = GetCharacterMovement())
-		{
-			Move->MaxWalkSpeed = WalkSpeed;
-		}
 	}
 }
