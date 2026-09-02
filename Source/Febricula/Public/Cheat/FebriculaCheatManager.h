@@ -16,4 +16,7 @@ class FEBRICULA_API UFebriculaCheatManager : public UCheatManager
 public:
 	UFUNCTION(Exec)
 	void SkipDay(int32 Day = 1);
+	
+	UFUNCTION(Exec)
+	void GetCachedCharacter();
 };

@@ -9,6 +9,7 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -39,6 +40,21 @@ void ABaseNpcCharacter::BeginPlay()
 
 	// 시작 상태를 명시적으로 한 번 밀어준다 (애니메이션 BP / Blackboard 초기값 동기화)
 	SetMovementState(ENpcMovementState::Idle);
+	if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		Dialogue->AddCharacterByName(NpcId, this);
+	}
+
+}
+
+void ABaseNpcCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		Dialogue->RemoveCharacterByName(NpcId, this);
+	}
+	Super::EndPlay(EndPlayReason);
+
 }
 
 // Called every frame
@@ -96,6 +112,17 @@ void ABaseNpcCharacter::Interact_Implementation(AActor* Interactor)
 FText ABaseNpcCharacter::GetInteractionPrompt_Implementation(AActor* Interactor) const
 {
 	return NSLOCTEXT("Npc", "InteractPrompt", "상호작용");
+}
+
+bool ABaseNpcCharacter::SetNpcId(FName Id)
+{
+	if (NpcId.IsNone())
+	{
+		NpcId = Id;
+		return true;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("NpcId 덮어쓰기 시도 차단됨"));
+	return false;
 }
 
 // ---------------------------------------------------------------------------

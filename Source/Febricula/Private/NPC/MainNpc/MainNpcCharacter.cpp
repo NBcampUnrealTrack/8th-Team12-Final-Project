@@ -23,11 +23,6 @@ void AMainNpcCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
-	{
-		Dialogue->AddCharacterByName(NpcId, this);
-	}
-
 	// 레벨 디테일 패널에서 DefaultRoute와 AutoStartMode만 지정해두면 여기서 알아서 시작한다.
 	// (AIController 빙의와 RunBehaviorTree는 PostInitializeComponents 단계에서 이미 끝나 있으므로
 	//  BeginPlay 시점엔 Blackboard가 준비된 상태다.)

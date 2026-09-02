@@ -310,9 +310,9 @@ class Parser:
             self.error(self.p_line or line,
                        "이 명령이 붙을 대사가 없음 - @cam과 액션은 바로 다음 대사 노드에 붙는다. "
                        "적용할 대사 위로 옮기거나 대사를 한 줄 붙일 것")
-            phantom = True
-        else:
             phantom = False
+        else:
+            phantom = True
         node = self.commit(Node(line=self.p_line or line))
         node.phantom = phantom
  
@@ -448,6 +448,7 @@ class Parser:
                     in_menu = True
  
                 elif low == "jump":
+                    self.close_pending(line_no)
                     if not args:
                         self.error(line_no, "@jump에 대상이 없음")
                     elif not self.nodes:
@@ -458,6 +459,7 @@ class Parser:
                         self.terminator = (line_no, "jump")
  
                 elif low == "end":
+                    self.close_pending(line_no)
                     if not self.nodes:
                         self.error(line_no, "@end 앞에 노드가 없음")
                     else:
@@ -803,9 +805,9 @@ def process(path, action_types, condition_types, outdir, check_only):
  
 def main():
     ap = argparse.ArgumentParser(description="Febricula dialogue script parser")
-    ap.add_argument("inputs", nargs="+", help="스크립트 파일 (와일드카드 가능)")
+    ap.add_argument("inputs", nargs="*", default=["MainStory1.txt"], help="스크립트 파일 (와일드카드 가능)")
     ap.add_argument("--outdir", help="JSON 출력 폴더 (기본: 입력 파일과 같은 위치)")
-    ap.add_argument("--enum-header", nargs="*", default=[],
+    ap.add_argument("--enum-header", nargs="*", default=["D:\\febricula\\Febricula\\Source\\Febricula\\Public\\Dialogue\\DialogueDataTypes.h"],
                     help="EGameActionType / EGameConditionType이 정의된 .h 경로 (여러 개 가능)")
     ap.add_argument("--check", action="store_true", help="검증만 하고 파일을 쓰지 않음")
     args = ap.parse_args()

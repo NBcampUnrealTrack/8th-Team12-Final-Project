@@ -39,6 +39,7 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
 	// Called every frame
@@ -68,7 +69,10 @@ public:
 	/** 이벤트 트리·세이브 데이터·호감도 매니저 조회용 고유 ID (예: "NPC_HanSeoYun") */
 	UFUNCTION(BlueprintPure, Category = "NPC")
 	FName GetNpcId() const { return NpcId; }
-
+	
+	UFUNCTION(BlueprintCallable, Category = "NPC")
+	bool SetNpcId(FName Id);
+	
 	UFUNCTION(BlueprintPure, Category = "NPC")
 	ENpcSpawnMode GetDefaultSpawnMode() const { return DefaultSpawnMode; }
 
@@ -142,7 +146,7 @@ protected:
 	void PushMovementStateToBlackboard(ENpcMovementState State) const;
 
 	/** 이벤트 트리·세이브 데이터·호감도 매니저 조회용 고유 ID. 서브클래스/블루프린트에서 고정값으로 세팅 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC", meta = (DisplayPriority = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC", meta = (DisplayPriority = 0))
 	FName NpcId;
 
 	/** 레벨 고정배치 / 랜덤 인카운터 여부 (참조용, 실제 스폰은 스포너가 담당) */

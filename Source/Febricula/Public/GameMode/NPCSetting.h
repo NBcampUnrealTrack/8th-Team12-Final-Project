@@ -6,11 +6,15 @@
 #include "Engine/DeveloperSettings.h"
 #include "NPCSetting.generated.h"
 
+class ABaseNpcCharacter;
 /**
  * 
  */
-UCLASS()
+UCLASS(Config="Game")
 class FEBRICULA_API UNPCSetting : public UDeveloperSettings
 {
 	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC Character Map")
+	TMap<FName, TSoftClassPtr<ABaseNpcCharacter>> NPCCharacterMap;
 };

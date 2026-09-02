@@ -8,7 +8,9 @@
 #include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/FebriculaPlayerStart.h"
 #include "GameMode/LevelAutoEventSetting.h"
+#include "GameMode/NPCSetting.h"
 #include "Kismet/GameplayStatics.h"
+#include "NPC/BaseNpcCharacter.h"
 #include "Progress/GameProgressSubsystem.h"
 
 AFebriculaGameMode::AFebriculaGameMode()
@@ -34,6 +36,9 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 	for (TActorIterator<AFebriculaPlayerStart> It(GetWorld()); It; ++It)
 	{
 		AFebriculaPlayerStart* Now = *It;
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *Now->SpawnPointTag.GetTagName().ToString());
+		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %d"), Now->SpawnPointTag.IsValid());
+		UE_LOG(LogTemp, Warning, TEXT("%d"), NowSchedule.MatchesTag(Now->SpawnPointTag));
 		if (!Now->SpawnPointTag.IsValid())
 		{
 			if (!Fallback)
@@ -67,9 +72,20 @@ void AFebriculaGameMode::BeginPlay()
 	{
 		DialogueSubsystem->BlockPlayerInput(false);
 	}
+	
+	NPCCharacterMap = GetDefault<UNPCSetting>()->NPCCharacterMap;
 
 	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
 	PlayEvent();
+}
+
+TSoftClassPtr<ABaseNpcCharacter> AFebriculaGameMode::GetNpcViaName(FName NowName)
+{
+	if (TSoftClassPtr<ABaseNpcCharacter>* NPC = NPCCharacterMap.Find(NowName))
+	{
+		return NPC->LoadSynchronous();
+	}
+	return nullptr;
 }
 
 void AFebriculaGameMode::PlayEvent()

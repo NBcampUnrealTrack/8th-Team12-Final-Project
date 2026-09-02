@@ -126,10 +126,10 @@ public:
 	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine);
 	
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
-	ACharacter* GetCharacterByName(FName Name) const;
+	void AddCharacterByName(FName Name, ACharacter* Character);
 	
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
-	void AddCharacterByName(FName Name, ACharacter* Character);
+	void RemoveCharacterByName(FName Name, ACharacter* Character);
 	
 	// ---- HUD가 구독할 델리게이트 ----
 
@@ -144,6 +144,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
 	FOnDialogueBoxHidden OnDialogueBoxHidden;
+	
+	TMap<FName,TWeakObjectPtr<ACharacter>> GetCachedCharacter() const;
 
 protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
@@ -166,6 +168,8 @@ protected:
 
 	/** 참가자 전원을 Talk 상태에서 풀어준다 */
 	void ReleaseParticipants();
+	
+	ACharacter* GetCharacterInCache(FName CharacterName) const;
 
 	/** 이번 대화에 참여 중인 NPC들. 끝날 때 한꺼번에 풀어주기 위해 들고 있는다 */
 	UPROPERTY()

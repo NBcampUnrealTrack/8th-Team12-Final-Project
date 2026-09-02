@@ -30,17 +30,17 @@
 @HideActor
 @cam Loc -195.7 -74.6 157.7 Rot 0.0 90.0 -90 .01
 나는 눈을 떴다.
-@FadeIn .5
+@FadeIn 1
 @wait 1.0
 @hide
 꿈이라 해도 나는 여전히 떠올릴 수 있었다.
 얼굴이 기억나지 않고, 체격 또한 잊었으나.
 이상하리만치 정숙했던 공간.
 나를 쏘아보는 차가운 시선.
-@cam Loc 43.8 24.8 102.0 Rot 0 0 -130 2.0
-@wait 2.9
 @Teleport Player BedTarget
 @PlayAnim Player SitMale 1
+@cam Loc 43.8 24.8 102.0 Rot 0 0 -130 2.0
+@wait 2.0
 @ShowActor Player
 
 @hide
@@ -64,6 +64,7 @@
 @FadeIn 3
 @cam reset
 가볍게 한숨을 내뱉고 자리를 털고 일어났다.
+@end
 
 
 @label D1_060
@@ -90,17 +91,45 @@ AI의 끊임없는 발전.
 ...적어도 떳떳한 방법으로는.
 사전에 안내받은 대로 3학년 교무실로 발걸음을 옮겼다.
 @Fadeout Black 1
-@wait 1
+@wait 0.1
 @hide
-
+@ChangeLevel TeacherOffice
+@TimeAdvanceSchedule 4
+@end
 
 @label D1_080
-그래. 뭔가 힘든 일이 생기거나 언제든지 편하게 찾아오고.
-네. 감사합니다.
-그리고 음… 그래, 서윤아!
-네. 부르셨어요?
-지금 바빠? 안 바쁘면 전학생 학교 소개 좀 부탁해도 될까?
-알겠습니다. 너, 이리 따라 와.
+@cam Loc 48.6 791.1 109.9 Rot 0 1.4 -36.3
+@FadeIn 1
+@wait 0.1
+@hide
+
+@cast 학생부장 = "학생부장" NPC_HeadTeacher
+@cast 서윤 = "한서윤"
+
+@label D1_090
+학생부장 그래. 뭔가 힘든 일이 생기거나 언제든지 편하게 찾아오고.
+천율 네. 감사합니다.
+@SpawnActor NPC_Suyun FirstSuyun
+@cam Loc 441.4 750.5 104.9 Rot 0 3.2 -108.9 .5
+@wait .5
+@hide
+
+@label D1_100
+학생부장: 그리고 음… 그래, 서윤아!
+@NpcFaceNpc NPC_Suyun NPC_HeadTeacher
+서윤: 네. 부르셨어요?
+학생부장: 지금 바빠? 안 바쁘면 전학생 학교 소개 좀 부탁해도 될까?
+서윤: 알겠습니다.
+
+@NpcFacePlayer NPC_Suyun
+서윤: 너, 이리 따라 와.
+@cam reset
+@NpcStartGuide NPC_Suyun FirtSuyunMove
+@wait .1
+@hide 
+@end
+    
+@label D1_101
 수업 시간이기 때문일까. 복도는 고요했다.
 한서윤.
 응?

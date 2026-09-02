@@ -183,6 +183,9 @@ enum class EGameActionType : uint8
 
 	/** Key(NpcId) NPC가 플레이어 쪽을 바라보게 한다 */
 	NpcFacePlayer			UMETA(DisplayName = "NPC가 플레이어 바라보기"),
+	
+	/** Key(NpcId) NPC가 Key2(NpcId) NPC 쪽을 바라보게 한다 */
+	NPCFaceNPC				UMETA(DisplayName = "NPC가 NPC 바라보기"),
 
 	// ---- 시간 진행 (UTimeSubsystem 연동) ----
 
@@ -218,6 +221,8 @@ enum class EGameActionType : uint8
 	FadeOut					UMETA(DisplayName= "페이드 아웃"),
 	
 	FadeIn					UMETA(DisplayName = "페이드 인"),
+	
+	SpawnActor				UMETA(DisplayName = "캐릭터 스폰"),
 	
 	ShowActor				UMETA(DisplayName = "캐릭터 보임"),
 	

@@ -7,6 +7,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "FebriculaGameMode.generated.h"
 
+class ABaseNpcCharacter;
 class ALevelAutoEventSetting;
 /**
  *  Simple GameMode for a third person game
@@ -24,6 +25,8 @@ public:
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 	
 	virtual void BeginPlay() override;
+	
+	TSoftClassPtr<ABaseNpcCharacter> GetNpcViaName(FName NowName);
 	
 	// UFUNCTION(BlueprintCallable)
 	// [[nodiscard]] int32 Year() const
@@ -45,6 +48,8 @@ protected:
 	TObjectPtr<UDataTable> AutoEventTable;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UDataTable> AutoDialogueTable;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TMap<FName, TSoftClassPtr<ABaseNpcCharacter>> NPCCharacterMap;
 	
 	FTimerHandle AutoEventTimer;
 };
