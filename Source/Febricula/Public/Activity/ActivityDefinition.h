@@ -11,7 +11,7 @@ struct FActivityLocation
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
 	TArray<TSoftObjectPtr<UWorld>> ConnectedLevel;
 };
-
+	
 USTRUCT(BlueprintType)
 struct FActivityDefinition : public FTableRowBase
 {
