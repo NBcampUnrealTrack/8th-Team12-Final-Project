@@ -101,6 +101,10 @@ public:
 	/** 조건 배열 전체를 AND로 평가한다. 배열이 비어 있으면 true */
 	UFUNCTION(BlueprintCallable, Category = "Progress|Condition")
 	bool EvaluateConditions(const TArray<FGameCondition>& Conditions) const;
+	
+	//디버그용
+	UFUNCTION(BlueprintCallable, Category = "Progress|Debug")
+	const TSet<FName>& GetClearedEvents() const { return CompletedEvents; }
 
 protected:
 	/** 시간 조건 판정에 쓰는 UTimeSubsystem 접근자. 없으면 nullptr */

@@ -106,6 +106,8 @@ bool UDialogueSubsystem::IsAutoAdvanceSatisfied(float DeltaTime)
 				? Cast<ABaseNpcCharacter>(CurrentInstigator)
 				: Cast<ABaseNpcCharacter>(GetCharacterInCache(AutoAdvanceNpcId));
 
+
+				
 			if (!Npc)
 			{
 				return false;
@@ -115,9 +117,11 @@ bool UDialogueSubsystem::IsAutoAdvanceSatisfied(float DeltaTime)
 			{
 				return false;
 			}
+			UE_LOG(LogTemp,Warning, TEXT("Remain: %d"), AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f)));
 			return AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f));
 		}
-
+		
+		
 	default:
 		return false;
 	}
@@ -679,6 +683,7 @@ void UDialogueSubsystem::CameraToCinematicCam(const FVector Loc, const FRotator 
 
 	ActiveCamIndex = 1 - ActiveCamIndex;          // 번갈아
 	TObjectPtr<ACineCameraActor>& Cam = CinematicCamera[ActiveCamIndex];
+	
 
 	if (!IsValid(Cam) || Cam->GetWorld() != GetWorld())
 	{
@@ -935,13 +940,29 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		break;
 		
 	case EGameActionType::NPCFaceNPC:
-		if (TWeakObjectPtr<ACharacter>* NpcPtr = CachedCharacter.Find(Action.Key))
+		if (Action.Key == "Player")
 		{
-			if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(NpcPtr->Get()))
+			if (ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0))
 			{
-				if (TWeakObjectPtr<ACharacter>* Character = CachedCharacter.Find(Action.Key2))
+				if (AFebriculaCharacter* PlayerCharacter = Cast<AFebriculaCharacter>(Player))
 				{
-					Npc->FaceTowards(Character->Get());
+					if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(GetCharacterInCache(Action.Key2)))
+					{
+						PlayerCharacter->FaceTowards(Npc);
+					}
+				}
+			}
+		}
+		else
+		{
+			if (TWeakObjectPtr<ACharacter>* NpcPtr = CachedCharacter.Find(Action.Key))
+			{
+				if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(NpcPtr->Get()))
+				{
+					if (TWeakObjectPtr<ACharacter>* Character = CachedCharacter.Find(Action.Key2))
+					{
+						Npc->FaceTowards(Character->Get());
+					}
 				}
 			}
 		}

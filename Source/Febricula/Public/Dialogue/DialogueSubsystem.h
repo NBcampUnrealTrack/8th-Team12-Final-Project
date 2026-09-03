@@ -234,4 +234,7 @@ protected:
 	UPROPERTY()
 	TMap<FName, TWeakObjectPtr<ACharacter>> CachedCharacter;
 	
+	UPROPERTY()
+	TArray<FName> ClearedEvents;
+	
 };

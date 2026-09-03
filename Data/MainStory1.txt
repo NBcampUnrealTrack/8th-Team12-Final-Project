@@ -63,6 +63,7 @@
 @label D1_050 
 @FadeIn 3
 @cam reset
+@CompleteEvent MainStory1
 가볍게 한숨을 내뱉고 자리를 털고 일어났다.
 @end
 
@@ -95,6 +96,7 @@ AI의 끊임없는 발전.
 @hide
 @ChangeLevel TeacherOffice
 @TimeAdvanceSchedule 4
+@CompleteEvent MainStory2
 @end
 
 @label D1_080
@@ -121,26 +123,53 @@ AI의 끊임없는 발전.
 학생부장: 지금 바빠? 안 바쁘면 전학생 학교 소개 좀 부탁해도 될까?
 서윤: 알겠습니다.
 
-@NpcFacePlayer NPC_Suyun
-서윤: 너, 이리 따라 와.
 @cam reset
 @NpcStartGuide NPC_Suyun FirtSuyunMove
-@wait .1
-@hide 
-@end
-    
-@label D1_101
-수업 시간이기 때문일까. 복도는 고요했다.
-한서윤.
-응?
-한서윤이라고. 내 이름.
-아.
-넌 이름이 뭐야?
-천율. 강천율.
-일단은 내가 학생회장이니 학교 생활하면서 문제가 생기거나  궁금한 게 생기면 나한테 아. 왠만한 것들은 내가 해결해 줄 수 있으니까.
-고마워.
-가자. 학교가 생각보다 넓어서 부지런히 움직여야 해.
+@PlayAnim NPC_Suyun Walk 1 
+@wait_arrive 100 NPC_Suyun
+@hide
 
+@label D1_101
+@StopAnim NPC_Suyun
+@NpcFacePlayer NPC_Suyun
+서윤: 너, 이리 따라 와.
+
+@label D1_102
+@CompleteEvent MainStory3
+@TimeAdvanceSchedule 2
+@wait_near 200 NPC_Suyun
+@hide
+
+@label D1_103
+@ChangeLevel SchoolOutside
+@wait .1
+@hide
+@end
+
+    
+@label D1_104
+@cam Loc 1598.0 -3974.9 650.4 Rot 0 -11.3 0.8 .1
+@SpawnActor NPC_Suyun SuyunOutsideFirst
+@NpcFacePlayer Npc_Suyun
+서윤: 한서윤.
+천율: 응?
+서윤: 한서윤이라고. 내 이름.
+천율: 아.
+서윤: 넌 이름이 뭐야?
+천율: 천율. 강천율.
+서윤: 일단은 내가 학생회장이니 학교 생활하면서 문제가 생기거나  궁금한 게 생기면 나한테 아. 왠만한 것들은 내가 해결해 줄 수 있으니까.
+천율: 고마워.
+서윤: 가자. 학교가 생각보다 넓어서 부지런히 움직여야 해.
+
+@FadeOut Black 3
+@wait .3
+@hide
+
+@label D1_105
+@Teleport Player PlayerFirstAround1
+@Teleport NPC_Suyun SuyunOutsideSecond
+@cam Loc 5088.0 -6966.9 116.9 Rot 0 0 -240.158370 .1 
+@FadeIn .3
 3학년 때 다른 소프트웨어고로 전학이라… 흔한 일은 아닌데.
 사고라도 쳤어?
 일이 좀 있긴 했어.

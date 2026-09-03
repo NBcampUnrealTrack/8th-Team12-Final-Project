@@ -36,9 +36,11 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 				// LoopCount는 반복 횟수라서 무한 루프가 없다. 지속 포즈는 큰 값으로 깔아두고
 				// StopNpcAnim으로 끊는 방식이 안전하다.
 				const int32 LoopCount = bLoop ? 1000 : 1;
+				UE_LOG(LogTemp, Warning, TEXT("애님 전: %s"), *GetOwner()->GetActorRotation().ToString());
 
 				UAnimMontage* Played = AnimInstance->PlaySlotAnimationAsDynamicMontage(
 					*Found, AnimSlotName, AnimBlendTime, AnimBlendTime, /*InPlayRate=*/1.f, LoopCount);
+				UE_LOG(LogTemp, Warning, TEXT("애님 후: %s"), *GetOwner()->GetActorRotation().ToString());
 
 				UE_LOG(LogTemp, Warning, TEXT("슬롯=%s 애님=%s 결과=%s"),
 					*AnimSlotName.ToString(), *AnimId.ToString(), *GetNameSafe(Played));

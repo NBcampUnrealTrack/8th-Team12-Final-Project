@@ -88,6 +88,22 @@ void AFebriculaCharacter::BeginPlay()
 	
 }
 
+void AFebriculaCharacter::FaceTowards(const AActor* TargetActor)
+{
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	const FVector ToTarget = TargetActor->GetActorLocation() - GetActorLocation();
+	// 위아래로 기울어지면 안 되므로 Yaw만 반영한다.
+	if (!ToTarget.IsNearlyZero())
+	{
+		SetActorRotation(FRotator(0.f, ToTarget.Rotation().Yaw, 0.f));
+	}
+}
+
+
 
 void AFebriculaCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {

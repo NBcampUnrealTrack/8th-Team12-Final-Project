@@ -81,6 +81,10 @@ public:
 	void OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Constructor */
 	virtual void BeginPlay() override;
+	
+	void FaceTowards(const AActor* TargetActor);
+
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInteractionComponent> InteractComponent;

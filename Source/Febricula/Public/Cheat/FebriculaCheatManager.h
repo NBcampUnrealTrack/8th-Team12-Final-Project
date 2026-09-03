@@ -18,5 +18,11 @@ public:
 	void SkipDay(int32 Day = 1);
 	
 	UFUNCTION(Exec)
+	void SkipSchedule(int32 Count = 1);
+	
+	UFUNCTION(Exec)
 	void GetCachedCharacter();
+	
+	UFUNCTION(Exec)
+	void GetClearedEvents();
 };
