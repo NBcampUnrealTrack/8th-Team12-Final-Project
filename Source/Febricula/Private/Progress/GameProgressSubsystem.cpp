@@ -3,7 +3,25 @@
 #include "Progress/GameProgressSubsystem.h"
 
 #include "Engine/GameInstance.h"
+#include "GameMode/TimeSubsystem.h"
+#include "GameplayTagContainer.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+
+const UTimeSubsystem* UGameProgressSubsystem::GetTime() const
+{
+	const UGameInstance* GI = GetGameInstance();
+	return GI ? GI->GetSubsystem<UTimeSubsystem>() : nullptr;
+}
+
+int32 UGameProgressSubsystem::GetCurrentDay() const
+{
+	// 일차의 주인은 UTimeSubsystem이다. 여긴 읽기만 한다.
+	if (const UTimeSubsystem* Time = GetTime())
+	{
+		return Time->GetAbsoluteDay();
+	}
+	return FallbackDay;
+}
 
 int32 UGameProgressSubsystem::GetCounter(FName CounterId) const
 {
@@ -39,7 +57,97 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		return true;
 
 	case EGameConditionType::DayAtLeast:
-		return CurrentDay >= Condition.Value;
+		return GetCurrentDay() >= Condition.Value;
+
+	// ---- 시간/날짜 (UTimeSubsystem 연동) ----
+
+	case EGameConditionType::DayEquals:
+		return GetCurrentDay() == Condition.Value;
+
+	case EGameConditionType::DayAtMost:
+		return GetCurrentDay() <= Condition.Value;
+
+	case EGameConditionType::MonthEquals:
+		{
+			const UTimeSubsystem* Time = GetTime();
+			return Time ? (Time->GetNowMonth() == Condition.Value) : false;
+		}
+
+	case EGameConditionType::ScheduleIs:
+		{
+			const UTimeSubsystem* Time = GetTime();
+			if (!Time)
+			{
+				return false;
+			}
+			// Key에 적힌 문자열을 GameplayTag로 변환해서 현재 시간대와 비교한다.
+			// 등록되지 않은 태그 이름이면 아래에서 경고가 나가고 false가 된다.
+			const FGameplayTag Required =
+				FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
+			if (!Required.IsValid())
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("ScheduleIs 조건의 태그 '%s'를 찾을 수 없습니다. GameplayTag가 등록됐는지 확인하세요."),
+					*Condition.Key.ToString());
+				return false;
+			}
+			return Time->GetNowScheduleTag() == Required;
+		}
+
+	case EGameConditionType::ScheduleIsChildOf:
+		{
+			const UTimeSubsystem* Time = GetTime();
+			if (!Time)
+			{
+				return false;
+			}
+			const FGameplayTag Parent =
+				FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
+			return Parent.IsValid() && Time->GetNowScheduleTag().MatchesTag(Parent);
+		}
+
+	case EGameConditionType::DayTypeIs:
+		{
+			const UTimeSubsystem* Time = GetTime();
+			if (!Time)
+			{
+				return false;
+			}
+			const FGameplayTag Required =
+				FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
+			if (!Required.IsValid())
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("DayTypeIs 조건의 태그 '%s'를 찾을 수 없습니다. GameplayTag가 등록됐는지 확인하세요."),
+					*Condition.Key.ToString());
+				return false;
+			}
+			return Time->GetNowDayTypeTag() == Required;
+		}
+
+	case EGameConditionType::DayTypeIsChildOf:
+		{
+			const UTimeSubsystem* Time = GetTime();
+			if (!Time)
+			{
+				return false;
+			}
+			const FGameplayTag Parent =
+				FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
+			return Parent.IsValid() && Time->GetNowDayTypeTag().MatchesTag(Parent);
+		}
+
+	case EGameConditionType::IsWeekend:
+		{
+			const UTimeSubsystem* Time = GetTime();
+			return Time ? Time->IsWeekend() : false;
+		}
+
+	case EGameConditionType::IsWeekday:
+		{
+			const UTimeSubsystem* Time = GetTime();
+			return Time ? !Time->IsWeekend() : true;
+		}
 
 	case EGameConditionType::EventCompleted:
 		return IsEventCompleted(Condition.Key);

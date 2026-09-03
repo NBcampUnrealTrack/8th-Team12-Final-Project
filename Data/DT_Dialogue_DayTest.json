@@ -1,0 +1,386 @@
+[
+	{
+		"Name": "D1_010",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[1일차 / 단독 이벤트] 나 혼자 나오는 이벤트야. 따라와 봐.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D1_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D1_020",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "(이동 구간 - 대화창이 닫힙니다)",
+		"OnEnterActions": [
+			{ "Type": "NpcStartGuide", "Key": "NPC_HanSeoYun", "Key2": "TourA", "Value": 0 },
+			{ "Type": "NpcResumeAI", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D1_030",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "NPC_HanSeoYun",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "D1_030",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "도착했어. 지금 애니메이션 재생 중이야.",
+		"OnEnterActions": [
+			{ "Type": "NpcStopRouteMove", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcPauseAI", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcFacePlayer", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcPlayAnim", "Key": "NPC_HanSeoYun", "Key2": "Test2", "Value": 1 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D1_040",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D1_040",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "여기서 선택지 테스트. 아무거나 골라 봐.",
+		"OnEnterActions": [],
+		"Choices": [
+			{
+				"Text": "칭찬한다",
+				"Conditions": [],
+				"Actions": [
+					{ "Type": "AddAffinity", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 5 }
+				],
+				"NextNodeId": "D1_050"
+			},
+			{
+				"Text": "무시한다",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "D1_055"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D1_050",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "(호감도 +5) 고마워. 선택지 분기가 여기로 왔어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D1_090",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D1_055",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "(호감도 변화 없음) 이쪽 분기로 왔어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D1_090",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D1_090",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[1일차 종료] 다음 날로 넘어간다.",
+		"OnEnterActions": [
+			{ "Type": "NpcStopAnim", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "TimeAdvanceDay", "Key": "None", "Key2": "None", "Value": 1 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+
+	{
+		"Name": "D2_010",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[2일차 / 합동 이벤트] 오늘은 김도윤도 같이 나와.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D2_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D2_020",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "둘 다 Talk 상태로 멈춰 있는지 확인해. 이제 같이 움직인다.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D2_030",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D2_030",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "(둘 다 이동 중)",
+		"OnEnterActions": [
+			{ "Type": "NpcStartGuide", "Key": "NPC_HanSeoYun", "Key2": "TourA", "Value": 0 },
+			{ "Type": "NpcResumeAI", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcStartPatrol", "Key": "NPC_KimDoYun", "Key2": "TourB", "Value": 0 },
+			{ "Type": "NpcResumeAI", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D2_040",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "NPC_HanSeoYun",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "D2_040",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "둘 다 멈추고 각자 애니메이션 재생.",
+		"OnEnterActions": [
+			{ "Type": "NpcStopRouteMove", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcStopRouteMove", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcPauseAI", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcPauseAI", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcPlayAnim", "Key": "NPC_HanSeoYun", "Key2": "Test2", "Value": 1 },
+			{ "Type": "NpcPlayAnim", "Key": "NPC_KimDoYun", "Key2": "Test1", "Value": 1 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D2_050",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D2_050",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "합동 이벤트도 선택지가 되는지 확인.",
+		"OnEnterActions": [],
+		"Choices": [
+			{
+				"Text": "둘 다 칭찬한다",
+				"Conditions": [],
+				"Actions": [
+					{ "Type": "AddAffinity", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 3 },
+					{ "Type": "AddAffinity", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 3 }
+				],
+				"NextNodeId": "D2_090"
+			},
+			{
+				"Text": "그냥 넘어간다",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "D2_090"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D2_090",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[2일차 종료] 다음 날로 넘어간다.",
+		"OnEnterActions": [
+			{ "Type": "NpcStopAnim", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcStopAnim", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "TimeAdvanceDay", "Key": "None", "Key2": "None", "Value": 1 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+
+	{
+		"Name": "D3_010",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[3일차 / 다른 NPC 단독] 오늘은 내 차례야. 한서윤한테 말 걸면 상시 대사만 나올걸.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D3_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "D3_020",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "(김도윤 이동 중)",
+		"OnEnterActions": [
+			{ "Type": "NpcStartGuide", "Key": "NPC_KimDoYun", "Key2": "TourB", "Value": 0 },
+			{ "Type": "NpcResumeAI", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "D3_030",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "NPC_KimDoYun",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "D3_030",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[3일차 종료] 다음 날로 넘어간다. 이제부터는 상시 이벤트만 남아.",
+		"OnEnterActions": [
+			{ "Type": "NpcStopRouteMove", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcPauseAI", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcFacePlayer", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 },
+			{ "Type": "NpcPlayAnim", "Key": "NPC_KimDoYun", "Key2": "Test1", "Value": 0 },
+			{ "Type": "TimeAdvanceDay", "Key": "None", "Key2": "None", "Value": 1 }
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+
+	{
+		"Name": "IDLE_HSY_010",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[상시] 오늘은 별일 없어. (조건 맞는 이벤트가 없을 때 이 대사가 나온다)",
+		"OnEnterActions": [
+			{ "Type": "NpcFacePlayer", "Key": "NPC_HanSeoYun", "Key2": "None", "Value": 0 }
+		],
+		"Choices": [
+			{
+				"Text": "하루를 넘긴다",
+				"Conditions": [],
+				"Actions": [
+					{ "Type": "TimeAdvanceDay", "Key": "None", "Key2": "None", "Value": 1 }
+				],
+				"NextNodeId": "IDLE_HSY_020"
+			},
+			{
+				"Text": "그냥 돌아간다",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "None"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "IDLE_HSY_020",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "하루가 지났어. 다시 말 걸어 봐.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "IDLE_KDY_010",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[상시] 별로 할 얘기 없는데.",
+		"OnEnterActions": [
+			{ "Type": "NpcFacePlayer", "Key": "NPC_KimDoYun", "Key2": "None", "Value": 0 }
+		],
+		"Choices": [
+			{
+				"Text": "하루를 넘긴다",
+				"Conditions": [],
+				"Actions": [
+					{ "Type": "TimeAdvanceDay", "Key": "None", "Key2": "None", "Value": 1 }
+				],
+				"NextNodeId": "IDLE_KDY_020"
+			},
+			{
+				"Text": "그냥 돌아간다",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "None"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "IDLE_KDY_020",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "하루 지났다. 됐지?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	}
+]

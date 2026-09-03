@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
+#include "GameMode/TimeSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progress/GameProgressSubsystem.h"
 #include "NPC/BaseNpcCharacter.h"
@@ -588,6 +589,37 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 
 	case EGameActionType::GrantTopic:
 		if (Progress) { Progress->GrantTopic(Action.Key); }
+		break;
+
+	// ---- 시간 진행 ----
+
+	case EGameActionType::TimeAdvanceDay:
+	case EGameActionType::TimeAdvanceSchedule:
+		{
+			const UWorld* World = GetWorld();
+			UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+			UTimeSubsystem* Time = GameInstance ? GameInstance->GetSubsystem<UTimeSubsystem>() : nullptr;
+			if (!Time)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("시간 진행 액션: UTimeSubsystem을 찾지 못했습니다."));
+				break;
+			}
+
+			// Value를 비워두면(0) 한 번만 진행한다. 실수로 0을 넣어도 아무 일도 안 일어나는 것보다
+			// 1회 진행이 의도에 가깝기 때문이다.
+			const int32 Steps = FMath::Clamp(Action.Value <= 0 ? 1 : Action.Value, 1, 100);
+			for (int32 i = 0; i < Steps; ++i)
+			{
+				if (Action.Type == EGameActionType::TimeAdvanceDay)
+				{
+					Time->SpendDay();
+				}
+				else
+				{
+					Time->SpendSchedule();
+				}
+			}
+		}
 		break;
 
 	// ---- AI 연동 ----
