@@ -20,7 +20,7 @@ public class Febricula : ModuleRules
 			"UMG",
 			"Slate",
 			"DeveloperSettings",
-			"GameplayTags"
+			"GameplayTags", "CinematicCamera"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

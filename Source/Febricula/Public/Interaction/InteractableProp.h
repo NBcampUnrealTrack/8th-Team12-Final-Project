@@ -10,6 +10,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InteractionBranch.h"
 #include "GameFramework/Actor.h"
 #include "Interaction/Interactable.h"
 #include "InteractableProp.generated.h"
@@ -32,6 +33,35 @@ public:
 	//~ End IInteractable
 
 protected:
+	/**
+	 * 이지민 수정(2026. 08. 27)
+	 * InteractableProp이 가진 Action과 Condition을 조회하고 실행해주는 로직 
+	 * DT를 추가로 생성하지 않고도 상호작용하면 로직 실행 개념 구현
+	 */
+
+	UFUNCTION(BlueprintCallable, BlueprintCallable)
+	virtual void ExecuteActionsWrapper();
+	
+	/*
+	 * 이지민 수정(2026. 08. 27)
+	 * 플레이어 쪽에 부착된 로직이 완료되는 것을 기다릴지 / 즉시 실행할지
+	 * 문 개폐 로직과 같은 것을 처리하기 위해 추가
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
+	bool bWaitForSequence;
+	
+	/*
+	 * 연관된 이벤트 DT. Interaction Component에서 여기로 이동
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
+	TObjectPtr<UDataTable> ConnectedEventTable;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
+	TSoftObjectPtr<UDataTable> DefaultDialogueTable;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop")
+	TObjectPtr<USceneComponent> SceneComponent;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop")
 	TObjectPtr<UStaticMeshComponent> Mesh;
 
@@ -62,6 +92,16 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prop")
 	bool bSingleUse = false;
 
+
+	/**
+	 * 이지민 수정(2026. 08. 27)
+	 * InteractableProp이 Action과 Condition을 가짐으로써 기존의 Dialogue를 거치지 않고도 
+	 * 특정 로직을 실행할 수 있도록 변경
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop | Interaction Branch")
+	TArray<FInteractionBranch> InteractionBranches;
+	
+	
 	UPROPERTY(Transient)
 	bool bUsed = false;
 };

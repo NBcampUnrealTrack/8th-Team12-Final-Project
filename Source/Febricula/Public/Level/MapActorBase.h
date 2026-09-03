@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Interaction/InteractableProp.h"
 #include "MapActorBase.generated.h"
 
 UCLASS()

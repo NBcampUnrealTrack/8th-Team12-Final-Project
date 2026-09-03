@@ -6,13 +6,17 @@
 #include "Components/StaticMeshComponent.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "Engine/World.h"
+#include "NPC/MainNpc/MainNpcCharacter.h"
+#include "Progress/GameProgressSubsystem.h"
 
 AInteractableProp::AInteractableProp()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
+	SceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("SceneComponent"));
+	RootComponent = SceneComponent;
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	SetRootComponent(Mesh);
+	Mesh->SetupAttachment(RootComponent);
+	//SetRootComponent(Mesh);
 
 	InteractionVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionVolume"));
 	InteractionVolume->SetupAttachment(Mesh);
@@ -61,24 +65,69 @@ void AInteractableProp::Interact_Implementation(AActor* Interactor)
 	}
 
 	bool bStarted = false;
-
+	
 	if (!DialogueNodeId.IsNone())
 	{
+		if (UDataTable* DialogueDT = DefaultDialogueTable.LoadSynchronous())
+		{
+			Dialogue->SetDataTables(ConnectedEventTable, DialogueDT);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 테이블 '%s'의 기본 Dialogue Table '%s'을(를) 찾지 못했습니다."), *GetNameSafe(ConnectedEventTable), *DefaultDialogueTable.GetAssetName());	
+			return;
+		}
+		
 		// 선택지가 필요한 사물은 대화 테이블 노드를 그대로 재생한다.
-		bStarted = Dialogue->StartDialogueAtNode(DialogueNodeId, this);
+		if (AMainNpcCharacter* Npc = Cast<AMainNpcCharacter>(GetOwner()))
+		{
+			bStarted = Dialogue->TryStartEventForNpc(Npc->GetNpcId(), this);
+		}
+		else
+		{
+			bStarted = Dialogue->TryStartEventForNpc(NAME_None, this);
+		}
 	}
 	else
 	{
 		bStarted = Dialogue->StartSimpleLines(SpeakerName, InspectLines, this);
 	}
-
 	if (bStarted)
 	{
 		bUsed = true;
+	}
+	if (!bWaitForSequence)
+	{
+		ExecuteActionsWrapper();
 	}
 }
 
 FText AInteractableProp::GetInteractionPrompt_Implementation(AActor* Interactor) const
 {
 	return InteractionPrompt;
+}
+
+void AInteractableProp::ExecuteActionsWrapper()
+{
+	FInteractionBranch NowBranch;
+	if (const UGameInstance* GI = GetGameInstance())
+	{
+		if (const UGameProgressSubsystem* GSP = GI->GetSubsystem<UGameProgressSubsystem>())
+		{
+			for (FInteractionBranch Branch : InteractionBranches)
+			{
+				if (GSP->EvaluateConditions(Branch.Conditions))
+				{
+					NowBranch = Branch;
+				}
+			}
+		}
+		if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+		{
+			if (NowBranch.Actions.Num() > 0)
+			{
+				Dialogue->ExecuteActions(NowBranch.Actions);
+			}
+		}
+	}
 }
