@@ -21,5 +21,5 @@ struct FActivityDefinition : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
 	TArray<FActivityLocation> ActivityLocations;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
-	int32 ActionPointCost;
+	int32 ActionPointCost = 0;
 };
