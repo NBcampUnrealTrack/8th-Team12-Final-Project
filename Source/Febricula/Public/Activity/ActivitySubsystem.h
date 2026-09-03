@@ -8,38 +8,55 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ActivitySubsystem.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActivityRequested, FGameplayTag, ActivityTag, FActivityDefinition, Definition);
+
 /**
- * 
+ *
  */
 UCLASS()
 class FEBRICULA_API UActivitySubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
-	
+
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-	
+
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void FindRunnableActivities();
-	// UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)	
-	// void RunActivity();
-	
+
+	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
+	void RunActivity(FGameplayTag ActivityTag);
+
+	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
+	bool TryConsumeAP(int32 Cost);
+
 	FGameplayTag GetNowScheduleTag() const;
-	
+
+	UPROPERTY(BlueprintAssignable, Category = ActivitySubsystem)
+	FOnActivityRequested OnActivityRequested;
+
 protected:
 	UFUNCTION()
 	void OnChangeSchedule(FGameplayTag ChangedSchedule);
-	
+
+	void OnLevelLoaded(UWorld* LoadedWorld);
+
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Activity")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
 	FGameplayTag NowSchedule;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Activity")
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
 	TMap<FGameplayTag, FActivityDefinition> AllActivities;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Activity")
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
 	TMap<FGameplayTag, FActivityDefinition> RunnableActivities;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Activity | FixedEventAsset")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activity | FixedEventAsset")
 	TObjectPtr<UDataTable> FixedEvents;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
+	int32 CurrentAP;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activity")
+	int32 MaxAP;
 };
