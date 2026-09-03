@@ -3,6 +3,7 @@
 #include "NPC/MainNpc/BTTask_AdvanceRouteTarget.h"
 
 #include "BehaviorTree/BlackboardComponent.h"
+#include "NPC/MainNpc/MainNpcAIController.h"
 #include "NPC/MainNpc/NpcRoute.h"
 
 UBTTask_AdvanceRouteTarget::UBTTask_AdvanceRouteTarget()
@@ -29,10 +30,31 @@ EBTNodeResult::Type UBTTask_AdvanceRouteTarget::ExecuteTask(UBehaviorTreeCompone
 	}
 
 	const int32 CurrentIndex = BBComp->GetValueAsInt(RouteIndexKey.SelectedKeyName);
-	const int32 NextIndex = Route->GetNextIndex(CurrentIndex);
+	const int32 NextIndex = CurrentIndex + 1;
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Advance] Current=%d Next=%d Num=%d Loop=%d"),
+		CurrentIndex, NextIndex, Route->GetNumPoints(), bLoopRoute);
+
+	// 경로 끝에 도달
+	if (NextIndex >= Route->GetNumPoints())
+	{
+		if (!bLoopRoute)
+		{
+			// ↓ 여기
+			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(OwnerComp.GetAIOwner()))
+			{
+				AI->StopRouteMovement();
+			}
+			return EBTNodeResult::Succeeded;
+		}
+
+		// 순찰이면 처음으로 순환
+		BBComp->SetValueAsInt(RouteIndexKey.SelectedKeyName, 0);
+		BBComp->SetValueAsVector(RouteTargetLocationKey.SelectedKeyName, Route->GetPointLocation(0));
+		return EBTNodeResult::Succeeded;
+	}
 
 	BBComp->SetValueAsInt(RouteIndexKey.SelectedKeyName, NextIndex);
 	BBComp->SetValueAsVector(RouteTargetLocationKey.SelectedKeyName, Route->GetPointLocation(NextIndex));
-
 	return EBTNodeResult::Succeeded;
 }

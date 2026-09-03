@@ -117,7 +117,7 @@ bool UDialogueSubsystem::IsAutoAdvanceSatisfied(float DeltaTime)
 			{
 				return false;
 			}
-			UE_LOG(LogTemp,Warning, TEXT("Remain: %d"), AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f)));
+			//UE_LOG(LogTemp,Warning, TEXT("Remain: %d"), AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f)));
 			return AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f));
 		}
 		
@@ -488,10 +488,10 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	// 여러 NPC가 함께 있는 장면에서 "지금 말하는 쪽"이 자연스럽게 드러난다.
 	if (!Row->SpeakerNpcId.IsNone())
 	{
-		if (ABaseNpcCharacter* Speaker = Cast<ABaseNpcCharacter>(GetCharacterInCache(Row->SpeakerNpcId)))
-		{
-			Speaker->FaceTowards(UGameplayStatics::GetPlayerPawn(this, 0));
-		}
+		// if (ABaseNpcCharacter* Speaker = Cast<ABaseNpcCharacter>(GetCharacterInCache(Row->SpeakerNpcId)))
+		// {
+		// 	Speaker->FaceTowards(UGameplayStatics::GetPlayerPawn(this, 0));
+		// }
 	}
 
 	switch(Row->Camera.CameraType)
@@ -806,6 +806,13 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		}
 		break;
 
+	case EGameActionType::TimeResetSchedule:
+		if (UTimeSubsystem* Time = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+		{
+			Time->ResetSchedule();
+		}
+		break;
+		
 	// ---- AI 연동 ----
 
 	case EGameActionType::NpcSetAIState:

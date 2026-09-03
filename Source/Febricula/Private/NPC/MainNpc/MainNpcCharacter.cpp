@@ -165,7 +165,7 @@ void AMainNpcCharacter::StartTalk(AActor* Talker)
 	OnNpcTalkStateChanged.Broadcast(true);
 
 	// 대화 상대를 바라보도록 회전 (스냅. 부드럽게 돌리고 싶으면 여기 대신 Tick/타임라인에서 보간)
-	FaceTowards(Talker);
+	//FaceTowards(Talker);
 
 	OnTalkStarted(Talker);
 }

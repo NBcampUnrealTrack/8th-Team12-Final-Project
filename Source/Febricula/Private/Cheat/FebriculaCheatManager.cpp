@@ -2,6 +2,10 @@
 
 
 #include "Cheat/FebriculaCheatManager.h"
+
+#include "SNegativeActionButton.h"
+#include "SWarningOrErrorBox.h"
+#include "Activity/ActivitySubsystem.h"
 #include "GameFramework/Character.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/TimeSubsystem.h"
@@ -64,3 +68,48 @@ void UFebriculaCheatManager::AddClearedEvent(FName EventId)
 		Progress->MarkEventCompleted(EventId);
 	}
 }
+
+void UFebriculaCheatManager::GetRunnableActivities()
+{
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	{
+		const TMap<FGameplayTag, FActivityDefinition> RunnableActivity = ActivitySubsystem->GetRunnableActivities();
+		for (const TPair<FGameplayTag, FActivityDefinition>& Pair : RunnableActivity)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *Pair.Key.ToString());
+			for (FActivityLocation Location : Pair.Value.ActivityLocations)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s"), *Location.ConnectedScheduleTag.ToString());
+				for (TSoftObjectPtr<UWorld> World : Location.ConnectedLevel)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("%s"), *World.ToSoftObjectPath().ToString());
+				}
+				UE_LOG(LogTemp, Warning, TEXT("\n"));
+			}
+			UE_LOG(LogTemp, Warning, TEXT("\n"));
+		}
+	}
+}
+
+void UFebriculaCheatManager::GetAllActivities()
+{
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	{
+		const TMap<FGameplayTag, FActivityDefinition> AllActivities = ActivitySubsystem->GetAllActivities();
+		for (const TPair<FGameplayTag, FActivityDefinition>& Pair : AllActivities)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *Pair.Key.ToString());
+			for (FActivityLocation Location : Pair.Value.ActivityLocations)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s"), *Location.ConnectedScheduleTag.ToString());
+				for (TSoftObjectPtr<UWorld> World : Location.ConnectedLevel)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("%s"), *World.ToSoftObjectPath().ToString());
+				}
+				UE_LOG(LogTemp, Warning, TEXT("\n"));
+			}
+			UE_LOG(LogTemp, Warning, TEXT("\n"));
+		}
+	}
+}
+

@@ -187,18 +187,13 @@ void ABaseNpcCharacter::FaceTowards(const AActor* TargetActor)
 	if (!ToTarget.IsNearlyZero())
 	{
 		
-		UE_LOG(LogTemp, Warning, TEXT("OrientToMovement=%d UseControllerRot=%d"),
-		GetCharacterMovement()->bOrientRotationToMovement,
-		GetCharacterMovement()->bUseControllerDesiredRotation);
 
 		GetCharacterMovement()->bOrientRotationToMovement = false;
 		
-		UE_LOG(LogTemp, Warning, TEXT("목표Yaw=%.1f 전Yaw=%.1f"), ToTarget.Rotation().Yaw, GetActorRotation().Yaw);
-
 		SetActorRotation(FRotator(.0f, .0f, .0f));
 		SetActorRotation(FRotator(0.f, ToTarget.Rotation().Yaw, 0.f));
 		
-		UE_LOG(LogTemp, Warning, TEXT("후Yaw=%.1f"), GetActorRotation().Yaw);
+		//UE_LOG(LogTemp, Warning, TEXT("후Yaw=%.1f"), GetActorRotation().Yaw);
 
 	}
 }

@@ -28,4 +28,10 @@ public:
 	
 	UFUNCTION(Exec)
 	void AddClearedEvent(FName EventId);
+	
+	UFUNCTION(Exec)
+	void GetRunnableActivities();
+	
+	UFUNCTION(Exec)
+	void GetAllActivities();
 };

@@ -50,6 +50,10 @@ protected:
 	TObjectPtr<UDataTable> AutoDialogueTable;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TMap<FName, TSoftClassPtr<ABaseNpcCharacter>> NPCCharacterMap;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<UUserWidget> ActivityWidget;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TObjectPtr<UUserWidget> ActivityWidgetObject;
 	
 	FTimerHandle AutoEventTimer;
 };

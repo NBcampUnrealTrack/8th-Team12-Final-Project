@@ -37,9 +37,16 @@ bool UBTTask_WaitForPlayerNearby::IsPlayerNearby(UBehaviorTreeComponent& OwnerCo
 
 	if (!NpcPawn || !PlayerPawn)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[Wait] Npc=%s Player=%s"),
+			*GetNameSafe(NpcPawn), *GetNameSafe(PlayerPawn));
 		return false;
 	}
 
 	const float DistSq = FVector::DistSquared2D(NpcPawn->GetActorLocation(), PlayerPawn->GetActorLocation());
+	const bool bNear = DistSq <= FMath::Square(CatchUpRadius);
+
+	UE_LOG(LogTemp, Warning, TEXT("[Wait] 거리=%.1f 기준=%.1f 통과=%d"),
+		FMath::Sqrt(DistSq), CatchUpRadius, bNear);
+	
 	return DistSq <= FMath::Square(CatchUpRadius);
 }

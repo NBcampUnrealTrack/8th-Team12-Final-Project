@@ -5,6 +5,7 @@
 #include "EngineUtils.h"
 #include "FebriculaCharacter.h"
 #include "Activity/ActivitySubsystem.h"
+#include "Blueprint/UserWidget.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/FebriculaPlayerStart.h"
 #include "GameMode/LevelAutoEventSetting.h"
@@ -77,6 +78,20 @@ void AFebriculaGameMode::BeginPlay()
 
 	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
 	PlayEvent();
+	
+	if (ALevelAutoEventSetting* AES = Cast<ALevelAutoEventSetting>(GetWorldSettings()))
+	{
+		ActivityWidget = AES->ActivityWidget;
+	}
+	if (ActivityWidget.IsNull()) return;
+	
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		ActivityWidgetObject = CreateWidget<UUserWidget>(PC, ActivityWidget.LoadSynchronous());
+		ActivityWidgetObject->AddToViewport();
+		
+		
+	}
 }
 
 TSoftClassPtr<ABaseNpcCharacter> AFebriculaGameMode::GetNpcViaName(FName NowName)

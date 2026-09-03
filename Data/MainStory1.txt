@@ -136,12 +136,12 @@ AI의 끊임없는 발전.
 
 @label D1_102
 @CompleteEvent MainStory3
-@TimeAdvanceSchedule 2
 @wait_near 100 NPC_Suyun
 @hide
 
 @label D1_103
 @ChangeLevel SchoolOutside
+@TimeAdvanceSchedule 2
 @wait .1
 @hide
 @end
@@ -190,6 +190,7 @@ AI의 끊임없는 발전.
 @cam Loc 4178.8 -1699.6 8.2 Rot 0 8.6 -176.0 .1
 @Teleport Player PlayerFirstAround2
 @Teleport NPC_Suyun SuyunOutsideThird
+@TimeAdvanceSchedule 2
 @NpcFacePlayer NPC_Suyun
 @FadeIn 3
 @wait .3
@@ -208,6 +209,7 @@ AI의 끊임없는 발전.
 @Teleport Player PlayerFirstAround3
 @Teleport NPC_Suyun SuyunOutsideForth
 @NpcFacePlayer NPC_Suyun
+
 @FadeIn 3
 @wait .3
 
@@ -230,10 +232,11 @@ AI의 끊임없는 발전.
 @end
 
 @label D1_108
-@cam Loc -797.6 1406.1 142.1 Rot 0 0 -70
+@cam Loc -601.6 1449.5 142.1 Rot 0 0 -70
 @SpawnActor NPC_Suyun SuyunFirst
 @SpawnActor NPC_Doyun DoyunFirst
 @NpcFacePlayer NPC_Suyun
+@TimeAdvanceSchedule 2
 @FadeIn 3
 @wait .3
 
@@ -243,24 +246,39 @@ AI의 끊임없는 발전.
 분리되어 있구나.
 응. 원래는 저 자리에 별관이 있었는데 오래되서 위험하다고 헐어버리고 저렇게 강당을 세웠다 그러더라고.
 안에는…
-@NpcStartGuide NPC_Doyun DoyunFirstMove
+@NpcStartPatrol NPC_Doyun DoyunFirstMove
 @PlayAnim NPC_Doyun Walk 
 @wait_arrive 100 NPC_Doyun
 @hide
 
+@cast 도윤 = "김도윤" NPC_Doyun
 @label D1_109
-어… 안녕?
-하아… 또 너야? 여기서 뭐해?
-잠깐 운동…?
-옆에 얜 누구야? 전학생?
-말 돌리지 말고.
-지금 아직 쉬는 시간도 아닌데 여기서 뭐 하냐니까?
-잠깐 정돈 괜찮잖아. 어차피 국어쌤이 도서관에서 자습하라고 했는데.
-‘도서관’에서 ‘자습’ 하라고 했지 누가 체육관에서 운동해도 된다 그랬어?
-아 한 번만 봐줘~ 너도 벌점 처리하기 귀찮을 거 아냐~
-안 되는 건 안 돼.
-나가. 
-거 참 까탈스럽네. 간다 가.
+@StopAnim NPC_Doyun
+@NpcFaceNpc NPC_Doyun NPC_Suyun
+@NpcFaceNpc NPC_Suyun NPC_Doyun
+도윤: 어… 안녕?
+서윤: 하아… 또 너야? 여기서 뭐해?
+도윤: 잠깐 운동…?
+@NpcFacePlayer NPC_Doyun
+도윤: 옆에 얜 누구야? 전학생?
+서윤: 말 돌리지 말고.
+서윤: 지금 아직 쉬는 시간도 아닌데 여기서 뭐 하냐니까?
+@NpcFaceNpc NPC_Doyun NPC_Suyun
+도윤:잠깐 정돈 괜찮잖아. 어차피 국어쌤이 도서관에서 자습하라고 했는데.
+서윤: ‘도서관’에서 ‘자습’ 하라고 했지 누가 체육관에서 운동해도 된다 그랬어?
+도윤: 아 한 번만 봐줘~ 너도 벌점 처리하기 귀찮을 거 아냐~
+서윤: 안 되는 건 안 돼.
+서윤: 나가. 
+도윤: 거 참 까탈스럽네. 간다 가.
+
+@PlayAnim NPC_Doyun Walk2 1
+@NpcStartPatrol NPC_Doyun DoyunMoveSecond
+@wait_arrive 100 NPC_Doyun
+@hide
+
+@label D1_110
+@StopAnim NPC_Doyun
+@NpcFacePlayer NPC_Suyun
 누구야?
 김도윤. 골 때리는 놈. 넌 될 수 있으면 쟤랑은 어울려 다니지 마..
 왜 그렇게 칼 같이 자르는 거야? 같은 학생끼리인데 좀 봐줄 수도 있을 것 같은데.
@@ -273,4 +291,13 @@ AI의 끊임없는 발전.
 
 학교 탐방은 이쯤 하고 그만 돌아가자.
 그래.
+@FadeOut Black 3
+@wait .3
+@hide
+
+@label D1_111
+@ChangeLevel Classroom
+@FadeIn 3
+@wait .3
+@hide
 @end

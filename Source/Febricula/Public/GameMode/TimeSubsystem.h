@@ -50,6 +50,8 @@ public:
 	void SpendDay();
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule")
 	void SpendSchedule();
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule") 
+	void ResetSchedule();
 
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	int32 GetNowDay() const { return NowDay; }

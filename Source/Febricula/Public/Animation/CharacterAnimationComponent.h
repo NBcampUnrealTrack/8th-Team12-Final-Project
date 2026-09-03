@@ -55,5 +55,7 @@ protected:
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation")
 	bool bPreferSingleNodeAnim = false;
-
+	
+	UPROPERTY(EditAnywhere, Category = "Debug")
+	bool bLogSlotWeight = false;
 };

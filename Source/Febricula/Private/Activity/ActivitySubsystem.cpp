@@ -3,6 +3,7 @@
 #include "Activity/ActivitySubsystem.h"
 #include "Activity/ActivitySetting.h"
 #include "GameMode/TimeSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 
 void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -31,8 +32,8 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// 레벨 로드 완료 시 활동 목록 재검사
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UActivitySubsystem::OnLevelLoaded);
 
-	CurrentAP = 24;
-	MaxAP = 24;
+	CurrentAP = 6;
+	MaxAP = 6;
 }
 
 void UActivitySubsystem::FindRunnableActivities()
@@ -80,6 +81,16 @@ FGameplayTag UActivitySubsystem::GetNowScheduleTag() const
 	return NowSchedule;
 }
 
+const TMap<FGameplayTag, FActivityDefinition>& UActivitySubsystem::GetAllActivities() const
+{
+	return AllActivities;
+}
+
+const TMap<FGameplayTag, FActivityDefinition>& UActivitySubsystem::GetRunnableActivities() const
+{
+	return RunnableActivities;
+}
+
 void UActivitySubsystem::OnChangeSchedule(FGameplayTag ChangedSchedule)
 {
 	NowSchedule = ChangedSchedule;
@@ -107,6 +118,15 @@ bool UActivitySubsystem::TryConsumeAP(int32 Cost)
 	return true;
 }
 
+void UActivitySubsystem::GoHome()
+{
+	if (CurrentAP == 0)
+	{
+		const UActivitySetting* AS = GetDefault<UActivitySetting>();
+		UGameplayStatics::OpenLevelBySoftObjectPtr(this, *AS->Levels.Find("Room"));
+	}
+}
+
 void UActivitySubsystem::RunActivity(FGameplayTag ActivityTag)
 {
 	const FActivityDefinition* Definition = RunnableActivities.Find(ActivityTag);
@@ -122,5 +142,6 @@ void UActivitySubsystem::RunActivity(FGameplayTag ActivityTag)
 	}
 
 	OnActivityRequested.Broadcast(ActivityTag, *Definition);
-}
+	GoHome();
 
+}

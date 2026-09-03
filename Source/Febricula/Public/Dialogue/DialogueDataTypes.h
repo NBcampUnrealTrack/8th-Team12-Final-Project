@@ -202,6 +202,8 @@ enum class EGameActionType : uint8
 	 */
 	TimeAdvanceSchedule		UMETA(DisplayName = "다음 시간대로"),
 	
+	TimeResetSchedule		UMETA(DisplayName = "시간대 리셋"),
+	
 	
 	/**  
 	 *  NPC가 아닌 상호작용 가능한 일반 액터와의 액션도 처리하기 위해 추가된 Action	 

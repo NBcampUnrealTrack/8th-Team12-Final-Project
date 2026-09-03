@@ -140,6 +140,15 @@ void UTimeSubsystem::SpendSchedule()
 	OnScheduleChanged.Broadcast(NowSchedule.ScheduleName);
 }
 
+void UTimeSubsystem::ResetSchedule()
+{
+	int32 Day = GetAbsoluteDay();
+	while (AbsoluteDay == Day)
+	{
+		SpendSchedule();
+	}
+}
+
 bool UTimeSubsystem::IsWeekend() const
 {
 	// [변경] 원본은 NowDay % 7 을 썼는데, NowDay는 달마다 1로 리셋되므로

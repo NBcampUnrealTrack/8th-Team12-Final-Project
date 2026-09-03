@@ -19,4 +19,7 @@ public:
 	TObjectPtr<UDataTable> AutoEventRow;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TObjectPtr<UDataTable> AutoDialogueRow;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<UUserWidget> ActivityWidget;
 };

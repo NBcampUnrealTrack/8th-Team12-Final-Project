@@ -4,6 +4,7 @@
 #include "Animation/CharacterAnimationComponent.h"
 
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 
 // Sets default values for this component's properties
@@ -11,7 +12,7 @@ UCharacterAnimationComponent::UCharacterAnimationComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 
 	// ...
 }
@@ -25,25 +26,30 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 			*GetNameSafe(this), *AnimId.ToString());
 		return false;
 	}
+	
+	
 	if (ACharacter* Owner = Cast<ACharacter>(GetOwner()))
 	{
 		if (USkeletalMeshComponent* MeshComp = Owner->GetMesh())
 		{
+			UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] AnimMode=%d"), (int32)MeshComp->GetAnimationMode());
 			UAnimInstance* AnimInstance = MeshComp->GetAnimInstance();
 			if (AnimInstance && !bPreferSingleNodeAnim)
 			{
+				//AnimInstance->Montage_Stop(0.f);   // 모든 몽타주 즉시 중단+
+				//AnimInstance->StopSlotAnimation(0.f, AnimSlotName);
+				if (UCharacterMovementComponent* Movement = Owner->GetCharacterMovement())
+				{
+					Movement->bOrientRotationToMovement = true;
+				}
 				// AnimSequence를 런타임에 몽타주로 감싸 슬롯에 얹는다. 몽타주 애셋이 없어도 된다.
 				// LoopCount는 반복 횟수라서 무한 루프가 없다. 지속 포즈는 큰 값으로 깔아두고
 				// StopNpcAnim으로 끊는 방식이 안전하다.
 				const int32 LoopCount = bLoop ? 1000 : 1;
-				UE_LOG(LogTemp, Warning, TEXT("애님 전: %s"), *GetOwner()->GetActorRotation().ToString());
 
 				UAnimMontage* Played = AnimInstance->PlaySlotAnimationAsDynamicMontage(
 					*Found, AnimSlotName, AnimBlendTime, AnimBlendTime, /*InPlayRate=*/1.f, LoopCount);
-				UE_LOG(LogTemp, Warning, TEXT("애님 후: %s"), *GetOwner()->GetActorRotation().ToString());
-
-				UE_LOG(LogTemp, Warning, TEXT("슬롯=%s 애님=%s 결과=%s"),
-					*AnimSlotName.ToString(), *AnimId.ToString(), *GetNameSafe(Played));
+				
 				if (Played)
 				{
 					return true;
@@ -66,24 +72,24 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 
 void UCharacterAnimationComponent::StopAnim(float BlendOutTime)
 {
-	if (ACharacter* Owner = Cast<ACharacter>(GetOwner()))
+	UE_LOG(LogTemp, Warning, TEXT("STOP ANIM!"));
+	ACharacter* Owner = Cast<ACharacter>(GetOwner());
+	if (!Owner) return;
+
+	USkeletalMeshComponent* MeshComp = Owner->GetMesh();
+	if (!MeshComp) return;
+
+	if (bPreferSingleNodeAnim)
 	{
-		if (USkeletalMeshComponent* MeshComp = Owner->GetMesh())
-		{
-			if (!MeshComp)
-			{
-				return;
-			}
+		MeshComp->Stop();
+		// 애님 BP로 복귀
+		MeshComp->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+		return;
+	}
 
-			if (UAnimInstance* AnimInstance = MeshComp->GetAnimInstance())
-			{
-				AnimInstance->StopSlotAnimation(BlendOutTime, AnimSlotName);
-				return;
-			}
-
-			// 단일 노드 모드로 재생 중이던 경우 (애님 BP가 없는 NPC)
-			MeshComp->Stop();
-		}
+	if (UAnimInstance* AnimInstance = MeshComp->GetAnimInstance())
+	{
+		AnimInstance->StopSlotAnimation(BlendOutTime, AnimSlotName);
 	}
 }
 
@@ -91,4 +97,19 @@ void UCharacterAnimationComponent::TickComponent(float DeltaTime, enum ELevelTic
 	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	if (USkeletalMeshComponent* MeshComp = Cast<ACharacter>(GetOwner())->GetMesh())
+	{
+		if (UAnimInstance* Anim = MeshComp->GetAnimInstance())
+		{
+			if (bLogSlotWeight)
+			{
+				// UE_LOG(LogTemp, Warning, TEXT("[슬롯] %s: 가중치=%.2f 몽타주=%d"),
+				// 	*GetOwner()->GetName(),
+				// 	Anim->GetSlotMontageLocalWeight(TEXT("DefaultSlot")),
+				// 	Anim->IsAnyMontagePlaying());
+			}
+		}
+	}
+
 }
