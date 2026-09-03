@@ -55,3 +55,12 @@ void UFebriculaCheatManager::GetClearedEvents()
 		}
 	}
 }
+
+void UFebriculaCheatManager::AddClearedEvent(FName EventId)
+{
+	if (EventId.IsNone()) return;
+	if (UGameProgressSubsystem* Progress = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		Progress->MarkEventCompleted(EventId);
+	}
+}

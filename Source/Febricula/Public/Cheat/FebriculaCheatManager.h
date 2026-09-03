@@ -25,4 +25,7 @@ public:
 	
 	UFUNCTION(Exec)
 	void GetClearedEvents();
+	
+	UFUNCTION(Exec)
+	void AddClearedEvent(FName EventId);
 };
