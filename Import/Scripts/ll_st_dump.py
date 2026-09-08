@@ -15,8 +15,8 @@
 파라미터 값·`Tasks Completion`·전이·자식 순서가 전부 읽힌다. 「에디터에서 눈으로
 확인」해야 했던 것들을 여기서 대신 센다.
 
-⚠ **이식 직후 이걸로 리다이렉트가 먹었는지 확인한다** (`Import/BURGERHOUSE.md` §6).
-   태스크 수가 39 보다 적으면 리다이렉트가 빠져 태스크가 사라진 것이다.
+⚠ **기준 수치는 상태 32 · 태스크 39 · 전이 29 다.** 이보다 적으면 에셋에서
+   태스크가 사라진 것이고, 그 상태로 트리를 저장하면 영영 없어진다.
 
 ## ⚠ `EditorData` 는 프로퍼티가 아니다
 
@@ -164,15 +164,13 @@ def main():
     L('  상태 %d · 태스크 %d · 전이 %d' % (
         stats['states'], stats['tasks'], stats['transitions']))
 
-    # ⚠ 이식 직후의 판정 기준. 리다이렉트가 빠지면 태스크가 **에러 없이** 준다.
+    # ⚠ 태스크가 사라져도 **에러가 안 난다.** 그래서 수를 센다.
     L('')
     if stats['tasks'] < 39 or stats['states'] < 32:
-        unreal.log_error('  ⚠⚠ 이식 기준(상태 32 · 태스크 39 · 전이 29)보다 적다.')
-        unreal.log_error('     Config/DefaultEngine.ini 의 CoreRedirects /')
-        unreal.log_error('     GameplayTagRedirects 를 볼 것 — 빠진 리다이렉트가 있으면')
-        unreal.log_error('     그 태스크는 이미 사라졌고, 저장하면 영영 없어진다.')
+        unreal.log_error('  ⚠⚠ 기준(상태 32 · 태스크 39 · 전이 29)보다 적다 — 태스크가 사라졌다.')
+        unreal.log_error('     ⚠ 이 상태로 트리를 열어 저장하지 말 것. 저장하면 영영 없어진다.')
     else:
-        L('  이식 기준(상태 32 · 태스크 39 · 전이 29)을 만족한다.')
+        L('  기준(상태 32 · 태스크 39 · 전이 29)을 만족한다.')
 
 
 main()

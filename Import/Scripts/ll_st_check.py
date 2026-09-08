@@ -93,9 +93,14 @@ def find_editor_data(st):
       그래서 서브오브젝트를 직접 뒤진다.
     """
     # ① 이름으로 직접
-    for nm in ('EditorData', 'StateTreeEditorData'):
+    #
+    # ⚠ 실제 이름은 `StateTreeEditorData_0` 처럼 **뒤에 숫자가 붙는다.**
+    #   숫자 없는 이름만 찾으면 늘 실패하고 「EditorData 에 못 닿았다」로
+    #   오진한다 — 실제로는 멀쩡한데.
+    for nm in ['EditorData', 'StateTreeEditorData'] + \
+              ['StateTreeEditorData_%d' % i for i in range(0, 8)]:
         try:
-            o = unreal.find_object(st, nm)
+            o = unreal.load_object(st, nm)
             if o:
                 return o
         except Exception:
@@ -174,9 +179,13 @@ def dump_blueprints():
         if cdo and not isinstance(cdo, str):
             comp = safe(lambda: cdo.get_editor_property('state_tree_ai'), None)
             if comp and not isinstance(comp, str):
-                ref = safe(lambda: str(comp.get_editor_property('state_tree_ref')))
+                # ⚠ `state_tree_ref` 를 그대로 찍으면 `<Struct 'StateTreeReference'
+                #   ... {}>` 만 나온다 — **구조체 안쪽까지 들어가야** 에셋이 보인다.
+                #   겉만 보고 판정하면 꽂혀 있는데도 「안 꽂혔다」가 된다.
+                refstruct = safe(lambda: comp.get_editor_property('state_tree_ref'), None)
+                ref = safe(lambda: refstruct.get_editor_property('state_tree').get_path_name())
                 W('  StateTree Ref    : %s' % ref)
-                if '읽기 실패' in ref:
+                if '읽기 실패' in ref or ref == 'None':
                     W('    ⚠ 판정 불가 — 프로퍼티를 못 읽었다.')
                     W('      「못 읽음」은 「안 꽂힘」이 아니다 (§6.0 ②-c).')
                     W('      .uasset 을 직접 훑거나 에디터에서 눈으로 볼 것')
