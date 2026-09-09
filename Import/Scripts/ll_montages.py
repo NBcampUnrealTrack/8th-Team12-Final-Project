@@ -51,11 +51,17 @@ ACTIONS = {
     'Interact_Reach': [
         ('Reaching_Out', 1.0, None),        # 4초 — 자를 필요 없다
     ],
+    # 먹는 동작 — Eat_Animation_Pack 을 손님 스켈레톤으로 리타겟한 것
+    # (`ll_eat_retarget.py`). 길이가 6.9~9.2초로 고르고 자를 필요가 없다.
+    #
+    # 가중치를 전부 1.0 으로 둬서 **네 개가 고르게** 나오게 한다. 고르는 것은
+    # `ACustomerCharacter::PickVariant` 가 하고, `bAvoidRepeatVariant` 가
+    # 같은 것이 연속으로 나오지 않게 막는다.
     'Sit_Eat': [
-        ('Sitting', 1.0, 10.0),
-        ('Sitting__1_', 0.6, 10.0),
-        ('Sitting_Talking', 0.4, 10.0),
-        ('Sitting_Thumbs_Up', 0.2, 10.0),
+        ('Eating_a_Burger', 1.0, None),
+        ('Eating_a_Drumstick', 1.0, None),
+        ('Eating_Frantically', 1.0, None),
+        ('Eating_Fries', 1.0, None),
     ],
 }
 

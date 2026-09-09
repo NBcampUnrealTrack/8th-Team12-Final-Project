@@ -151,6 +151,7 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 | `ll_st_check.py` | `ST_Customer` · `BP_Customer` · `BP_CustomerAI` 배선 점검 |
 | `ll_st_dump.py` | 트리를 통째로 덤프 — 상태 32 · 태스크 39 · 전이 29 가 기준 |
 | `ll_montages.py` | 몽타주를 만들고 `BP_Customer > Actions` 에 꽂는다 |
+| `ll_eat_retarget.py` | Eat 팩 애님을 손님 스켈레톤으로 리타겟한다 |
 
 ---
 
@@ -176,12 +177,38 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 Idle_Look       AM_Texting_While_Standing 1.0 · AM_Talking_On_A_Cell_Phone 0.5
                 AM_Texting 0.4 · AM_Telling_A_Secret 0.2
 Interact_Reach  AM_Reaching_Out 1.0
-Sit_Eat         AM_Sitting 1.0 · AM_Sitting__1_ 0.6
-                AM_Sitting_Talking 0.4 · AM_Sitting_Thumbs_Up 0.2
+Sit_Eat         AM_Eating_a_Burger · AM_Eating_a_Drumstick
+                AM_Eating_Frantically · AM_Eating_Fries      (전부 1.0 = 균등)
 ```
 
 가중치는 합이 1일 필요 없다. 기본 동작을 1.0, 가끔 나오는 몸짓을 0.2 로 두면
-대개 평범하고 가끔 눈에 띄는 그림이 된다.
+대개 평범하고 가끔 눈에 띄는 그림이 된다. `Sit_Eat` 은 넷을 고르게 쓰려고 전부
+1.0 으로 뒀다.
+
+고르는 것은 `ACustomerCharacter::PickVariant` 가 한다 — 가중 무작위이고,
+`bAvoidRepeatVariant` 가 같은 것이 연속으로 나오지 않게 막는다.
+
+### 먹는 애님은 리타겟해서 넣었다
+
+`Eat_Animation_Pack` 은 **UE 마네퀸 리그(161본 · `pelvis`)** 로 만들어졌고 손님은
+**Mixamo 리그(65본 · `mixamorig:*`)** 라 그대로는 재생이 안 된다. `ll_eat_retarget.py`
+가 IK 리그 + 리타게터를 만들어 손님 스켈레톤용 애님 4개를 뽑는다.
+
+```
+Anims/Eat_Animation_Pack/          원본 (마네퀸 리그)
+Anims/Eat_Animation_Pack/Retarget/ IK_* · RTG_*  ← 리타겟 설정
+Anims/Mixamo/Anims/Eating_*        결과 (손님 리그) 6.9~9.2s
+```
+
+⚠⚠ **자세가 맞는지는 눈으로 봐야 한다.** 자동 정렬(A포즈↔T포즈)이 대개 맞지만
+손에 물건을 든 애님은 손 위치가 어긋나기 쉽다. 어긋나면 `RTG_*` 를 열어
+**Edit Pose** 로 맞추고 `ll_eat_retarget.py` 를 다시 돌린다.
+
+⚠ **이 애님들이 앉아서 먹는 것인지 서서 먹는 것인지도 확인할 것.** 서서 먹는
+것이면 `Sit_Eat` 이 아니라 `Idle_Look` 쪽으로 옮겨야 한다.
+
+⚠ 예전에 쓰던 `AM_Sitting*` 몽타주 4개는 그대로 남아 있다. 다시 쓰려면
+`ll_montages.py` 의 `ACTIONS` 에 되돌려 넣으면 된다.
 
 ⚠ 몽타주는 **`DefaultSlot`** 을 써야 `ABP_Customer` 의 `Slot 'DefaultSlot'` 노드를
 타고 화면에 나온다. 팩토리가 기본으로 그렇게 만들지만, 손으로 만들 때는 확인할 것.
@@ -279,18 +306,17 @@ Eating   Play Action  Sit-Eat             →  Sit_Eat
 `FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
 없는 것」과 완전히 똑같다. 그 상태에서는 애님 없이 시간만 센다.
 
-### 8-4. 몽타주 길이를 안 잘랐다
+### 8-4. `Idle_Look` 몽타주가 너무 길다
 
-`Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.** 원본이 길다:
+`Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.** `Sit_Eat` 은 리타겟한
+먹는 애님으로 바꿔서 6.9~9.2초로 괜찮아졌지만, `Idle_Look` 은 아직 길다:
 
 | | |
 |---|---|
-| `AM_Sitting_Talking` | 44.1s |
 | `AM_Talking_On_A_Cell_Phone` | 37.2s |
 | `AM_Texting_While_Standing` | 23.6s |
 | `AM_Texting` | 18.5s |
 | `AM_Telling_A_Secret` | 10.9s |
-| 나머지 | 4~6s |
 
 **눈에 띄는 결과** — `Enter` 가 `Idle_Look` 을 한 번 재생하고 끝나므로 손님이
 문 앞에서 **최대 37초를 서 있다가** 키오스크로 간다.
