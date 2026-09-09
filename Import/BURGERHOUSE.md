@@ -239,17 +239,27 @@ StateTree 태스크 내부(`InstancedStruct`)와 몽타주 `SequenceLength` 는 
 재생되지 않는다.** 아래를 이어야 그림이 완성된다.
 
 ```
-                   ┌──────────────── Base Pose ─────────┐
-[상태 기계 Locomotion]                                   ├─[Layered blend per bone]─┐
-                   └─[Slot 'UpperBody']── Blend Poses 0 ─┘                          │
-                                                                                    │
-                                          [Slot 'DefaultSlot']◄────────────────────┘
-                                                    │
-                                              [Output Pose]
+[상태 기계 Locomotion] ──→ [New Save cached pose]  이름: LocoCache
+
+[Use cached pose 'LocoCache'] ──→ [Slot 'UpperBody'] 의 Source
+                                          │
+[Use cached pose 'LocoCache'] ──→ Base Pose      Blend Poses 0
+                                     └──[Layered blend per bone]──┘
+                                                 │
+                                    [Slot 'DefaultSlot'] 의 Source
+                                                 │
+                                           [Output Pose]
 ```
 
-⚠⚠ **상태 기계 출력이 두 갈래로 간다** — `Base Pose` 로 하나, `Slot 'UpperBody'`
-의 **입력(Source)** 으로 하나. 출력 핀은 선을 여러 개 낼 수 있다.
+⚠⚠ **AnimGraph 의 포즈 핀은 1:1 이다.** 블루프린트 데이터 핀과 달리 출력 포즈를
+여러 입력에 못 나눈다 — 그래서 상태 기계를 **Cached Pose 로 저장해서 두 번
+꺼내 쓴다.** 이게 UE 가 이 경우에 쓰라고 만든 장치다.
+
+⚠ `Use cached pose '...'` 는 **`New Save cached pose` 를 먼저 만들어야** 우클릭
+메뉴에 뜬다. 안 보이면 그것부터 만들 것.
+
+⚠ 캐시는 한 프레임에 **한 번만 평가**되고 결과를 재사용한다 — 상태 기계를 두 번
+돌리는 것이 아니라 성능상으로도 이 쪽이 맞다.
 
 ⚠⚠ **`Slot 'UpperBody'` 의 입력을 비워 두면 안 된다.** 비우면 몽타주가 없을 때
 그 슬롯이 **레퍼런스 포즈(T포즈)** 를 낸다 — 손님이 늘 팔을 벌리고 있게 된다.
@@ -284,20 +294,32 @@ Details:
 ⚠⚠ **`Blend Weights 0` 핀이 기본 0 이다.** 0 이면 블렌드가 아무 것도 안 한다 —
 노드도 멀쩡하고 컴파일도 되는데 먹는 동작만 안 보인다. **1.0 으로 바꿀 것.**
 
-**③ 선 잇기**
+**③ 캐시 노드 두 종류**
 
 ```
-[상태 기계] 출력  →  [Layered blend per bone] 의 Base Pose
-[상태 기계] 출력  →  [Slot 'UpperBody'] 의 Source        ← 같은 출력에서 하나 더
-[Slot 'UpperBody'] 출력 → [Layered blend per bone] 의 Blend Poses 0
-[Layered blend per bone] 출력 → [Slot 'DefaultSlot'] 의 Source
-[Slot 'DefaultSlot'] 출력 → [Output Pose]
+빈 곳 우클릭 > "New Save cached pose" 추가 → 이름을 LocoCache 로
+   (노드 이름을 더블클릭하거나 Details 에서 바꾼다)
+빈 곳 우클릭 > "Use cached pose 'LocoCache'" → **두 개** 추가
+```
+
+⚠ `Use cached pose` 는 `New Save cached pose` 를 **먼저 만들어야** 메뉴에 뜬다.
+
+**④ 선 잇기**
+
+```
+[상태 기계 Locomotion] → [New Save cached pose 'LocoCache']
+
+[Use cached pose] 1 → [Layered blend per bone] 의 Base Pose
+[Use cached pose] 2 → [Slot 'UpperBody'] 의 Source
+[Slot 'UpperBody'] → [Layered blend per bone] 의 Blend Poses 0
+[Layered blend per bone] → [Slot 'DefaultSlot'] 의 Source
+[Slot 'DefaultSlot'] → [Output Pose]
 ```
 
 ⚠ **`DefaultSlot` 이 마지막이어야 한다.** `Interact_Reach` 같은 전신 몽타주가
 상체 레이어까지 덮어써야 하기 때문이다.
 
-**④ Compile > Save**
+**⑤ Compile > Save**
 
 ### 확인 — 증상별 역추적
 
@@ -306,6 +328,7 @@ Details:
 | T포즈로 팔을 벌리고 있다 | `Slot 'UpperBody'` 의 Source 가 비었다 |
 | 먹는 동작이 아예 안 보인다 | `Blend Weights 0` 이 0 이다 |
 | 앉았는데 일어서 보인다 | 상체 레이어를 안 거치고 `DefaultSlot` 으로 갔다 |
+| 캐시 노드가 메뉴에 없다 | `New Save cached pose` 를 아직 안 만들었다 |
 | 하체가 이상하게 꺾인다 | Branch Filter 본 이름이 틀렸다 (`Spine` 이어야 한다) |
 
 ### 8-2. 프리필 손님이 몇 초 뒤 일어나 나간다
