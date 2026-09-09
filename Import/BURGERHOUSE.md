@@ -21,7 +21,7 @@ Content/BurgerHouse/
   Maps/L_BurgerHouse      레벨
   AI/BP_Customer · BP_CustomerAI · ST_Customer
   Anims/Mixamo/ABP_Customer + 애님 21 (Eating 4 포함)
-  Anims/Montages/ 몽타주 9
+  Anims/Montages/ 몽타주 11
   Anims/Eat_Animation_Pack/ 원본 + 리타겟 설정
   Props · Materials · Shell · Textures
 ```
@@ -76,6 +76,39 @@ PrefillPlacements   5명    ← 레벨이 열릴 때부터 앉아 있는 손님
 
 ⚠ `FixedDesiredAlive` 를 프리필 인원으로 다 채우면 **문으로 들어오는 손님이 영영
 안 생긴다.** 정원의 절반쯤을 프리필로 두는 것이 적당하다.
+
+### 프리필 손님은 **장식이다** — 트리를 안 탄다
+
+```
+CustomerSpawner > Prefill > bPrefillRunsAI = false   ← 기본값
+```
+
+프리필로 태어난 손님에게는 **AI 컨트롤러를 안 붙인다.** 컨트롤러가 없으면
+StateTree 가 시작조차 안 하므로 `Move To` · `Leave` · `Despawn` 이 **구조적으로
+불가능하다.** 자리에 영원히 남는다.
+
+대신 `ACustomerCharacter` 가 역할에 맞는 몸짓을 끝없이 돌린다:
+
+```
+DecorationActions      Eating -> Sit_Idle · Waiting -> Idle_Look · Ordering -> Idle_Look
+DecorationGap  2.5s    몸짓 사이에 0~2.5초를 무작위로 쉰다
+```
+
+⚠ 몸짓은 `PlayAction` 이 **끝날 때마다 변형을 새로 뽑는다** — 같은 행동 이름을
+반복해도 몸짓이 계속 바뀐다. 쉬는 시간까지 흔들어서 여럿이 앉아 있어도 동시에
+안 바뀐다.
+
+⚠ **장식 손님도 슬롯은 예약한다.** 그래서 걸어 들어온 손님이 그 의자에 겹쳐
+앉지 않는다. 대신 그만큼 자리가 영구히 준다 — `FixedDesiredAlive` 를 프리필
+인원보다 넉넉히 둘 것.
+
+⚠ 장식 `Waiting` 손님은 **주문을 넣지 않는다.** 넣으면 아무도 안 찾아가서
+12초 뒤 `Ready` 가 되어 픽업대에 영원히 남는다.
+
+⚠ 장식 `Waiting` 손님은 **줄 자리로 옮겨 주는 코드가 없다** (그건 트리가 하던
+일이다). `PrefillPlacements` 에 줄 좌표를 직접 적어야 한다.
+
+`bPrefillRunsAI` 를 켜면 프리필도 트리를 타서 먹고 나가는 한 바퀴를 돈다.
 
 ### 다른 곳에서 손님을 낳고 싶다면
 
@@ -172,16 +205,32 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 
 ## 7. 몽타주
 
-`Content/BurgerHouse/Anims/Montages/` 에 9개가 있고 `BP_Customer > Actions` 에
+`Content/BurgerHouse/Anims/Montages/` 에 11개가 있고 `BP_Customer > Actions` 에
 꽂혀 있다. `ll_montages.py` 가 만든다 (다시 만들려면 그 스크립트를 돌린다).
 
 ```
-Idle_Look       AM_Texting_While_Standing 1.0 · AM_Talking_On_A_Cell_Phone 0.5
-                AM_Texting 0.4 · AM_Telling_A_Secret 0.2
-Interact_Reach  AM_Reaching_Out 1.0
-Sit_Eat         AM_Eating_a_Burger · AM_Eating_a_Drumstick
-                AM_Eating_Frantically · AM_Eating_Fries      (전부 1.0 = 균등)
+슬롯 DefaultSlot (전신) — 서 있는 손님
+  Idle_Look       AM_Texting_While_Standing 1.0 · AM_Talking_On_A_Cell_Phone 0.5
+                  AM_Texting 0.4 · AM_Telling_A_Secret 0.2
+  Interact_Reach  AM_Reaching_Out 1.0
+
+슬롯 UpperBody (상체만) — 앉은 손님
+  Sit_Idle        AM_Eating_a_Burger 1.0 · AM_Eating_Fries 1.0
+                  AM_Eating_a_Drumstick 0.8 · AM_Eating_Frantically 0.5
+                  AM_Sit_Texting 0.6 · AM_Sit_Talking_On_A_Cell_Phone 0.5
+  Sit_Eat         AM_Eating_* 4개 (전부 1.0 = 균등)
 ```
+
+`Sit_Idle` 은 **장식 손님이 끝없이 돌리는 풀**이다 (먹기 + 폰 만지기).
+`Sit_Eat` 은 걸어 들어온 손님이 트리에서 쓰는 것 — 먹는 것만 들었다.
+
+⚠ **`AM_Sit_Texting` · `AM_Sit_Talking_On_A_Cell_Phone` 은 서 있는 쪽과 애님은
+같지만 몽타주 에셋이 다르다.** 몽타주는 슬롯을 **하나만** 갖기 때문이다 —
+같은 애님을 앉은 손님(UpperBody)과 서 있는 손님(DefaultSlot)이 같이 쓰려면
+두 벌이 필요하다.
+
+⚠ 길이가 제각각이다 — `AM_Sit_Talking_On_A_Cell_Phone` 은 **37.2초**로 길다
+(가중치 0.5 라 10번에 한 번쯤). 짧게 하려면 §8-3 처럼 구간을 자른다.
 
 가중치는 합이 1일 필요 없다. 기본 동작을 1.0, 가끔 나오는 몸짓을 0.2 로 두면
 대개 평범하고 가끔 눈에 띄는 그림이 된다. `Sit_Eat` 은 넷을 고르게 쓰려고 전부
@@ -331,21 +380,7 @@ Details:
 | 캐시 노드가 메뉴에 없다 | `New Save cached pose` 를 아직 안 만들었다 |
 | 하체가 이상하게 꺾인다 | Branch Filter 본 이름이 틀렸다 (`Spine` 이어야 한다) |
 
-### 8-2. 프리필 손님이 몇 초 뒤 일어나 나간다
-
-`PE_Eat` 이 `Sit_Eat` 을 **한 번만** 재생하고 끝나면 `Leave` 로 간다.
-
-```
-ST_Customer > PE_Eat
-  Play Action 의  Loop ☑                       ← 끝나지 않게
-  전이 OnStateCompleted → Leave   삭제          ← 나가지 않게
-```
-
-⚠ **둘은 한 쌍이다.** 전이만 지우면 `Play Action` 이 끝났을 때 받아 줄 전이가
-없어 **트리가 통째로 끝나고**, `Sit At Seat` 의 `ExitState` 가 손님을 일으켜
-세우고 좌석을 반납한다.
-
-### 8-3. ⚠⚠ 액션 이름 오타 둘
+### 8-2. ⚠⚠ 액션 이름 오타 둘 — 워크인이 3초만 앉는다
 
 ```
 K_Act    Play Action  Interaction_Reach   →  Interact_Reach
@@ -355,7 +390,7 @@ Eating   Play Action  Sit-Eat             →  Sit_Eat
 `FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
 없는 것」과 완전히 똑같다. 그 상태에서는 애님 없이 시간만 센다.
 
-### 8-4. `Idle_Look` 몽타주가 너무 길다
+### 8-3. `Idle_Look` 몽타주가 너무 길다
 
 `Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.**
 

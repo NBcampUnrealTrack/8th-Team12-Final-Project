@@ -99,8 +99,12 @@ bool ACustomerCharacter::ApplyStartRole()
 		HoldTray();
 		PlaceTrayAt(Use);
 
-		UE_LOG(LogBurgerHouseNPC, Log, TEXT("%s 프리필 착석 — %s (일행 %d)"),
-			*GetName(), *Seat->GetName(), PartyId);
+		// 장식 손님은 트리를 안 타므로 여기서 몸짓을 걸어 준다.
+		StartDecorationLoop();
+
+		UE_LOG(LogBurgerHouseNPC, Log, TEXT("%s 프리필 착석 — %s (일행 %d)%s"),
+			*GetName(), *Seat->GetName(), PartyId,
+			bDecoration ? TEXT(" [장식]") : TEXT(""));
 		return true;
 	}
 
@@ -121,18 +125,25 @@ bool ACustomerCharacter::ApplyStartRole()
 
 		const FTransform Use = Kiosk->GetUseTransform();
 		TeleportToPoint(Use.GetLocation(), Use.GetRotation().Rotator());
+		StartDecorationLoop();
 
-		UE_LOG(LogBurgerHouseNPC, Log, TEXT("%s 프리필 키오스크 — %s"),
-			*GetName(), *Kiosk->GetName());
+		UE_LOG(LogBurgerHouseNPC, Log, TEXT("%s 프리필 키오스크 — %s%s"),
+			*GetName(), *Kiosk->GetName(), bDecoration ? TEXT(" [장식]") : TEXT(""));
 		return true;
 	}
 
 	// ---------------------------------------------------------- 카운터 줄
 	if (StartRole == TEXT("Waiting"))
 	{
-		// 주문 번호가 없으면 `Order.Ready` 가 영영 안 와서 줄에 붙박이가 된다.
-		OrderNumber = Store->PlaceOrder(this);
+		// ⚠ **장식 손님은 주문을 넣지 않는다.** 트리를 안 타서 아무도 찾아가지
+		//    않으므로, 넣으면 12초 뒤 `Ready` 가 되어 픽업대에 **영원히 남는다.**
+		if (!bDecoration)
+		{
+			// 주문 번호가 없으면 `Order.Ready` 가 영영 안 와서 줄에 붙박이가 된다.
+			OrderNumber = Store->PlaceOrder(this);
+		}
 		const int32 Index = Store->EnterWaitArea(this);
+		StartDecorationLoop();
 
 		// ⚠ **자리 좌표는 여기서 못 만든다.** 줄의 기하(`QueueStart`·`QueueStep`)는
 		//    StateTree 태스크의 파라미터로 **레벨마다** 들어 있고, 서브시스템은
@@ -140,10 +151,18 @@ bool ACustomerCharacter::ApplyStartRole()
 		//    `PW_Wait ▸ Enter Wait Area ▸ Teleport On Enter` 가 첫 틱에 세워 준다.
 		//
 		//    ⚠ 그 스위치를 안 켜면 이 손님만 문 앞에서 걸어온다.
+		// ⚠ **장식 손님은 줄 자리로 옮겨 주는 코드가 없다.** 위 주석대로 자리를
+		//    잡는 것은 트리의 `Enter Wait Area ▸ Teleport On Enter` 인데 트리를
+		//    안 타기 때문이다. `PrefillPlacements` 에 줄 좌표를 직접 적어야 한다.
 		UE_LOG(LogBurgerHouseNPC, Log,
-			TEXT("%s 프리필 대기 — 주문 %d · 줄 %d번 (위치는 트리가 잡는다)"),
-			*GetName(), OrderNumber, Index);
-		return OrderNumber != 0;
+			TEXT("%s 프리필 대기 — 주문 %d · 줄 %d번%s"),
+			*GetName(), OrderNumber, Index,
+			bDecoration ? TEXT(" [장식 — 자리는 PrefillPlacements 가 정한다]")
+			            : TEXT(" (위치는 트리가 잡는다)"));
+
+		// ⚠ 장식 손님은 주문을 안 넣으므로 `OrderNumber` 가 0 이다. 그걸 실패로
+		//    치면 역할이 지워져 평범한 손님이 된다.
+		return bDecoration || OrderNumber != 0;
 	}
 
 	// ⚠ 스포너의 `Prefill Roles` 에 이 이름이 있는데 여기 분기가 없다.
@@ -226,6 +245,9 @@ void ACustomerCharacter::TeleportToPoint(const FVector& Location, const FRotator
 
 void ACustomerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	// ⚠ 반복 타이머를 안 끄면 파괴된 손님의 타이머가 남아 계속 돈다.
+	StopActionLoop();
+
 	// ⚠ **릴리스 누락이 이 시스템의 1번 버그다** (§9.5). 태스크의 `ExitState` 가
 	//    정석이지만 파괴 경로는 그걸 안 탄다. 좀비 청소(`Sweep`)가 최후의 보루로
 	//    남아 있어도 최대 `SweepSeconds` 동안 자리가 죽는다 — 여기서 즉시 놓는다.
@@ -373,6 +395,71 @@ float ACustomerCharacter::PlayAction(FName ActionName, float FallbackSeconds)
 	UE_LOG(LogBurgerHouseNPC, Verbose, TEXT("행동 %s — 애님 없이 %.1fs"),
 		*ActionName.ToString(), FallbackSeconds);
 	return FMath::Max(FallbackSeconds, 0.f);
+}
+
+// ---------------------------------------------------------------- 반복 재생
+
+void ACustomerCharacter::StartActionLoop(FName ActionName)
+{
+	if (ActionName.IsNone())
+	{
+		return;
+	}
+	LoopingAction = ActionName;
+	PlayLoopedAction();
+}
+
+void ACustomerCharacter::StartDecorationLoop()
+{
+	if (!bDecoration)
+	{
+		return;			// 트리가 도는 평범한 손님 — 행동은 트리가 시킨다
+	}
+	const FName* Action = DecorationActions.Find(StartRole);
+	if (!Action || Action->IsNone())
+	{
+		// ⚠ 조용히 넘어가면 「장식 손님이 가만히 서 있다」로만 보인다.
+		UE_LOG(LogBurgerHouseNPC, Warning,
+			TEXT("%s 장식 손님인데 역할 %s 에 맞는 행동이 DecorationActions 에 없다"),
+			*GetName(), *StartRole.ToString());
+		return;
+	}
+	StartActionLoop(*Action);
+}
+
+void ACustomerCharacter::StopActionLoop()
+{
+	LoopingAction = NAME_None;
+	if (UWorld* W = GetWorld())
+	{
+		W->GetTimerManager().ClearTimer(LoopTimer);
+	}
+	StopAction();
+}
+
+void ACustomerCharacter::PlayLoopedAction()
+{
+	if (LoopingAction.IsNone())
+	{
+		return;
+	}
+
+	// ⚠ `PlayAction` 이 **매번 변형을 새로 뽑는다.** 그래서 같은 행동 이름으로
+	//    반복해도 몸짓이 계속 바뀐다 (`PickVariant` 의 가중 무작위 +
+	//    `bAvoidRepeatVariant` 로 연속 중복 회피).
+	const float Len = PlayAction(LoopingAction, /*FallbackSeconds=*/4.f);
+
+	// 쉬는 시간을 섞는다 — 안 섞으면 여럿이 같이 앉아 있을 때 몸짓이 동시에
+	// 바뀌어 군무처럼 보인다.
+	const float Next = Len + FMath::FRandRange(0.f, FMath::Max(DecorationGap, 0.f));
+
+	if (UWorld* W = GetWorld())
+	{
+		// ⚠ 최소값을 둔다. `Len` 이 0 이면(몽타주도 없고 폴백도 0) 타이머가
+		//    매 프레임 돌아 사실상 무한 루프가 된다.
+		W->GetTimerManager().SetTimer(LoopTimer, this,
+			&ACustomerCharacter::PlayLoopedAction, FMath::Max(Next, 0.25f), false);
+	}
 }
 
 void ACustomerCharacter::StopAction()

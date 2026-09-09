@@ -41,77 +41,93 @@ BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
 #
 # 가중치는 **합이 1일 필요 없다.** 기본 동작을 1.0, 가끔 나오는 몸짓을 0.2 로
 # 두면 대개 평범하고 가끔 눈에 띄는 그림이 된다.
+# 액션 -> [(애님, 가중치, 몽타주 이름, 슬롯)]
+#
+# ## ⚠ 슬롯이 둘인 이유
+#
+# 몽타주는 슬롯을 **하나만** 갖는다. 그래서 같은 애님을 서 있는 손님과 앉은
+# 손님이 같이 쓰려면 **몽타주를 두 벌** 만들어야 한다.
+#
+#   DefaultSlot  전신을 덮어쓴다. 서 있는 손님용.
+#   UpperBody    상체만. 하체는 AnimBP 의 Sit 상태가 낸다. 앉은 손님용.
+#
+# ⚠ 앉은 손님에게 DefaultSlot 몽타주를 틀면 **일어선다.** 먹는 애님이 원래
+#   서서 먹는 동작이기 때문이다 (`ll_eat_retarget.py` 주석).
+DEFAULT = 'DefaultSlot'
+UPPER = 'UpperBody'
+
 ACTIONS = {
+    # 서 있는 손님 — 문 앞·줄에서
     'Idle_Look': [
-        ('Texting_While_Standing', 1.0, 8.0),
-        ('Talking_On_A_Cell_Phone', 0.5, 8.0),
-        ('Texting', 0.4, 8.0),
-        ('Telling_A_Secret', 0.2, 8.0),
+        ('Texting_While_Standing', 1.0, 'AM_Texting_While_Standing', DEFAULT),
+        ('Talking_On_A_Cell_Phone', 0.5, 'AM_Talking_On_A_Cell_Phone', DEFAULT),
+        ('Texting', 0.4, 'AM_Texting', DEFAULT),
+        ('Telling_A_Secret', 0.2, 'AM_Telling_A_Secret', DEFAULT),
     ],
     'Interact_Reach': [
-        ('Reaching_Out', 1.0, None),        # 4초 — 자를 필요 없다
+        ('Reaching_Out', 1.0, 'AM_Reaching_Out', DEFAULT),
     ],
-    # 먹는 동작 — Eat_Animation_Pack 을 손님 스켈레톤으로 리타겟한 것
-    # (`ll_eat_retarget.py`). 길이가 6.9~9.2초로 고르고 자를 필요가 없다.
-    #
-    # 가중치를 전부 1.0 으로 둬서 **네 개가 고르게** 나오게 한다. 고르는 것은
-    # `ACustomerCharacter::PickVariant` 가 하고, `bAvoidRepeatVariant` 가
-    # 같은 것이 연속으로 나오지 않게 막는다.
+
+    # 앉은 **장식 손님**이 끝없이 돌릴 몸짓 풀 — 먹기 + 폰 만지기를 섞는다.
+    # 먹는 쪽 가중치를 높였다. 가게에 앉아 있으면 대개 먹고 있어야 한다.
+    'Sit_Idle': [
+        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', UPPER),
+        ('Eating_Fries', 1.0, 'AM_Eating_Fries', UPPER),
+        ('Eating_a_Drumstick', 0.8, 'AM_Eating_a_Drumstick', UPPER),
+        ('Eating_Frantically', 0.5, 'AM_Eating_Frantically', UPPER),
+        # ⚠ 서 있는 쪽과 **다른 몽타주 에셋**이다 (슬롯이 달라서).
+        ('Texting', 0.6, 'AM_Sit_Texting', UPPER),
+        ('Talking_On_A_Cell_Phone', 0.5, 'AM_Sit_Talking_On_A_Cell_Phone', UPPER),
+    ],
+
+    # 걸어 들어온 손님이 앉아서 먹는 것 — 트리의 `Sit_Eat` 이 쓴다
     'Sit_Eat': [
-        ('Eating_a_Burger', 1.0, None),
-        ('Eating_a_Drumstick', 1.0, None),
-        ('Eating_Frantically', 1.0, None),
-        ('Eating_Fries', 1.0, None),
+        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', UPPER),
+        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', UPPER),
+        ('Eating_Frantically', 1.0, 'AM_Eating_Frantically', UPPER),
+        ('Eating_Fries', 1.0, 'AM_Eating_Fries', UPPER),
     ],
 }
 
 
-def make_montage(seq_name, trim):
-    """시퀀스 하나로 몽타주 하나. 이미 있으면 그대로 쓴다."""
+def set_slot(m, slot):
+    """몽타주 슬롯을 바꾼다.
+
+    ⚠⚠ **배열 원소는 복사본으로 돌아온다.** 꺼내 고친 뒤 **배열에 되넣어야**
+       반영된다. 안 되넣으면 `set_editor_property` 가 예외도 안 내고 그냥
+       무시한다 — 「파이썬으로는 슬롯을 못 바꾼다」로 오진하기 딱 좋다.
+    """
+    tr = m.get_editor_property('slot_anim_tracks')
+    if not tr or str(tr[0].get_editor_property('slot_name')) == slot:
+        return
+    s = tr[0]
+    s.set_editor_property('slot_name', slot)
+    tr[0] = s                                   # ← 이 줄이 핵심
+    m.set_editor_property('slot_anim_tracks', tr)
+
+
+def make_montage(seq_name, mtg_name, slot):
+    """시퀀스 하나로 몽타주 하나. 이미 있으면 슬롯만 맞춘다."""
     seq = EAL.load_asset('%s/%s' % (ANIM_DIR, seq_name))
     if not seq:
         E('  %s — 시퀀스가 없다' % seq_name)
         return None
 
-    path = '%s/AM_%s' % (MTG_DIR, seq_name)
+    path = '%s/%s' % (MTG_DIR, mtg_name)
     if EAL.does_asset_exist(path):
-        return EAL.load_asset(path)
+        m = EAL.load_asset(path)
+    else:
+        fac = unreal.AnimMontageFactory()
+        fac.set_editor_property('target_skeleton', seq.get_editor_property('skeleton'))
+        fac.set_editor_property('source_animation', seq)
+        m = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
+            mtg_name, MTG_DIR, unreal.AnimMontage, fac)
+        if not m:
+            E('  %s — 몽타주 생성 실패' % mtg_name)
+            return None
 
-    fac = unreal.AnimMontageFactory()
-    fac.set_editor_property('target_skeleton', seq.get_editor_property('skeleton'))
-    fac.set_editor_property('source_animation', seq)
-    m = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
-        'AM_%s' % seq_name, MTG_DIR, unreal.AnimMontage, fac)
-    if not m:
-        E('  %s — 몽타주 생성 실패' % seq_name)
-        return None
-
-    if trim:
-        trim_montage(m, trim)
+    set_slot(m, slot)
     return m
-
-
-def trim_montage(m, seconds):
-    """앞에서부터 `seconds` 만큼만 남긴다.
-
-    ⚠ 구조체는 **복사본**으로 돌아온다 — 고쳐서 되넣어야 반영된다.
-    """
-    full = m.get_editor_property('sequence_length')
-    if full <= seconds:
-        return
-    try:
-        tracks = m.get_editor_property('slot_anim_tracks')
-        for t in tracks:
-            track = t.get_editor_property('anim_track')
-            segs = track.get_editor_property('anim_segments')
-            for s in segs:
-                s.set_editor_property('anim_end_time', seconds)
-            track.set_editor_property('anim_segments', segs)
-            t.set_editor_property('anim_track', track)
-        m.set_editor_property('slot_anim_tracks', tracks)
-        m.set_editor_property('sequence_length', seconds)
-    except Exception as ex:
-        L('    자르기 실패 (원본 길이로 둔다): %s' % str(ex)[:80])
 
 
 def main():
@@ -125,13 +141,15 @@ def main():
     L('=== 몽타주 만들기 ===')
     for action, variants in ACTIONS.items():
         out = []
-        for seq_name, weight, trim in variants:
-            m = make_montage(seq_name, trim)
+        for seq_name, weight, mtg_name, slot in variants:
+            m = make_montage(seq_name, mtg_name, slot)
             if not m:
                 continue
             EAL.save_asset(m.get_path_name().split('.')[0], only_if_is_dirty=False)
-            L('  %-16s AM_%-26s %5.2fs  w=%.1f' % (
-                action, seq_name, m.get_editor_property('sequence_length'), weight))
+            L('  %-16s %-32s %5.2fs w=%.1f  slot=%s' % (
+                action, mtg_name, m.get_editor_property('sequence_length'),
+                weight, m.get_editor_property('slot_anim_tracks')[0]
+                        .get_editor_property('slot_name')))
             out.append((m, weight))
         made[action] = out
 

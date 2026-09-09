@@ -209,7 +209,7 @@ void ACustomerSpawner::TrySpawn()
 	SpawnGroup(FMath::Min(PickBurstCount(), Room), NAME_None);
 }
 
-int32 ACustomerSpawner::SpawnGroup(int32 Count, FName InRole)
+int32 ACustomerSpawner::SpawnGroup(int32 Count, FName InRole, bool bAsDecoration)
 {
 	// ⚠ `Role` 이라는 이름은 못 쓴다 — `AActor::Role`(네트 롤)을 가린다 (C4458).
 	if (Count <= 0)
@@ -252,6 +252,9 @@ int32 ACustomerSpawner::SpawnGroup(int32 Count, FName InRole)
 			continue;
 		}
 
+		// ⚠ **통보보다 먼저 표시한다** — `ApplyStartRole` 이 이 값을 보고 몸짓을 건다.
+		C->SetDecoration(bAsDecoration);
+
 		// ⚠ **역할이 먼저다.** 받는 쪽이 `OnSpawnedInGroup` 에서 역할을 보고
 		//    좌석을 고르는데, 순서가 반대면 그때 역할이 아직 비어 있다.
 		if (!InRole.IsNone())
@@ -261,8 +264,12 @@ int32 ACustomerSpawner::SpawnGroup(int32 Count, FName InRole)
 		C->OnSpawnedInGroup(GroupId, Born.Num(), i);
 	}
 
-	// ⚠ **통보가 끝난 뒤에 AI 를 켠다** (`StartControllers` 주석).
-	StartControllers(Born);
+	// ⚠ **장식이면 AI 를 안 켠다** — 컨트롤러가 없으면 트리가 시작조차 안 한다.
+	//    켤 때는 통보가 끝난 뒤여야 한다 (`StartControllers` 주석).
+	if (!bAsDecoration)
+	{
+		StartControllers(Born);
+	}
 
 	return Born.Num();
 }
@@ -363,6 +370,10 @@ void ACustomerSpawner::PrefillFromPlacements()
 					*GetName(), *GetNameSafe(Born[i]));
 				continue;
 			}
+			// ⚠ **역할·일행 통보보다 먼저 표시한다.** `ApplyStartRole` 이
+			//    `OnSpawnedInGroup` 안에서 돌면서 이 값을 보고 몸짓을 건다.
+			C->SetDecoration(!bPrefillRunsAI);
+
 			// 역할이 먼저다 (`SpawnGroup` 의 같은 주석).
 			if (!PartyRole.IsNone())
 			{
@@ -371,9 +382,14 @@ void ACustomerSpawner::PrefillFromPlacements()
 			C->OnSpawnedInGroup(GroupId, Born.Num(), i);
 		}
 
-		// ⚠ **여기서 AI 를 켠다.** 위 통보(역할·일행)와 `ApplyStartRole` 의
-		//    자리 잡기가 전부 끝난 뒤여야 트리가 역할을 보고 갈래를 고른다.
-		StartControllers(Born);
+		// ⚠ **장식이면 AI 를 안 켠다.** 컨트롤러가 없으면 StateTree 가 시작조차
+		//    안 하므로 손님이 자리에 영원히 남는다 (헤더 `bPrefillRunsAI`).
+		//    켤 때는 위 통보와 `ApplyStartRole` 의 자리 잡기가 전부 끝난 뒤여야
+		//    트리가 역할을 보고 갈래를 고른다.
+		if (bPrefillRunsAI)
+		{
+			StartControllers(Born);
+		}
 
 		Made += Born.Num();
 	}
@@ -430,7 +446,7 @@ void ACustomerSpawner::Prefill()
 
 		// 한 무리는 한 역할이다 (헤더 주석). 남은 자리를 넘기지 않게 자른다.
 		const int32 N = FMath::Min(PickBurstCount(), Target - Made);
-		const int32 Got = SpawnGroup(N, PickPrefillRole());
+		const int32 Got = SpawnGroup(N, PickPrefillRole(), !bPrefillRunsAI);
 		if (Got == 0)
 		{
 			continue;		// Guard 가 받아 준다

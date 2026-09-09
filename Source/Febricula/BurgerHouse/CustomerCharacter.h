@@ -233,6 +233,58 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
 	void StopAction();
 
+	// ------------------------------------------------------- 장식 손님(프리필)
+	/**
+	 *	**StateTree 를 안 태우는 손님.** 스포너가 프리필로 낳을 때 켜 준다.
+	 *
+	 *	장식 손님은 AI 컨트롤러를 안 받으므로 트리가 시작조차 하지 않는다 —
+	 *	`Move To` · `Leave` · `Despawn` 이 구조적으로 불가능하다. 대신 아래
+	 *	`StartActionLoop` 이 역할에 맞는 몸짓을 계속 돌린다.
+	 *
+	 *	⚠ 장식 손님도 **슬롯은 예약한다.** 안 그러면 걸어 들어온 손님이 같은
+	 *	  의자에 겹쳐 앉는다.
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "BurgerHouse|Spawn")
+	bool bDecoration = false;
+
+	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Spawn")
+	void SetDecoration(bool bIn) { bDecoration = bIn; }
+
+	/**
+	 *	역할별로 장식 손님이 반복할 행동 이름.
+	 *
+	 *	⚠ 여기 이름이 `Actions` 맵의 키와 **철자까지 같아야** 한다. 틀리면
+	 *	  `PlayAction` 이 몽타주를 못 찾아 시간만 세고, 손님이 **가만히 서 있는
+	 *	  것처럼** 보인다 — 조용히 실패한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Action")
+	TMap<FName, FName> DecorationActions = {
+		{ TEXT("Eating"),   TEXT("Sit_Idle")  },
+		{ TEXT("Waiting"),  TEXT("Idle_Look") },
+		{ TEXT("Ordering"), TEXT("Idle_Look") },
+	};
+
+	/**
+	 *	몸짓 사이에 쉬는 시간(초). 매번 `0 ~ 이 값` 을 무작위로 뽑는다.
+	 *
+	 *	⚠ 0 이면 몽타주가 **끊김 없이 바로** 이어져서 여럿이 같이 앉아 있을 때
+	 *	  기계처럼 보인다. 조금 띄우면 제각각으로 보인다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Action",
+		meta = (Units = "s", ClampMin = "0.0"))
+	float DecorationGap = 2.5f;
+
+	/**
+	 *	`ActionName` 을 **끝없이 반복한다.** 끝날 때마다 변형을 새로 뽑으므로
+	 *	앉아 있는 동안 몸짓이 계속 바뀐다 (`PickVariant` 의 가중 무작위 +
+	 *	`bAvoidRepeatVariant`).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
+	void StartActionLoop(FName ActionName);
+
+	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
+	void StopActionLoop();
+
 	// ---------------------------------------------------------------- 착석
 	/**
 	 *	좌석 지점에 **스냅**한다.
@@ -323,6 +375,16 @@ protected:
 private:
 	/** 행동마다 **직전에 뽑은** 변형. `bAvoidRepeatVariant` 용. */
 	TMap<FName, int32> LastVariant;
+
+	/** 반복 재생 중인 행동. 비어 있으면 반복 안 함. */
+	FName LoopingAction;
+	FTimerHandle LoopTimer;
+
+	/** 다음 몸짓을 재생하고 그 길이 + 쉬는 시간만큼 타이머를 다시 건다. */
+	void PlayLoopedAction();
+
+	/** 장식 손님이면 `StartRole` 에 맞는 행동을 반복 재생한다. 아니면 아무것도 안 한다. */
+	void StartDecorationLoop();
 
 	/** 가중 무작위로 변형 하나를 고른다. 없으면 INDEX_NONE. */
 	int32 PickVariant(FName ActionName, const FCustomerAction& Action);
