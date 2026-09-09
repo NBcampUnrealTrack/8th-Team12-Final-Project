@@ -105,6 +105,18 @@ protected:
 	/** 등록된 NPC를 N분할해서 프레임당 일부만 LOD 재계산한다 */
 	void UpdateLodSlice();
 
+	/**
+	 * 가까운 개체끼리 좌우로 밀어낸다 (소프트 회피).
+	 *
+	 * 진로를 다시 계산하지 않고 차선 오프셋만 조정한다. 같은 경로에서 진행 거리가
+	 * 비슷한 개체끼리만 비교하므로 전방위 이웃 탐색이 필요 없다.
+	 * Near/Mid 대역만 대상으로 한다 - 멀리서 겹치는 건 어차피 화면에 안 보인다.
+	 */
+	void UpdateAvoidance();
+
+	/** 경로 끝에 닿아 회수를 예약한 개체들을 안전한 시점에 처리한다 */
+	void ProcessPendingRecycles();
+
 	/** 아키타입 테이블에서 가중 랜덤으로 하나 고른다 */
 	bool PickArchetype(FSubNpcArchetypeRow& OutRow) const;
 
@@ -138,6 +150,58 @@ protected:
 	/** 한 번의 갱신에서 검사할 최대 인원. 인원이 많아져도 프레임 비용이 일정하게 유지된다 */
 	UPROPERTY(EditAnywhere, Category = "Crowd|LOD", meta = (ClampMin = "1"))
 	int32 LodSliceSize = 12;
+
+	/**
+	 * 전체를 몇 초 안에 한 바퀴 다 돌 것인가 (초).
+	 *
+	 * [개선] 슬라이스 크기를 고정값으로 두면, 인원이 늘수록 한 개체가 다시 검사받기까지
+	 * 걸리는 시간이 같이 늘어난다. 그러면 플레이어가 빠르게 달릴 때 최저 LOD인 채로
+	 * 코앞에 서 있는 상황이 생긴다. 인원에 비례해 슬라이스를 키워서 순회 주기를 고정한다.
+	 * 0 이하면 이 보정을 끄고 LodSliceSize를 그대로 쓴다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|LOD", meta = (ClampMin = "0.0"))
+	float LodFullSweepTime = 1.0f;
+
+	// ---- 소프트 회피 ---------------------------------------------------------
+
+	UPROPERTY(EditAnywhere, Category = "Crowd|Avoidance")
+	bool bEnableAvoidance = true;
+
+	/** 이 거리보다 가까우면 서로 밀어낸다 (cm) */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Avoidance", meta = (ClampMin = "1.0"))
+	float AvoidDistance = 110.f;
+
+	/** 밀어내는 세기. 겹친 정도에 곱해진다 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Avoidance", meta = (ClampMin = "0.0"))
+	float AvoidStrength = 0.6f;
+
+	/** 회피 계산 주기 (초) */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Avoidance", meta = (ClampMin = "0.01"))
+	float AvoidUpdateInterval = 0.1f;
+
+	/**
+	 * 회피 계산에 참여할 최대 인원.
+	 * 이 안에서는 서로 다 비교하므로(O(n^2)) 상한을 두어 최악의 경우를 막는다.
+	 * 화면에 가까이 보이는 개체만 대상이라 실제로는 훨씬 적다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Avoidance", meta = (ClampMin = "2"))
+	int32 MaxAvoidancePairs = 24;
+
+	/**
+	 * 등장 간격 (cm).
+	 *
+	 * [개선] 같은 지점에 연달아 등장하면 서로 겹친 채 한 덩어리로 걸어간다.
+	 * 예전에 두 개체가 서로를 막아 얼어붙었던 것도 같은 원인이었다.
+	 * 이 거리 안에 이미 누가 있으면 조금 밀어서 등장시킨다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Director", meta = (ClampMin = "0.0"))
+	float SpawnSpacing = 160.f;
+
+	/** 회피 계산 타이머 */
+	float AvoidTimer = 0.f;
+
+	/** crowd.Stats 출력 타이머 */
+	float StatsTimer = 0.f;
 
 	/**
 	 * 거리로는 Near/Mid인데 실제로 화면에 안 보이는 경우(벽 뒤, 등 뒤) 한 단계 낮춘다.

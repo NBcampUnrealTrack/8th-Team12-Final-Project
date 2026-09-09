@@ -139,6 +139,7 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 	// 블루프린트에서 외형(메시/머티리얼/의상)을 갈아끼울 기회.
 	OnArchetypeApplied(Archetype);
 
+	NextSpotCheckDistance = PathDistance;
 	RollForActivitySpot();
 }
 
@@ -197,6 +198,16 @@ void ASubNpcCharacter::ClearRuntimeState()
 	// 플레이어 입장에서는 처음 보는 사람이 없던 일을 따지는 셈이라 바로 티가 난다.
 	LastBumpTime = -1000.f;
 	LastReactionTime = -1000.f;
+
+	// [누수 방지] 새로 추가된 런타임 상태도 반드시 여기서 지운다.
+	// 하나라도 빠지면 재사용된 개체가 이전 개체의 행동을 물려받는다.
+	CurrentReaction = ESubNpcReaction::None;
+	CurrentSpotOption = FNpcActivityOption();
+	CurrentSpotStep = -1;
+	bResumeSpotAfterReaction = false;
+	PendingAvoidNudge = 0.f;
+	bPendingRecycle = false;
+	NextSpotCheckDistance = 0.f;
 }
 
 // ---------------------------------------------------------------------------
@@ -295,7 +306,8 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 	case ESubNpcActivity::AtSpot:
 		if (Now >= ActivityEndTime)
 		{
-			EndSpotActivity();
+			// 한 동작으로 끝내지 않고 다음 단계가 있으면 이어서 재생한다.
+			AdvanceSpotStep();
 		}
 		return;
 
@@ -304,12 +316,16 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 		{
 			EndReaction();
 		}
-		else
+		else if (CurrentReaction == ESubNpcReaction::Dodge)
 		{
-			// 피하기 중에는 차선 오프셋을 목표치로 부드럽게 밀어 옆으로 비킨다.
+			// 피하기는 걸으면서 비킨다. 차선 오프셋을 목표치로 부드럽게 민다.
 			LaneOffset = FMath::FInterpTo(LaneOffset, DodgeTargetOffset, DeltaTime, 4.f);
 			TickPathFollow(DeltaTime);
 		}
+		// [버그 수정] 화내기·놀라기는 "멈춰서 플레이어를 쳐다본다"가 연출인데,
+		// 예전에는 여기서도 TickPathFollow를 불러 계속 전진했다.
+		// 게다가 FaceTowards로 돌려둔 회전을 진행 방향으로 매 틱 덮어써서,
+		// 화내는 애니메이션이 나오는 동안 옆을 보며 걸어가는 그림이 됐다.
 		return;
 
 	case ESubNpcActivity::Walking:
@@ -332,7 +348,15 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	{
 		if (Leader->CurrentPath == CurrentPath && !Leader->IsPooled())
 		{
-			PathDistance = Leader->PathDistance - GroupFollowGap;
+			// [버그 수정] 진행 방향을 고려해야 한다.
+			// 역방향으로 걷는 그룹은 진행 거리가 줄어드는 쪽이므로, 그냥 빼면
+			// 추종자가 리더보다 "앞"에 서서 앞질러 가버린다.
+			const float Behind = bReversedOnPath ? GroupFollowGap : -GroupFollowGap;
+			const float Desired = Leader->PathDistance + Behind;
+
+			// 리더가 경로 초입에 있으면 추종자 목표가 경로 밖(음수)으로 나간다.
+			// 그대로 두면 시작점에 붙어 얼어 있으므로 경로 안으로 가둔다.
+			PathDistance = FMath::Clamp(Desired, 0.f, CurrentPath->GetPathLength());
 		}
 		else
 		{
@@ -343,6 +367,29 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	else
 	{
 		PathDistance += WalkSpeed * DeltaTime * (bReversedOnPath ? -1.f : 1.f);
+	}
+
+	// 이웃이 밀어낸 양을 반영한다. Director가 이번 프레임에 누적해 둔 값이다.
+	// 즉시 더하지 않고 목표를 향해 보간하는 이유: 서로 밀면 진동하기 때문이다.
+	if (!FMath::IsNearlyZero(PendingAvoidNudge))
+	{
+		const float Target = LaneOffset + FMath::Clamp(PendingAvoidNudge, -MaxAvoidOffset, MaxAvoidOffset);
+		const float HalfWidth = CurrentPath->GetLaneHalfWidth();
+		LaneOffset = FMath::Clamp(
+			FMath::FInterpTo(LaneOffset, Target, DeltaTime, AvoidInterpSpeed),
+			-HalfWidth, HalfWidth);
+		PendingAvoidNudge = 0.f;
+	}
+
+	// 스팟 판정은 일정 거리마다 다시 굴린다 (경로 진입 시 1회 판정의 부작용 제거).
+	if (FMath::Abs(PathDistance - NextSpotCheckDistance) >= SpotCheckInterval)
+	{
+		NextSpotCheckDistance = PathDistance;
+		RollForActivitySpot();
+		if (CurrentActivity != ESubNpcActivity::Walking)
+		{
+			return;   // 스팟에 들어갔으면 이번 틱 이동은 건너뛴다
+		}
 	}
 
 	const float Length = CurrentPath->GetPathLength();
@@ -400,7 +447,7 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	const float PathLength = CurrentPath ? CurrentPath->GetPathLength() : 0.f;
 	if (PathLength < MinUsablePathLength)
 	{
-		// 같은 경로에 걸린 행인이 여러 명이면 같은 메시지가 도배된다. 경로마다 한 번만 알린다.
+		// 같은 경로를 밟는 행인마다 찍히면 로그가 도배된다. 경로마다 한 번만 알린다.
 		static TSet<TWeakObjectPtr<const ANpcCrowdPath>> ReportedShortPaths;
 		if (!ReportedShortPaths.Contains(CurrentPath))
 		{
@@ -443,22 +490,24 @@ void ASubNpcCharacter::AdvanceToNextPath()
 			return;
 		}
 
-		// 퇴장구이거나, 안 보이는 거리다. 회수해서 다른 곳에 재활용한다.
-		if (const UWorld* World = GetWorld())
-		{
-			if (USubNpcDirectorSubsystem* Director = World->GetSubsystem<USubNpcDirectorSubsystem>())
-			{
-				Director->ReturnToPool(this);
-				return;
-			}
-		}
-		DeactivateToPool();
+		// 퇴장구이거나, 안 보이는 거리다. 회수 대상으로 표시만 해둔다.
+		//
+		// [버그 수정] 예전에는 여기서 Director->ReturnToPool(this)를 바로 불렀다.
+		// 그러면 Director가 활성 목록을 순회하는 도중에 그 목록에서 자기를 빼내게 되어,
+		// 순회 인덱스가 어긋날 수 있다. LOD 갱신 쪽은 이미 모았다가 처리하도록
+		// 되어 있었는데 이 경로만 보호를 안 받고 있었다.
+		//
+		// 지금은 표시만 하고 실제 회수는 Director가 안전한 시점에 처리한다.
+		// 표시된 개체는 이동을 멈춰야 하므로 경로 참조를 끊어 둔다.
+		bPendingRecycle = true;
+		CurrentPath = nullptr;
 		return;
 	}
 
 	CurrentPath = Next;
 	bReversedOnPath = bNextReversed;
 	PathDistance = bNextReversed ? Next->GetPathLength() : 0.f;
+	NextSpotCheckDistance = PathDistance;
 
 	// 새 구간마다 차선을 조금 다시 굴린다. 계속 같은 오프셋이면 대열이 너무 반듯하다.
 	const float HalfWidth = Next->GetLaneHalfWidth();
@@ -479,9 +528,36 @@ void ASubNpcCharacter::RollForActivitySpot()
 		return;
 	}
 
+	// [버그 수정] 예전에는 배열을 앞에서부터 훑고 첫 성공에서 멈췄다.
+	// 그래서 한 경로에 스팟이 여러 개면 0번이 압도적으로 자주 걸리고,
+	// 뒤쪽 스팟은 앞이 꽉 찼을 때만 쓰였다. 순서를 섞어서 고르게 분산시킨다.
+	TArray<ANpcActivitySpot*> Candidates;
+	Candidates.Reserve(CurrentPath->GetActivitySpots().Num());
 	for (ANpcActivitySpot* Spot : CurrentPath->GetActivitySpots())
 	{
-		if (!Spot || !Spot->HasRoom())
+		if (Spot)
+		{
+			Candidates.Add(Spot);
+		}
+	}
+	for (int32 i = Candidates.Num() - 1; i > 0; --i)
+	{
+		Candidates.Swap(i, FMath::RandRange(0, i));
+	}
+
+	const FVector MyLocation = GetActorLocation();
+	const float EngageRadiusSq = FMath::Square(SpotEngageRadius);
+
+	for (ANpcActivitySpot* Spot : Candidates)
+	{
+		if (!Spot->HasRoom())
+		{
+			continue;
+		}
+
+		// [버그 수정] 거리 조건이 없으면 이미 지나쳐 온 스팟에도 당첨돼서
+		// 뒤로 순간이동하는 것처럼 보인다.
+		if (FVector::DistSquared(Spot->GetStandLocation(), MyLocation) > EngageRadiusSq)
 		{
 			continue;
 		}
@@ -507,14 +583,50 @@ void ASubNpcCharacter::RollForActivitySpot()
 	}
 }
 
+bool ASubNpcCharacter::TryEnterNearbySpot()
+{
+	RollForActivitySpot();
+	return CurrentActivity == ESubNpcActivity::AtSpot;
+}
+
+bool ASubNpcCharacter::TryEnterSpot(ANpcActivitySpot* Spot)
+{
+	if (!Spot || OccupiedSpot || !Spot->HasRoom())
+	{
+		return false;
+	}
+
+	FNpcActivityOption Option;
+	if (!Spot->PickActivity(Option))
+	{
+		return false;
+	}
+
+	if (!Spot->TryOccupy(this))
+	{
+		return false;
+	}
+
+	BeginSpotActivity(Spot, Option);
+	return true;
+}
+
+void ASubNpcCharacter::LeaveSpotIfAny()
+{
+	if (CurrentActivity == ESubNpcActivity::AtSpot || OccupiedSpot)
+	{
+		EndSpotActivity();
+	}
+}
+
 void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option)
 {
 	OccupiedSpot = Spot;
 	CurrentActivity = ESubNpcActivity::AtSpot;
 
-	const UWorld* World = GetWorld();
-	const float Now = World ? World->GetTimeSeconds() : 0.f;
-	ActivityEndTime = Now + FMath::FRandRange(Option.MinDuration, FMath::Max(Option.MinDuration, Option.MaxDuration));
+	// 단계 배열을 이어서 재생하려면 고른 행동을 들고 있어야 한다.
+	CurrentSpotOption = Option;
+	CurrentSpotStep = -1;   // -1 = 첫 동작(Option.AnimId)
 
 	// 스팟 앞에 세우고, 그 행동이 바라봐야 할 지점을 향하게 한다.
 	// "무슨 애니메이션 + 어디를 보는가" 이 두 개가 스팟 연출의 전부다.
@@ -532,10 +644,38 @@ void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActiv
 
 	SetMovementState(ENpcMovementState::Interacting);
 
-	if (!Option.AnimId.IsNone())
+	PlaySpotStep(Option.AnimId, Option.MinDuration, Option.MaxDuration, Option.bLoop);
+}
+
+void ASubNpcCharacter::PlaySpotStep(FName AnimId, float MinDuration, float MaxDuration, bool bLoop)
+{
+	const UWorld* World = GetWorld();
+	const float Now = World ? World->GetTimeSeconds() : 0.f;
+	ActivityEndTime = Now + FMath::FRandRange(MinDuration, FMath::Max(MinDuration, MaxDuration));
+
+	if (!AnimId.IsNone())
 	{
-		PlayNpcAnim(Option.AnimId, Option.bLoop);
+		PlayNpcAnim(AnimId, bLoop);
 	}
+	else
+	{
+		// 애니메이션 없는 단계 = 그냥 그 시간만큼 서 있는다.
+		StopNpcAnim();
+	}
+}
+
+void ASubNpcCharacter::AdvanceSpotStep()
+{
+	const int32 NextStep = CurrentSpotStep + 1;
+	if (!CurrentSpotOption.ExtraSteps.IsValidIndex(NextStep))
+	{
+		EndSpotActivity();
+		return;
+	}
+
+	CurrentSpotStep = NextStep;
+	const FNpcActivityStep& Step = CurrentSpotOption.ExtraSteps[NextStep];
+	PlaySpotStep(Step.AnimId, Step.MinDuration, Step.MaxDuration, Step.bLoop);
 }
 
 void ASubNpcCharacter::EndSpotActivity()
@@ -546,9 +686,15 @@ void ASubNpcCharacter::EndSpotActivity()
 		OccupiedSpot = nullptr;
 	}
 
+	CurrentSpotOption = FNpcActivityOption();
+	CurrentSpotStep = -1;
+
 	StopNpcAnim();
 	CurrentActivity = ESubNpcActivity::Walking;
 	SetMovementState(ENpcMovementState::Walk);
+
+	// 방금 떠난 스팟에 곧바로 다시 걸리지 않도록 판정 기준을 현재 위치로 옮긴다.
+	NextSpotCheckDistance = PathDistance;
 }
 
 // ---------------------------------------------------------------------------
@@ -599,18 +745,20 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 
 	static const ESubNpcReaction ReactionByIndex[] = { ESubNpcReaction::Dodge, ESubNpcReaction::Angry, ESubNpcReaction::Surprised };
 	const ESubNpcReaction Reaction = ReactionByIndex[Picked];
+	CurrentReaction = Reaction;
 
 	LastReactionTime = Now;
 	LastBumpTime = Now;
+
+	// [개선] 스팟에서 뭔가 하던 중이었으면 반응이 끝난 뒤 하던 일로 되돌아간다.
+	//
+	// 예전에는 점유를 즉시 풀고 걷기로 빠져나갔다. 그래서 앉아서 책을 보던 사람이
+	// 한 번 부딪히면 벌떡 일어나 걸어가 버렸다. 놀란 뒤 다시 앉는 쪽이 자연스럽고,
+	// 스팟이 비지 않으므로 그 자리를 다른 개체가 가로채지도 않는다.
+	bResumeSpotAfterReaction = (CurrentActivity == ESubNpcActivity::AtSpot && OccupiedSpot != nullptr);
+
 	CurrentActivity = ESubNpcActivity::Reacting;
 	ActivityEndTime = Now + ReactionDuration;
-
-	// 스팟에서 뭔가 하던 중이었으면 놓아준다 (부딪혔는데 계속 메뉴를 보고 있으면 이상하다).
-	if (OccupiedSpot)
-	{
-		OccupiedSpot->ReleaseOccupancy(this);
-		OccupiedSpot = nullptr;
-	}
 
 	FName AnimId;
 	switch (Reaction)
@@ -652,6 +800,36 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 void ASubNpcCharacter::EndReaction()
 {
 	StopNpcAnim();
+	CurrentReaction = ESubNpcReaction::None;
+
+	// [개선] 하던 스팟 행동이 있었으면 그리로 되돌아간다.
+	// 점유는 계속 들고 있었으므로 자리를 뺏겼을 걱정은 없다.
+	if (bResumeSpotAfterReaction && OccupiedSpot)
+	{
+		bResumeSpotAfterReaction = false;
+		CurrentActivity = ESubNpcActivity::AtSpot;
+		SetMovementState(ENpcMovementState::Interacting);
+
+		// 처음부터 다시 하지 않고 하던 단계를 이어서 재생한다.
+		const int32 Step = CurrentSpotStep;
+		if (Step < 0)
+		{
+			PlaySpotStep(CurrentSpotOption.AnimId, CurrentSpotOption.MinDuration,
+				CurrentSpotOption.MaxDuration, CurrentSpotOption.bLoop);
+		}
+		else if (CurrentSpotOption.ExtraSteps.IsValidIndex(Step))
+		{
+			const FNpcActivityStep& S = CurrentSpotOption.ExtraSteps[Step];
+			PlaySpotStep(S.AnimId, S.MinDuration, S.MaxDuration, S.bLoop);
+		}
+		else
+		{
+			EndSpotActivity();
+		}
+		return;
+	}
+
+	bResumeSpotAfterReaction = false;
 	CurrentActivity = ESubNpcActivity::Walking;
 	SetMovementState(ENpcMovementState::Walk);
 

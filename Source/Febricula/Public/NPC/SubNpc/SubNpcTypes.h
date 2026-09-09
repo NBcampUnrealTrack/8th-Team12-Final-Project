@@ -100,6 +100,34 @@ struct FNpcPathExit
 };
 
 /**
+ * 활동 스팟 행동의 한 단계.
+ *
+ * [왜 단계가 필요한가]
+ *   행동이 애니메이션 하나로 끝나면 "자판기 앞에 서서 3초 있다 걸어간다"밖에 안 된다.
+ *   실제 사람은 "동전을 넣고 -> 버튼을 누르고 -> 음료를 집는다"처럼 여러 동작을 잇는다.
+ *   상태(enum)를 늘리지 않고 데이터만 늘려서 이걸 표현하려고 단계 배열을 둔다.
+ */
+USTRUCT(BlueprintType)
+struct FNpcActivityStep
+{
+	GENERATED_BODY()
+
+	/** 재생할 애니메이션 (AnimLibrary 키). 비우면 애니메이션 없이 그 시간만큼 서 있는다 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity")
+	FName AnimId;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity", meta = (ClampMin = "0.0"))
+	float MinDuration = 2.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity", meta = (ClampMin = "0.0"))
+	float MaxDuration = 4.f;
+
+	/** 지속 포즈면 true, 한 번 재생하고 끝나는 동작이면 false */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity")
+	bool bLoop = true;
+};
+
+/**
  * 활동 스팟에서 재생할 행동 하나.
  * "키오스크 앞에서 주문하거나 / 메뉴를 고민하거나" 같은 선택지를 데이터로 표현한다.
  */
@@ -134,6 +162,13 @@ struct FNpcActivityOption
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity")
 	FVector LookAtOffset = FVector::ZeroVector;
+
+	/**
+	 * 첫 동작(위 AnimId) 다음에 이어서 재생할 단계들. 비워두면 한 동작으로 끝난다.
+	 * 순서대로 재생하고 마지막 단계가 끝나면 다시 걷기 시작한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity")
+	TArray<FNpcActivityStep> ExtraSteps;
 };
 
 /**

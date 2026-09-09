@@ -77,6 +77,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
 	bool IsDespawnAtEnd() const { return bDespawnAtEnd; }
 
+	/** 출구 목록 (Mass 경로 캐시를 구울 때 읽는다) */
+	const TArray<FNpcPathExit>& GetExits() const { return Exits; }
+
 protected:
 	/** 경로 모양. 에디터에서 점을 찍어 곡선을 만든다 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crowd|Path")

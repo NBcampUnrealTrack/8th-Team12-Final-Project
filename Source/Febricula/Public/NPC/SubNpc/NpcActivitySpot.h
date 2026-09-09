@@ -40,6 +40,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Spot")
 	float GetEngageChance() const { return EngageChance; }
 
+	/** 동시 정원 (Mass 경로 캐시를 구울 때 읽는다) */
+	int32 GetMaxOccupants() const { return MaxOccupants; }
+
 	/**
 	 * 재생할 행동을 가중 랜덤으로 고른다.
 	 * 옵션이 하나도 없으면 false.

@@ -21,6 +21,22 @@ public class Febricula : ModuleRules
 			"Slate",
 			"DeveloperSettings",
 			"GameplayTags", "CinematicCamera",
+			// MassEntity 군중 (NPC/MassCrowd).
+			//   MassEntity        - ECS 코어. 조각·엔티티·프로세서
+			//   MassCommon        - FTransformFragment 등 공용 조각
+			//   MassSpawner       - 엔티티 스폰과 EntityConfig 애셋
+			//   MassRepresentation- 거리별 표현 전환(액터 승격 / 인스턴스 메시)
+			//   MassMovement      - 이동 관련 공용 조각
+			//   MassSignals       - 프로세서 간 신호
+			//   StructUtils       - FSharedStruct / FInstancedStruct
+			// 플러그인은 MassGameplay / MassAI / ZoneGraph를 켜면 함께 들어온다.
+			"MassEntity",
+			"MassCommon",
+			"MassSpawner",
+			"MassRepresentation",
+			"MassMovement",
+			"MassSignals",
+			"StructUtils",
 			// BurgerHouse — 손님이 앉을 자리로 순간이동할 때 내비메시에 투영한다
 			// (ACustomerCharacter::TeleportToPoint). 안 하면 벽 안에서 시작해
 			// 이후 MoveTo 가 전부 실패한다.

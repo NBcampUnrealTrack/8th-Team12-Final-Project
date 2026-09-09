@@ -83,6 +83,24 @@ public:
 	/** 그룹으로 다닐 때 앞사람. 있으면 앞사람의 경로 진행도를 따라간다 */
 	void SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap, float LaneOffset);
 
+	// ---- StateTree 진입점 ----------------------------------------------------
+	//
+	// StateTree 태스크가 부르는 함수들. 후보 선정·확률 판정·점유 같은 로직은
+	// 이미 이 클래스에 있으므로 태스크에서 다시 구현하지 않고 여기로 위임한다.
+	// 나중에 Mass로 옮길 때 태스크는 그대로 두고 이 구현만 갈아끼우면 된다.
+
+	/** 근처 스팟 중 하나에 들어가 본다. 성공하면 상태가 AtSpot으로 바뀐다 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
+	bool TryEnterNearbySpot();
+
+	/** 지정한 스팟에 들어가 본다 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
+	bool TryEnterSpot(ANpcActivitySpot* Spot);
+
+	/** 스팟에 있으면 나온다. 없으면 아무 일도 하지 않는다 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
+	void LeaveSpotIfAny();
+
 	// ---- 반응 --------------------------------------------------------------
 
 	/**
@@ -126,6 +144,12 @@ protected:
 	/** 스팟 행동 시작/종료 */
 	void BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option);
 	void EndSpotActivity();
+
+	/** 다음 단계로 넘어간다. 남은 단계가 없으면 EndSpotActivity를 부른다 */
+	void AdvanceSpotStep();
+
+	/** 단계 하나를 재생한다 (애니메이션 + 종료 시각 설정) */
+	void PlaySpotStep(FName AnimId, float MinDuration, float MaxDuration, bool bLoop);
 
 	/** 반응 종료 후 다시 걷기 */
 	void EndReaction();
@@ -204,6 +228,42 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "1.0"))
 	float TurnAroundNudge = 20.f;
 
+	/**
+	 * 스팟에 들를지 판정하는 간격 (cm).
+	 *
+	 * 예전에는 경로에 진입할 때 한 번만 판정했다. 그러면 경로 중간이나 끝에 있는 스팟도
+	 * 진입 순간에 당첨될 수 있어서, 이미 지나쳐 걸어간 개체가 뒤에 있는 스팟으로
+	 * 순간이동하는 것처럼 보였다. 일정 거리마다 다시 굴려서 "근처에 왔을 때" 들르게 한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "10.0"))
+	float SpotCheckInterval = 150.f;
+
+	/** 이 거리 안에 있는 스팟만 후보로 본다 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "0.0"))
+	float SpotEngageRadius = 400.f;
+
+	// ---- 소프트 회피 ---------------------------------------------------------
+
+	/**
+	 * 가까운 행인끼리 좌우로 살짝 비켜서게 한다.
+	 *
+	 * RVO 같은 정식 회피와는 다르다. 진로를 다시 계산하지 않고, 이미 갖고 있는
+	 * 좌우 오프셋 값 하나만 서로 반대로 민다. "스스로 판단하지 않는다"는 원칙을
+	 * 깨지 않으면서 겹침만 줄이는 절충안이다.
+	 *
+	 * Director가 Near/Mid 대역에 대해서만 계산한다. 멀리서 겹치는 건 어차피 안 보인다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance")
+	bool bSoftAvoidance = true;
+
+	/** 회피 오프셋이 목표값을 향해 움직이는 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance", meta = (ClampMin = "0.1"))
+	float AvoidInterpSpeed = 3.f;
+
+	/** 한 프레임에 밀릴 수 있는 최대량 (cm). 너무 크면 옆으로 튄다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance", meta = (ClampMin = "0.0"))
+	float MaxAvoidOffset = 60.f;
+
 	/** LOD 단계별 틱 간격 (초). Near는 매 프레임 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
 	float MidTickInterval = 0.1f;
@@ -264,6 +324,51 @@ protected:
 	/** 반응 중 옆으로 비킬 목표 오프셋 */
 	float DodgeTargetOffset = 0.f;
 
+	/** 지금 재생 중인 반응 종류. 피하기만 걸으면서 비키고 나머지는 멈춘다 */
+	ESubNpcReaction CurrentReaction = ESubNpcReaction::None;
+
 	/** 이 개체에 적용된 아키타입 (대사·반응 가중치 조회용) */
 	FSubNpcArchetypeRow Archetype;
+
+	// ---- 소프트 회피 (Director가 호출) --------------------------------------
+
+public:
+	/** 회피 계산에 필요한 값들. Director가 이웃끼리 비교할 때 읽는다 */
+	float GetPathDistance() const { return PathDistance; }
+	float GetLaneOffset() const { return LaneOffset; }
+	bool IsWalkingOnPath() const { return CurrentActivity == ESubNpcActivity::Walking && CurrentPath != nullptr; }
+
+	/**
+	 * 좌우로 밀어낼 양을 누적한다. 실제 반영은 다음 틱에서 보간으로 이뤄진다.
+	 * 즉시 위치를 바꾸지 않는 이유: 두 개체가 서로를 동시에 밀면 진동하기 때문이다.
+	 */
+	void AddAvoidanceNudge(float Amount) { PendingAvoidNudge += Amount; }
+
+	/** 회수 예약 여부. 순회 중에 배열이 바뀌지 않도록 Director가 나중에 처리한다 */
+	bool IsPendingRecycle() const { return bPendingRecycle; }
+	void ClearPendingRecycle() { bPendingRecycle = false; }
+
+protected:
+	/** 이번 프레임에 이웃들이 밀어낸 양의 합 */
+	float PendingAvoidNudge = 0.f;
+
+	/** 경로 끝에 닿아 회수를 기다리는 중 */
+	bool bPendingRecycle = false;
+
+	// ---- 스팟 단계 진행 ------------------------------------------------------
+
+	/** 지금 재생 중인 스팟 행동 (단계 배열을 들고 있어야 이어서 재생할 수 있다) */
+	FNpcActivityOption CurrentSpotOption;
+
+	/** 지금 몇 번째 단계인가. -1 = 첫 동작(AnimId), 0부터는 ExtraSteps 인덱스 */
+	int32 CurrentSpotStep = -1;
+
+	/**
+	 * 반응이 끝난 뒤 하던 스팟 행동으로 되돌아갈지.
+	 * 앉아 있다가 부딪혀 놀란 사람은 다시 앉는 게 자연스럽다.
+	 */
+	bool bResumeSpotAfterReaction = false;
+
+	/** 다음 스팟 판정을 할 경로 진행 거리. 경로 진입 시 한 번만 보는 문제를 없앤다 */
+	float NextSpotCheckDistance = 0.f;
 };
