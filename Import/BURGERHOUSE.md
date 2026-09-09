@@ -198,8 +198,9 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 | `Auto Possess AI` | StateTree 가 **시작조차 안 함** | 「애님이 없어서 안 움직이나」 |
 | 통보보다 컨트롤러를 먼저 붙임 | 프리필 전원이 기본 갈래로 | 「트리 자식 순서를 잘못 놨나」 |
 | `PrefillRoles` 철자 오타 | 프리필이 **전부** 기본 갈래로 | 위와 증상이 같다 |
+| 루프 상태에 「앉는 동작」을 씀 | **섰다 앉았다 반복** | 「전이가 덜덜 떤다」 (§7) |
 
-넷 다 **에러가 안 난다.** 그래서 표로 박아 둔다.
+다섯 다 **에러가 안 난다.** 그래서 표로 박아 둔다.
 
 ---
 
@@ -230,7 +231,7 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 두 벌이 필요하다.
 
 ⚠ 길이가 제각각이다 — `AM_Sit_Talking_On_A_Cell_Phone` 은 **37.2초**로 길다
-(가중치 0.5 라 10번에 한 번쯤). 짧게 하려면 §8-3 처럼 구간을 자른다.
+(가중치 0.5 라 10번에 한 번쯤). 짧게 하려면 §8-2 처럼 구간을 자른다.
 
 가중치는 합이 1일 필요 없다. 기본 동작을 1.0, 가끔 나오는 몸짓을 0.2 로 두면
 대개 평범하고 가끔 눈에 띄는 그림이 된다. `Sit_Eat` 은 넷을 고르게 쓰려고 전부
@@ -238,6 +239,31 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 
 고르는 것은 `ACustomerCharacter::PickVariant` 가 한다 — 가중 무작위이고,
 `bAvoidRepeatVariant` 가 같은 것이 연속으로 나오지 않게 막는다.
+
+### ⚠⚠ 「앉는 동작」과 「앉아 있는 동작」은 다르다
+
+**루프하는 상태에는 「앉아 있는 동작」만 쓴다.** 「앉는 동작」을 루프하면 매 번
+서서 시작하므로 **섰다 앉았다를 반복**한다. 실제로 이걸로 한참 헤맸다.
+
+골반(`hips`) 높이의 **시작 / 끝** 을 비교하면 바로 갈린다:
+
+| 애님 | 시작 | 끝 | 정체 |
+|---|---|---|---|
+| `Sitting` | 102.8 | **63.1** | **앉는 동작** — 루프 금지 |
+| `Sit_To_Stand` | 57.5 | **103.0** | 일어서는 동작 |
+| `Sitting__1_` | 62.1 | 62.2 | **앉아 있는 동작** ✓ 5.9s — `Sit` 상태가 쓴다 |
+| `Sitting_Talking` | 57.5 | 57.5 | 앉아 있는 동작 ✓ 44s |
+| `Sitting_Yell` | 61.7 | 61.7 | 앉아 있는 동작 ✓ 3.8s |
+| `Idle` (기준) | 103.4 | 103.4 | 서 있음 |
+
+⚠ 이름만 보고 고르면 안 된다 — `Sitting` 은 「앉기」지 「앉아 있기」가 아니다.
+`Sitting_Thumbs_Up` 도 76 으로 어중간해서 기본 포즈로는 안 쓴다.
+
+⚠ 앉은 골반은 **57~63**, 선 골반은 **103** 이다. 먹는 애님이 104.3 인 것이
+「서서 먹는 동작」이라는 근거였다.
+
+`Sitting` · `Sit_To_Stand` 는 나중에 `Sit_Down` · `Stand_Up` 액션으로 쓸 것 —
+전이 동작이라 **한 번만** 재생해야 한다.
 
 ### 먹는 애님은 리타겟해서 넣었다
 
@@ -281,106 +307,7 @@ Idle_Look · Interact_Reach     슬롯 DefaultSlot   ← 전신
 전부 **파이썬으로 못 하는 것**들이다. UE 5.8 파이썬은 그래프 노드를 만들 수 없고,
 StateTree 태스크 내부(`InstancedStruct`)와 몽타주 `SequenceLength` 는 읽기 전용이다.
 
-### 8-1. ⚠⚠ AnimGraph 에 상체 레이어 — 안 하면 앉은 손님이 일어선다
-
-`Sit_Eat` 몽타주는 **서서 먹는 동작**이고 슬롯이 `UpperBody` 로 되어 있다.
-그런데 AnimGraph 에 `UpperBody` 를 받는 노드가 아직 없어서 **그 몽타주가 아예
-재생되지 않는다.** 아래를 이어야 그림이 완성된다.
-
-```
-[상태 기계 Locomotion] ──→ [New Save cached pose]  이름: LocoCache
-
-[Use cached pose 'LocoCache'] ──→ [Slot 'UpperBody'] 의 Source
-                                          │
-[Use cached pose 'LocoCache'] ──→ Base Pose      Blend Poses 0
-                                     └──[Layered blend per bone]──┘
-                                                 │
-                                    [Slot 'DefaultSlot'] 의 Source
-                                                 │
-                                           [Output Pose]
-```
-
-⚠⚠ **AnimGraph 의 포즈 핀은 1:1 이다.** 블루프린트 데이터 핀과 달리 출력 포즈를
-여러 입력에 못 나눈다 — 그래서 상태 기계를 **Cached Pose 로 저장해서 두 번
-꺼내 쓴다.** 이게 UE 가 이 경우에 쓰라고 만든 장치다.
-
-⚠ `Use cached pose '...'` 는 **`New Save cached pose` 를 먼저 만들어야** 우클릭
-메뉴에 뜬다. 안 보이면 그것부터 만들 것.
-
-⚠ 캐시는 한 프레임에 **한 번만 평가**되고 결과를 재사용한다 — 상태 기계를 두 번
-돌리는 것이 아니라 성능상으로도 이 쪽이 맞다.
-
-⚠⚠ **`Slot 'UpperBody'` 의 입력을 비워 두면 안 된다.** 비우면 몽타주가 없을 때
-그 슬롯이 **레퍼런스 포즈(T포즈)** 를 낸다 — 손님이 늘 팔을 벌리고 있게 된다.
-상태 기계를 물려 두면 몽타주가 없을 때 그대로 통과시켜 기본 포즈와 같아진다.
-
-**① `Slot 'UpperBody'` 노드**
-
-```
-AnimGraph 빈 곳 우클릭 > "slot" 검색 > Slot 'DefaultSlot' 추가
-  → 노드를 클릭하고 Details > Slot Name 을 UpperBody 로
-```
-
-⚠ 팔레트에는 `Slot 'DefaultSlot'` 하나만 나온다. **놓은 뒤 Details 에서 이름을
-바꾸는 것**이 정상 절차다. 슬롯은 스켈레톤에 이미 등록돼 있어 목록에 뜬다.
-
-**② `Layered blend per bone` 노드**
-
-```
-빈 곳 우클릭 > "layered blend per bone" 추가
-
-Details:
-  Config > Layer Setup > Branch Filters > + 
-      [0] Bone Name   = Spine
-          Blend Depth = 1
-```
-
-⚠⚠ **본 이름은 `Spine` 이다.** 이 스켈레톤은 Mixamo 인데 **`mixamorig:` 접두사가
-없다** — `Hips` · `Spine` · `Spine1` · `Spine2` · `Neck` · `Head` ·
-`RightShoulder` · `RightArm` · `RightForeArm` · `RightHand` 식이다.
-`spine_01` 이나 `mixamorig:Spine` 은 **안 걸리고 조용히 아무 일도 안 한다.**
-
-⚠⚠ **`Blend Weights 0` 핀이 기본 0 이다.** 0 이면 블렌드가 아무 것도 안 한다 —
-노드도 멀쩡하고 컴파일도 되는데 먹는 동작만 안 보인다. **1.0 으로 바꿀 것.**
-
-**③ 캐시 노드 두 종류**
-
-```
-빈 곳 우클릭 > "New Save cached pose" 추가 → 이름을 LocoCache 로
-   (노드 이름을 더블클릭하거나 Details 에서 바꾼다)
-빈 곳 우클릭 > "Use cached pose 'LocoCache'" → **두 개** 추가
-```
-
-⚠ `Use cached pose` 는 `New Save cached pose` 를 **먼저 만들어야** 메뉴에 뜬다.
-
-**④ 선 잇기**
-
-```
-[상태 기계 Locomotion] → [New Save cached pose 'LocoCache']
-
-[Use cached pose] 1 → [Layered blend per bone] 의 Base Pose
-[Use cached pose] 2 → [Slot 'UpperBody'] 의 Source
-[Slot 'UpperBody'] → [Layered blend per bone] 의 Blend Poses 0
-[Layered blend per bone] → [Slot 'DefaultSlot'] 의 Source
-[Slot 'DefaultSlot'] → [Output Pose]
-```
-
-⚠ **`DefaultSlot` 이 마지막이어야 한다.** `Interact_Reach` 같은 전신 몽타주가
-상체 레이어까지 덮어써야 하기 때문이다.
-
-**⑤ Compile > Save**
-
-### 확인 — 증상별 역추적
-
-| 보이는 것 | 원인 |
-|---|---|
-| T포즈로 팔을 벌리고 있다 | `Slot 'UpperBody'` 의 Source 가 비었다 |
-| 먹는 동작이 아예 안 보인다 | `Blend Weights 0` 이 0 이다 |
-| 앉았는데 일어서 보인다 | 상체 레이어를 안 거치고 `DefaultSlot` 으로 갔다 |
-| 캐시 노드가 메뉴에 없다 | `New Save cached pose` 를 아직 안 만들었다 |
-| 하체가 이상하게 꺾인다 | Branch Filter 본 이름이 틀렸다 (`Spine` 이어야 한다) |
-
-### 8-2. ⚠⚠ 액션 이름 오타 둘 — 워크인이 3초만 앉는다
+### 8-1. ⚠⚠ 액션 이름 오타 둘 — 워크인이 3초만 앉는다
 
 ```
 K_Act    Play Action  Interaction_Reach   →  Interact_Reach
@@ -390,7 +317,7 @@ Eating   Play Action  Sit-Eat             →  Sit_Eat
 `FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
 없는 것」과 완전히 똑같다. 그 상태에서는 애님 없이 시간만 센다.
 
-### 8-3. `Idle_Look` 몽타주가 너무 길다
+### 8-2. `Idle_Look` 몽타주가 너무 길다
 
 `Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.**
 
