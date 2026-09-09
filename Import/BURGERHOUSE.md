@@ -186,9 +186,102 @@ Sit_Eat         AM_Sitting 1.0 · AM_Sitting__1_ 0.6
 ⚠ 몽타주는 **`DefaultSlot`** 을 써야 `ABP_Customer` 의 `Slot 'DefaultSlot'` 노드를
 타고 화면에 나온다. 팩토리가 기본으로 그렇게 만들지만, 손으로 만들 때는 확인할 것.
 
-### ⚠ 아직 안 자른 상태다
+---
 
-`Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.** 원본 애님이 긴 것이 있다:
+## 8. 에디터에서 해야 할 것 — 네 가지
+
+아래는 전부 **파이썬으로 못 하는 것**들이다. UE 5.8 파이썬은 그래프 노드를
+만들 수 없고, StateTree 태스크 내부(`InstancedStruct`)와 몽타주 길이는 읽기
+전용이다.
+
+### 8-1. ⚠⚠ 앉은 자세가 없다 — AnimBP 에 `Sit` 상태
+
+**지금 앉은 손님은 서 있는 자세다.** `ABP_Customer` 는 앉기를 전혀 모른다 —
+상태가 `Idle`·`Walk` 둘뿐이고, `SitAt()` 은 캡슐만 의자에 놓는다.
+
+```
+SitAt() → MOVE_None → Speed 0 → 상태 기계가 Idle(서 있는 자세)을 낸다
+                                    ↓
+        Sit_Eat 몽타주가 슬롯 위에 얹혀 4.4초 동안만 앉은 것처럼 보이고
+                                    ↓
+              몽타주가 끝나면 슬롯이 원래 포즈를 통과시킨다
+                                    ↓
+                      **의자에서 벌떡 선다**
+```
+
+⚠ **몽타주로 자세를 붙드는 건 구조적으로 깨진다.** 앉기는 일회성 몸짓이 아니라
+**지속 상태**라서 상태 기계가 알아야 한다. 몽타주는 그 위에 얹는 몸짓용이다.
+
+`bIsSitting` (bool) 변수는 **이미 만들어 뒀다.** 나머지를 잇는다:
+
+**① Event Graph — 변수 채우기**
+
+```
+기존 [Try Get Pawn Owner] 출력에서 드래그
+  → Cast to CustomerCharacter
+  → 그 노드 우클릭 > Convert to Pure Cast     ← 실행 핀이 사라진다
+  → As Customer Character 에서 드래그 → Is Sitting
+  → [Set bIsSitting] 의 입력에 연결
+
+흰 실행선 :  Event Blueprint Update Animation ▷ Set Speed ▷ Set bIsSitting
+```
+
+⚠ **Pure Cast 로 바꾸는 이유** — 안 바꾸면 Cast 에 실행 핀이 생겨서 흰 선을
+Cast 까지 통과시켜야 한다. 순수로 만들면 데이터선만 이으면 된다.
+
+⚠ `Set bIsSitting` 은 순수 노드가 아니다 — **흰 선을 반드시 이을 것.** 안 이으면
+값이 영원히 false 이고, 증상은 「Sit 상태로 안 넘어간다」로만 보인다
+(§6 의 「조용히 실패하는 곳」과 같은 부류다).
+
+**② AnimGraph > Locomotion — `Sit` 상태 추가**
+
+```
+빈 곳 우클릭 > Add State  → 이름 Sit
+Sit 더블클릭 → Content Browser 에서 Anims/Sitting 을 끌어다 놓기
+  → Pose 를 Output Animation Pose 에 연결
+  → Details 에서 Loop Animation ☑        ← 안 켜면 마지막 프레임에서 얼어붙는다
+```
+
+**③ 전이 두 개**
+
+```
+Idle 테두리 → Sit 로 드래그 :  ⬤ 더블클릭 → bIsSitting 을 Can Enter Transition 에 바로 연결
+Sit  테두리 → Idle 로 드래그 :  ⬤ 더블클릭 → bIsSitting → [NOT] → Can Enter Transition
+```
+
+⚠ `bIsSitting` 은 bool 이라 `>` 같은 비교가 필요 없다. 그대로 잇는다.
+⚠ `Walk → Sit` 은 안 만들어도 된다. 앉을 때 `MOVE_None` 이라 Speed 가 0 이 되어
+  `Walk → Idle → Sit` 으로 두 단계를 거친다.
+
+**④ Compile > Save**
+
+### 8-2. 프리필 손님이 4.4초 뒤 일어나 나간다
+
+`PE_Eat` 이 `Sit_Eat` 을 **한 번만** 재생하고 끝나면 `Leave` 로 간다.
+
+```
+ST_Customer > PE_Eat
+  Play Action 의  Loop ☑                       ← 끝나지 않게
+  전이 OnStateCompleted → Leave   삭제          ← 나가지 않게
+```
+
+⚠ **둘은 한 쌍이다.** 전이만 지우면 `Play Action` 이 끝났을 때 받아 줄 전이가
+없어 **트리가 통째로 끝나고**, `Sit At Seat` 의 `ExitState` 가 손님을 일으켜
+세우고 좌석을 반납한다.
+
+### 8-3. ⚠⚠ 액션 이름 오타 둘
+
+```
+K_Act    Play Action  Interaction_Reach   →  Interact_Reach
+Eating   Play Action  Sit-Eat             →  Sit_Eat
+```
+
+`FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
+없는 것」과 완전히 똑같다. 그 상태에서는 애님 없이 시간만 센다.
+
+### 8-4. 몽타주 길이를 안 잘랐다
+
+`Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.** 원본이 길다:
 
 | | |
 |---|---|
@@ -199,13 +292,10 @@ Sit_Eat         AM_Sitting 1.0 · AM_Sitting__1_ 0.6
 | `AM_Telling_A_Secret` | 10.9s |
 | 나머지 | 4~6s |
 
-**눈에 띄는 결과** — `Enter` 상태가 `Idle_Look` 을 한 번 재생하고 끝나므로,
-손님이 문 앞에서 **최대 37초를 서 있다가** 키오스크로 간다.
+**눈에 띄는 결과** — `Enter` 가 `Idle_Look` 을 한 번 재생하고 끝나므로 손님이
+문 앞에서 **최대 37초를 서 있다가** 키오스크로 간다.
 
-⚠ 줄에 선 손님(`W_Idle`·`PW_Idle`)은 루프라 문제가 덜하다. 몸짓이 늦게 바뀔 뿐이다.
-
-**고치는 법 — 에디터에서 구간을 자른다.** 파이썬으로는 안 된다 (UE 5.8 에서
-`SequenceLength` 와 세그먼트가 읽기 전용이다 — 써도 조용히 무시된다).
+⚠ 줄에 선 손님(`W_Idle`·`PW_Idle`)은 루프라 덜하다. 몸짓이 늦게 바뀔 뿐이다.
 
 ```
 몽타주 열기 > Montage Sections 에서 5~8초 구간 하나로 자른다
@@ -217,21 +307,12 @@ Sit_Eat         AM_Sitting 1.0 · AM_Sitting__1_ 0.6
 급하면 `Idle_Look` 에서 긴 변형(`Talking_On_A_Cell_Phone`·`Texting_While_Standing`)
 을 빼는 것만으로도 문 앞 대기가 18.5초로 준다.
 
----
-
-## 8. ⚠⚠ `ST_Customer` 에 액션 이름 오타 둘
+### 다 하고 나서 — 되읽어 확인
 
 ```
-K_Act    Play Action  Interaction_Reach   →  Interact_Reach 여야 한다
-Eating   Play Action  Sit-Eat             →  Sit_Eat 여야 한다
+ll_st_dump.py    PE_Eat 에 전이가 없고 Play Action 이 (loop) 인가
+ll_st_check.py   ❌ 가 0건인가
 ```
-
-`FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
-없는 것」과 완전히 똑같다. 해당 상태에서는 애님 없이 시간만 센다.
-
-⚠ 에디터에서 그 상태의 `Play Action` 을 열어 `Action Name` 을 고칠 것.
-파이썬으로는 못 고친다 (StateTree 태스크가 `InstancedStruct` 안에 있는데
-UE 5.8 파이썬에 그 내부를 읽고 쓸 API 가 없다).
 
 ---
 
