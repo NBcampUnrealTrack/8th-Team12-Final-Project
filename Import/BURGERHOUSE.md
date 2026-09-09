@@ -150,6 +150,7 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 | `ll_nav_check.py` | 내비가 실제로 홀을 덮는지 **숫자로** 확인 |
 | `ll_st_check.py` | `ST_Customer` · `BP_Customer` · `BP_CustomerAI` 배선 점검 |
 | `ll_st_dump.py` | 트리를 통째로 덤프 — 상태 32 · 태스크 39 · 전이 29 가 기준 |
+| `ll_montages.py` | 몽타주를 만들고 `BP_Customer > Actions` 에 꽂는다 |
 
 ---
 
@@ -166,14 +167,76 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 
 ---
 
-## 7. 아직 안 된 것
+## 7. 몽타주
 
-- **몽타주 0개.** `BP_Customer > BurgerHouse|Action > Actions` 가 비어 있다.
-  비어 있어도 루프는 **정상으로 돈다** — `PlayAction` 이 몽타주가 없으면 시간만
-  센다. 눈에 보이는 건 미끄러지는 Idle 포즈뿐이다.
-  ⚠ 「동작이 없다」와 「태스크가 안 돌았다」를 헷갈리지 말 것. 후자는 로그에 남는다.
-- **`ABP_Customer` 의 Walk 상태가 `Walking_While_Texting` 을 쓴다.** `Walking` 으로
-  바꿔야 폰 안 보고 걷는다.
+`Content/BurgerHouse/Anims/Montages/` 에 9개가 있고 `BP_Customer > Actions` 에
+꽂혀 있다. `ll_montages.py` 가 만든다 (다시 만들려면 그 스크립트를 돌린다).
+
+```
+Idle_Look       AM_Texting_While_Standing 1.0 · AM_Talking_On_A_Cell_Phone 0.5
+                AM_Texting 0.4 · AM_Telling_A_Secret 0.2
+Interact_Reach  AM_Reaching_Out 1.0
+Sit_Eat         AM_Sitting 1.0 · AM_Sitting__1_ 0.6
+                AM_Sitting_Talking 0.4 · AM_Sitting_Thumbs_Up 0.2
+```
+
+가중치는 합이 1일 필요 없다. 기본 동작을 1.0, 가끔 나오는 몸짓을 0.2 로 두면
+대개 평범하고 가끔 눈에 띄는 그림이 된다.
+
+⚠ 몽타주는 **`DefaultSlot`** 을 써야 `ABP_Customer` 의 `Slot 'DefaultSlot'` 노드를
+타고 화면에 나온다. 팩토리가 기본으로 그렇게 만들지만, 손으로 만들 때는 확인할 것.
+
+### ⚠ 아직 안 자른 상태다
+
+`Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.** 원본 애님이 긴 것이 있다:
+
+| | |
+|---|---|
+| `AM_Sitting_Talking` | 44.1s |
+| `AM_Talking_On_A_Cell_Phone` | 37.2s |
+| `AM_Texting_While_Standing` | 23.6s |
+| `AM_Texting` | 18.5s |
+| `AM_Telling_A_Secret` | 10.9s |
+| 나머지 | 4~6s |
+
+**눈에 띄는 결과** — `Enter` 상태가 `Idle_Look` 을 한 번 재생하고 끝나므로,
+손님이 문 앞에서 **최대 37초를 서 있다가** 키오스크로 간다.
+
+⚠ 줄에 선 손님(`W_Idle`·`PW_Idle`)은 루프라 문제가 덜하다. 몸짓이 늦게 바뀔 뿐이다.
+
+**고치는 법 — 에디터에서 구간을 자른다.** 파이썬으로는 안 된다 (UE 5.8 에서
+`SequenceLength` 와 세그먼트가 읽기 전용이다 — 써도 조용히 무시된다).
+
+```
+몽타주 열기 > Montage Sections 에서 5~8초 구간 하나로 자른다
+```
+
+⚠ 자를 때 **첫 프레임과 끝 프레임 포즈가 비슷한 구간**을 고른다. 안 그러면
+반복마다 툭 튄다.
+
+급하면 `Idle_Look` 에서 긴 변형(`Talking_On_A_Cell_Phone`·`Texting_While_Standing`)
+을 빼는 것만으로도 문 앞 대기가 18.5초로 준다.
+
+---
+
+## 8. ⚠⚠ `ST_Customer` 에 액션 이름 오타 둘
+
+```
+K_Act    Play Action  Interaction_Reach   →  Interact_Reach 여야 한다
+Eating   Play Action  Sit-Eat             →  Sit_Eat 여야 한다
+```
+
+`FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
+없는 것」과 완전히 똑같다. 해당 상태에서는 애님 없이 시간만 센다.
+
+⚠ 에디터에서 그 상태의 `Play Action` 을 열어 `Action Name` 을 고칠 것.
+파이썬으로는 못 고친다 (StateTree 태스크가 `InstancedStruct` 안에 있는데
+UE 5.8 파이썬에 그 내부를 읽고 쓸 API 가 없다).
+
+---
+
+## 9. 그 밖에 남은 것
+
 - 좌석 선택이 **결정적**이다 — 늘 같은 순서로 같은 자리부터 찬다.
   다양성이 필요하면 `ClaimSlot(bRandom=true)`.
 - 주문번호 표시기 — 재질 `M_OrderDisp` 만 있고 UMG 위젯이 없다.
