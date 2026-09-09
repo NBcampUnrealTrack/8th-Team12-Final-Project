@@ -20,7 +20,9 @@ Source/Febricula/BurgerHouse/
 Content/BurgerHouse/
   Maps/L_BurgerHouse      레벨
   AI/BP_Customer · BP_CustomerAI · ST_Customer
-  Anims/Mixamo/ABP_Customer + 애님 17
+  Anims/Mixamo/ABP_Customer + 애님 21 (Eating 4 포함)
+  Anims/Montages/ 몽타주 9
+  Anims/Eat_Animation_Pack/ 원본 + 리타겟 설정
   Props · Materials · Shell · Textures
 ```
 
@@ -204,116 +206,37 @@ Anims/Mixamo/Anims/Eating_*        결과 (손님 리그) 6.9~9.2s
 손에 물건을 든 애님은 손 위치가 어긋나기 쉽다. 어긋나면 `RTG_*` 를 열어
 **Edit Pose** 로 맞추고 `ll_eat_retarget.py` 를 다시 돌린다.
 
-⚠⚠ **이 애님들은 서서 먹는 동작이다** (hips Z 104.3 = `Idle` 과 같다). 다리는
-아예 안 움직인다. 그래서 **상체만 덧씌워야** 앉아서 먹는 그림이 된다 —
-그냥 `DefaultSlot` 으로 재생하면 앉아 있던 손님이 일어선다. §8-1 ④ 참조.
+### ⚠ 슬롯이 둘이다
 
-⚠ 예전에 쓰던 `AM_Sitting*` 몽타주 4개는 그대로 남아 있다. 다시 쓰려면
+```
+Sit_Eat (AM_Eating_*)          슬롯 UpperBody     ← 상체만
+Idle_Look · Interact_Reach     슬롯 DefaultSlot   ← 전신
+```
+
+`Eating_*` 은 **서서 먹는 동작이다** (hips Z 104.3 = `Idle` 과 같고, 다리는 아예
+안 움직인다). 전신으로 재생하면 앉은 손님이 일어서므로 **상체만 덧씌운다.**
+
+⚠ 그래서 AnimGraph 에 `UpperBody` 를 받는 노드가 **있어야** 한다. 없으면 그
+몽타주는 아예 재생되지 않는다 — §8-1.
+
+⚠ 몽타주를 새로 만들면 팩토리가 `DefaultSlot` 으로 만든다. `Sit_Eat` 에 넣을
+것이면 슬롯을 `UpperBody` 로 바꿀 것.
+
+⚠ 예전에 쓰던 `AM_Sitting*` 몽타주 4개는 그대로 남아 있다 (미사용). 다시 쓰려면
 `ll_montages.py` 의 `ACTIONS` 에 되돌려 넣으면 된다.
-
-⚠ 몽타주는 **`DefaultSlot`** 을 써야 `ABP_Customer` 의 `Slot 'DefaultSlot'` 노드를
-타고 화면에 나온다. 팩토리가 기본으로 그렇게 만들지만, 손으로 만들 때는 확인할 것.
 
 ---
 
-## 8. 에디터에서 해야 할 것
+## 8. 남은 에디터 작업
 
-아래는 전부 **파이썬으로 못 하는 것**들이다. UE 5.8 파이썬은 그래프 노드를
-만들 수 없고, StateTree 태스크 내부(`InstancedStruct`)와 몽타주 길이는 읽기
-전용이다.
+전부 **파이썬으로 못 하는 것**들이다. UE 5.8 파이썬은 그래프 노드를 만들 수 없고,
+StateTree 태스크 내부(`InstancedStruct`)와 몽타주 `SequenceLength` 는 읽기 전용이다.
 
-### 8-1. ⚠⚠ 앉은 자세가 없다 — AnimBP 에 `Sit` 상태
+### 8-1. ⚠⚠ AnimGraph 에 상체 레이어 — 안 하면 앉은 손님이 일어선다
 
-**지금 앉은 손님은 서 있는 자세다.** `ABP_Customer` 는 앉기를 전혀 모른다 —
-상태가 `Idle`·`Walk` 둘뿐이고, `SitAt()` 은 캡슐만 의자에 놓는다.
-
-```
-SitAt() → MOVE_None → Speed 0 → 상태 기계가 Idle(서 있는 자세)을 낸다
-                                    ↓
-        Sit_Eat 몽타주가 슬롯 위에 얹혀 4.4초 동안만 앉은 것처럼 보이고
-                                    ↓
-              몽타주가 끝나면 슬롯이 원래 포즈를 통과시킨다
-                                    ↓
-                      **의자에서 벌떡 선다**
-```
-
-⚠ **몽타주로 자세를 붙드는 건 구조적으로 깨진다.** 앉기는 일회성 몸짓이 아니라
-**지속 상태**라서 상태 기계가 알아야 한다. 몽타주는 그 위에 얹는 몸짓용이다.
-
-`bIsSitting` (bool) 변수는 **이미 만들어 뒀다.** 나머지를 잇는다:
-
-**① Event Graph — 변수 채우기**
-
-```
-기존 [Try Get Pawn Owner] 출력에서 드래그
-  → Cast to CustomerCharacter
-  → 그 노드 우클릭 > Convert to Pure Cast     ← 실행 핀이 사라진다
-  → As Customer Character 에서 드래그 → Is Sitting
-  → [Set bIsSitting] 의 입력에 연결
-
-흰 실행선 :  Event Blueprint Update Animation ▷ Set Speed ▷ Set bIsSitting
-```
-
-⚠ **Pure Cast 로 바꾸는 이유** — 안 바꾸면 Cast 에 실행 핀이 생겨서 흰 선을
-Cast 까지 통과시켜야 한다. 순수로 만들면 데이터선만 이으면 된다.
-
-⚠ `Set bIsSitting` 은 순수 노드가 아니다 — **흰 선을 반드시 이을 것.** 안 이으면
-값이 영원히 false 이고, 증상은 「Sit 상태로 안 넘어간다」로만 보인다
-(§6 의 「조용히 실패하는 곳」과 같은 부류다).
-
-**② AnimGraph > Locomotion — `Sit` 상태 추가**
-
-```
-빈 곳 우클릭 > Add State  → 이름 Sit
-Sit 더블클릭 → Content Browser 에서 Anims/Sitting 을 끌어다 놓기
-  → Pose 를 Output Animation Pose 에 연결
-  → Details 에서 Loop Animation ☑        ← 안 켜면 마지막 프레임에서 얼어붙는다
-```
-
-**③ 전이 두 개**
-
-```
-Idle 테두리 → Sit 로 드래그 :  ⬤ 더블클릭 → bIsSitting 을 Can Enter Transition 에 바로 연결
-Sit  테두리 → Idle 로 드래그 :  ⬤ 더블클릭 → bIsSitting → [NOT Boolean] → Can Enter Transition
-```
-
-⚠ `bIsSitting` 은 bool 이라 `>` 같은 비교가 필요 없다. 그대로 잇는다.
-
-⚠ **`NOT Boolean` 은 `Not Equal`(`!=`) 이 아니다.** 검색창에 "not" 을 치면 둘 다
-  나오는데, 쓸 것은 **입력 핀이 하나뿐인** `NOT Boolean` (Utilities > Boolean)
-  이다. `Not Equal (Boolean)` 로도 같은 값이 나오지만 입력이 둘이라, 나중에 `B`
-  를 잘못 건드리면 **조용히 반대로** 동작한다.
-
-✅ 규칙을 이으면 Result 노드에 **"Fast path enabled"** 가 뜬다. **경고가 아니라
-잘 됐다는 표시다** — 이 전이는 블루프린트 VM 을 안 타고 변수를 직접 읽어 평가된다.
-전이는 매 프레임 × 손님 수만큼 돌기 때문에 의미가 있다.
-
-⚠ 규칙 안에서 **함수를 호출하면 fast path 를 잃는다.** `bIsSitting` 변수를 안 쓰고
-  전이에서 바로 `IsSitting()` 을 부르면 그렇게 된다 — Event Graph 에서 `Speed` ·
-  `bIsSitting` 을 미리 담아 두는 이유가 이것이다. 나중에 이 표시가 사라졌다면
-  규칙에 함수 호출이 끼어든 것이다.
-⚠ `Walk → Sit` 은 안 만들어도 된다. 앉을 때 `MOVE_None` 이라 Speed 가 0 이 되어
-  `Walk → Idle → Sit` 으로 두 단계를 거친다.
-
-**④ ⚠⚠ 먹는 동작은 상체만 덧씌운다 — 안 그러면 다시 일어선다**
-
-`Eating_*` 애님은 **서서 먹는 동작**이다. 측정값:
-
-```
-Idle              hips Z 103.5     ← 서 있음
-Walking                  100.7
-Sitting                   92.5
-Sitting_Thumbs_Up         77.6
-Eating_* 4개             104.3     ← Idle 과 같다 = 서 있다
-```
-
-넷 다 허벅지 회전이 정확히 `180.0` 으로 같다 — **다리가 아예 안 움직인다.**
-상체만 쓰는 팩이라는 뜻이고, 그래서 **상체만 덧씌우면 그대로 쓸 수 있다.**
-
-⚠ 그냥 `DefaultSlot` 으로 재생하면 **전신을 덮어써서** 앉아 있던 손님이
-일어선다. 슬롯을 나눠야 한다.
-
-### 만들 그림
+`Sit_Eat` 몽타주는 **서서 먹는 동작**이고 슬롯이 `UpperBody` 로 되어 있다.
+그런데 AnimGraph 에 `UpperBody` 를 받는 노드가 아직 없어서 **그 몽타주가 아예
+재생되지 않는다.** 아래를 이어야 그림이 완성된다.
 
 ```
                    ┌──────────────── Base Pose ─────────┐
@@ -329,64 +252,39 @@ Eating_* 4개             104.3     ← Idle 과 같다 = 서 있다
 의 **입력(Source)** 으로 하나. 출력 핀은 선을 여러 개 낼 수 있다.
 
 ⚠⚠ **`Slot 'UpperBody'` 의 입력을 비워 두면 안 된다.** 비우면 몽타주가 없을 때
-그 슬롯이 **레퍼런스 포즈**(T포즈)를 낸다. 그러면 평소에도 상체가 T포즈로
-덮여서 **손님이 늘 팔을 벌리고 있다.** 상태 기계를 물려 두면 몽타주가 없을 때
-슬롯이 그대로 통과시켜서 결과가 기본 포즈와 같아진다.
+그 슬롯이 **레퍼런스 포즈(T포즈)** 를 낸다 — 손님이 늘 팔을 벌리고 있게 된다.
+상태 기계를 물려 두면 몽타주가 없을 때 그대로 통과시켜 기본 포즈와 같아진다.
 
-### ① `UpperBody` 슬롯 만들기
-
-슬롯은 **스켈레톤에 저장된다.** 한 번 만들면 몽타주 넷에서 다 고를 수 있다.
-
-```
-AM_Eating_a_Burger 더블클릭
-  → 몽타주 트랙 왼쪽의 슬롯 이름(DefaultSlot) 콤보를 연다
-  → 맨 아래 Anim Slot Manager   (또는 Window > Anim Slot Manager)
-  → Add Slot → 이름 UpperBody
-  → 콤보로 돌아와 UpperBody 선택
-  → Save   (스켈레톤도 같이 더티가 되므로 함께 저장한다)
-```
-
-나머지 셋(`AM_Eating_a_Drumstick` · `AM_Eating_Frantically` · `AM_Eating_Fries`)도
-같은 콤보에서 **UpperBody** 로 바꾼다.
-
-⚠ `AM_Idle_Look*` 과 `AM_Reaching_Out` 은 **`DefaultSlot` 그대로 둔다.** 전신
-동작이라 상체만 쓰면 안 된다.
-
-### ② AnimGraph — `Slot 'UpperBody'` 노드
+**① `Slot 'UpperBody'` 노드**
 
 ```
 AnimGraph 빈 곳 우클릭 > "slot" 검색 > Slot 'DefaultSlot' 추가
-  → 그 노드를 클릭하고 Details > Slot Name 을 UpperBody 로 바꾼다
+  → 노드를 클릭하고 Details > Slot Name 을 UpperBody 로
 ```
 
 ⚠ 팔레트에는 `Slot 'DefaultSlot'` 하나만 나온다. **놓은 뒤 Details 에서 이름을
-바꾸는 것**이 정상 절차다.
+바꾸는 것**이 정상 절차다. 슬롯은 스켈레톤에 이미 등록돼 있어 목록에 뜬다.
 
-### ③ `Layered blend per bone` 노드
-
-```
-빈 곳 우클릭 > "layered blend per bone" 검색 > 추가
-```
-
-Details 에서:
+**② `Layered blend per bone` 노드**
 
 ```
-Config > Layer Setup > Branch Filters > + 를 눌러 원소 하나 추가
-    [0] Bone Name    = Spine
-        Blend Depth  = 1
+빈 곳 우클릭 > "layered blend per bone" 추가
+
+Details:
+  Config > Layer Setup > Branch Filters > + 
+      [0] Bone Name   = Spine
+          Blend Depth = 1
 ```
 
 ⚠⚠ **본 이름은 `Spine` 이다.** 이 스켈레톤은 Mixamo 인데 **`mixamorig:` 접두사가
 없다** — `Hips` · `Spine` · `Spine1` · `Spine2` · `Neck` · `Head` ·
 `RightShoulder` · `RightArm` · `RightForeArm` · `RightHand` 식이다.
-UE 마네퀸식 `spine_01` 이나 `mixamorig:Spine` 을 넣으면 **안 걸리고 조용히
-아무 일도 안 한다** (에러도 안 난다).
+`spine_01` 이나 `mixamorig:Spine` 은 **안 걸리고 조용히 아무 일도 안 한다.**
 
-⚠⚠ **`Blend Weights 0` 핀이 기본 0 이다.** 0 이면 블렌드가 **아무 것도 안 한다** —
-노드는 멀쩡히 있고 컴파일도 되는데 먹는 동작만 안 보인다. **1.0 으로 바꿀 것.**
-(핀에 직접 타이핑하거나 Details 의 `Blend Weights` 배열에서 넣는다.)
+⚠⚠ **`Blend Weights 0` 핀이 기본 0 이다.** 0 이면 블렌드가 아무 것도 안 한다 —
+노드도 멀쩡하고 컴파일도 되는데 먹는 동작만 안 보인다. **1.0 으로 바꿀 것.**
 
-### ④ 선 잇기
+**③ 선 잇기**
 
 ```
 [상태 기계] 출력  →  [Layered blend per bone] 의 Base Pose
@@ -397,23 +295,20 @@ UE 마네퀸식 `spine_01` 이나 `mixamorig:Spine` 을 넣으면 **안 걸리�
 ```
 
 ⚠ **`DefaultSlot` 이 마지막이어야 한다.** `Interact_Reach` 같은 전신 몽타주가
-상체 레이어까지 덮어써야 하기 때문이다. 순서를 바꾸면 손 뻗는 동작이 상체
-레이어에 잘려 이상해진다.
+상체 레이어까지 덮어써야 하기 때문이다.
 
-### ⑤ Compile > Save
+**④ Compile > Save**
 
-### 확인
+### 확인 — 증상별 역추적
 
-```
-Sit 상태에서 Sit_Eat 몽타주가 돌 때  →  하체는 앉은 자세, 상체만 먹는 동작
-몽타주가 없을 때                      →  그냥 앉은 자세 (T포즈가 아니어야 한다)
-```
+| 보이는 것 | 원인 |
+|---|---|
+| T포즈로 팔을 벌리고 있다 | `Slot 'UpperBody'` 의 Source 가 비었다 |
+| 먹는 동작이 아예 안 보인다 | `Blend Weights 0` 이 0 이다 |
+| 앉았는데 일어서 보인다 | 상체 레이어를 안 거치고 `DefaultSlot` 으로 갔다 |
+| 하체가 이상하게 꺾인다 | Branch Filter 본 이름이 틀렸다 (`Spine` 이어야 한다) |
 
-⚠ T포즈가 보이면 **`Slot 'UpperBody'` 의 Source 가 비어 있는 것**이다.
-⚠ 먹는 동작이 아예 안 보이면 **`Blend Weights 0` 이 0 인 것**이다.
-⚠ 앉았는데 일어서 보이면 **몽타주 슬롯이 아직 `DefaultSlot` 인 것**이다.
-
-### 8-2. 프리필 손님이 4.4초 뒤 일어나 나간다
+### 8-2. 프리필 손님이 몇 초 뒤 일어나 나간다
 
 `PE_Eat` 이 `Sit_Eat` 을 **한 번만** 재생하고 끝나면 `Leave` 로 간다.
 
@@ -427,28 +322,7 @@ ST_Customer > PE_Eat
 없어 **트리가 통째로 끝나고**, `Sit At Seat` 의 `ExitState` 가 손님을 일으켜
 세우고 좌석을 반납한다.
 
-### 8-3. ⚠⚠ 트레이 소켓 이름이 틀렸다
-
-```
-BP_Customer > BurgerHouse|Tray > Tray Socket
-    mixamorig:RightHand   →   RightHand
-```
-
-이 스켈레톤에는 **`mixamorig:` 접두사가 없다.** 확인한 값:
-
-```
-does_bone_name_exist('RightHand')            = True
-does_bone_name_exist('mixamorig:RightHand')  = False
-스켈레톤 소켓                                 = 0개
-```
-
-⚠ **조용히 실패한다.** `USkinnedMeshComponent::GetSocketTransform` 은 소켓도 본도
-못 찾으면 **컴포넌트 원점(발밑)** 을 돌려준다. 그래서 트레이가 손이 아니라
-**발밑에 붙는다.** 에러도 경고도 안 난다.
-
-⚠ 트레이는 `HoldTray()` 전까지 `SetHiddenInGame(true)` 라 여태 눈에 안 띄었다.
-
-### 8-4. ⚠⚠ 액션 이름 오타 둘
+### 8-3. ⚠⚠ 액션 이름 오타 둘
 
 ```
 K_Act    Play Action  Interaction_Reach   →  Interact_Reach
@@ -458,10 +332,9 @@ Eating   Play Action  Sit-Eat             →  Sit_Eat
 `FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
 없는 것」과 완전히 똑같다. 그 상태에서는 애님 없이 시간만 센다.
 
-### 8-5. `Idle_Look` 몽타주가 너무 길다
+### 8-4. `Idle_Look` 몽타주가 너무 길다
 
-`Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.** `Sit_Eat` 은 리타겟한
-먹는 애님으로 바꿔서 6.9~9.2초로 괜찮아졌지만, `Idle_Look` 은 아직 길다:
+`Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.**
 
 | | |
 |---|---|
@@ -482,15 +355,12 @@ Eating   Play Action  Sit-Eat             →  Sit_Eat
 ⚠ 자를 때 **첫 프레임과 끝 프레임 포즈가 비슷한 구간**을 고른다. 안 그러면
 반복마다 툭 튄다.
 
+⚠ **파이썬으로는 반만 된다.** 세그먼트 `AnimEndTime` 은 써지는데
+`SequenceLength` 가 읽기 전용이라, 애님만 짧아지고 상태 머무는 시간은 그대로다 —
+마지막 프레임에서 얼어붙어 **더 나빠진다.** 에디터에서 할 것.
+
 급하면 `Idle_Look` 에서 긴 변형(`Talking_On_A_Cell_Phone`·`Texting_While_Standing`)
 을 빼는 것만으로도 문 앞 대기가 18.5초로 준다.
-
-### 다 하고 나서 — 되읽어 확인
-
-```
-ll_st_dump.py    PE_Eat 에 전이가 없고 Play Action 이 (loop) 인가
-ll_st_check.py   ❌ 가 0건인가
-```
 
 ---
 
