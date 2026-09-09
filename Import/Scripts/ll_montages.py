@@ -89,6 +89,24 @@ ACTIONS = {
     ],
 }
 
+# ---- ⚠ 트리 오타 별칭 ----
+#
+# `ST_Customer` 에 **같은 행동인데 철자가 다른 태스크가 섞여 있다.**
+#
+#     Sit_Eat            1곳  ·  Sit-Eat            1곳   ← 하이픈
+#     Interact_Reach     2곳  ·  Interaction_Reach  1곳
+#
+# `FName` 이라 오타 쪽은 조용히 실패한다 — `PlayAction` 이 폴백 4초를 돌려주고
+# **손님이 4초만 앉았다가 일어선다.** 「중간에 일어난다」의 정체가 이것이다.
+#
+# 트리 태스크의 파라미터는 `InstancedStruct` 안에 있어 UE 5.8 파이썬으로는
+# 못 고친다. 그래서 **오타 이름도 같은 몽타주로 등록해** 막아 둔다.
+#
+# ⚠ 에디터에서 트리의 철자를 고치면 **이 두 줄을 지울 것.** 안 지우면 쓰이지
+#   않는 항목이 남아 다음 사람이 「어느 쪽이 진짜냐」로 헤맨다.
+ACTIONS['Sit-Eat'] = ACTIONS['Sit_Eat']
+ACTIONS['Interaction_Reach'] = ACTIONS['Interact_Reach']
+
 
 def set_slot(m, slot):
     """몽타주 슬롯을 바꾼다.
@@ -197,10 +215,10 @@ def main():
     else:
         L('=== 완료 ===')
     L('')
-    L('⚠ ST_Customer 에 액션 이름 오타가 둘 있다 — 에디터에서 고칠 것:')
+    L('⚠ ST_Customer 에 액션 이름 오타가 둘 남아 있다 — 지금은 **별칭으로 막아 뒀다**:')
     L('    K_Act    Interaction_Reach -> Interact_Reach')
     L('    Eating   Sit-Eat           -> Sit_Eat')
-    L('  이 둘은 몽타주를 꽂아도 못 찾는다 (FName 이라 조용히 실패한다).')
+    L('  에디터에서 철자를 고치면 이 스크립트의 「트리 오타 별칭」 두 줄도 지울 것.')
 
 
 main()

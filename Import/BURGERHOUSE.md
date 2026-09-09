@@ -61,6 +61,34 @@ Enter → Kiosk → Wait → Pickup → Seat → Leave
 ⚠⚠ **내비를 안 구우면 스폰이 0 이다.** 그런데 증상은 「스포너가 고장났다」로
 보인다. 에디터에서 `Build > Build Paths`. 커맨드릿에서는 안 구워진다.
 
+### ⚠ 좌석이 바라보는 방향 — 가구마다 다르다
+
+UE 캐릭터 정면은 **+X** 인데 좌석 슬롯은 **가구 회전을 그대로 물려받는다.**
+가구 정면이 +X 가 아니면 손님이 옆을 보고 앉는다. 그래서 `SlotPoint` 에
+`UseYawOffset` 이 있고 `GetUseTransform()` 이 yaw 에 더한다.
+
+| 에셋 | 가구 정면 | `UseYawOffset` |
+|---|---|---|
+| `Chair_A` (29석) | 로컬 **+Y** | **90** |
+| `Sofa_Unit` (8석) | 로컬 **+X** | **0** |
+| 키오스크 · 픽업 · 문 | — | **0** (스크립트가 UE yaw 를 직접 적는다) |
+
+⚠⚠ **의자만 보고 「좌석은 전부 90」 이라고 단정하지 말 것.** 표본 12개가 우연히
+전부 `Chair_A` 였던 탓에 한 번 틀렸다. 그래서 `ll_slots.py` 의
+`USE_YAW_OFFSET` 은 **종류가 아니라 에셋 이름**으로 건다 — 새 좌석 가구를
+넣으면 항목을 추가할 것.
+
+⚠⚠ **화면이 90도 틀어져 보이면 좌석이 아니라 `CharacterMesh0` 을 먼저 볼 것**
+(§6). 메시 컴포넌트 yaw 가 0 이면 손님 전원이 90도 옆을 보는데, 그 상태에서
+좌석 값을 맞추면 오히려 나빠진다.
+
+검산은 「테이블 중심과의 각도」가 아니라 **정면으로 뻗은 선이 테이블 모듈을
+지나는지**로 한다. 긴 테이블에 붙은 소파는 정면이 상판 모서리를 향하고 중심은
+옆으로 치우치는 게 정상이라, 각도로 재면 멀쩡한 좌석이 전부 틀렸다고 나온다.
+현재 37석 중 34석이 정면 25cm 안에 테이블이 있고, 나머지 3석(`Seat_30`·`34`·
+`35`)은 테이블 모듈 **사이 틈**에 앉아 중심이 33cm 옆이다 — 모듈 폭이 40cm 라
+상판 모서리는 13cm 앞이고, 다른 각도는 전부 더 나쁘다. 회전 문제가 아니다.
+
 ### 스포너 설정 (현재 `L_BurgerHouse` 값)
 
 ```
@@ -199,8 +227,57 @@ exec(open(r'C:/Project/Unreal/Import/Scripts/<이름>.py').read())
 | 통보보다 컨트롤러를 먼저 붙임 | 프리필 전원이 기본 갈래로 | 「트리 자식 순서를 잘못 놨나」 |
 | `PrefillRoles` 철자 오타 | 프리필이 **전부** 기본 갈래로 | 위와 증상이 같다 |
 | 루프 상태에 「앉는 동작」을 씀 | **섰다 앉았다 반복** | 「전이가 덜덜 떤다」 (§7) |
+| 트리의 액션 이름 오타 | 그 상태만 **4초 폴백** | 「몽타주가 없나」 (§8-1) |
+| 레벨 액터 프로퍼티만 고치고 저장 | **아무 일도 안 일어남** | 아래 참고 |
+| 메시 컴포넌트 yaw 가 0 | 손님이 **전부 90도 옆을 봄** | 「좌석 각도가 틀렸나」 (아래) |
 
-다섯 다 **에러가 안 난다.** 그래서 표로 박아 둔다.
+여덟 다 **에러가 안 난다.** 그래서 표로 박아 둔다.
+
+### ⚠⚠ `CharacterMesh0` 의 relative yaw 는 **−90** 이다
+
+UE `ACharacter` 규약 — 스켈레탈 메시는 자기 공간에서 **+Y** 를 보고 액터는
+**+X** 를 본다. 그래서 메시 컴포넌트는 `(0, −90, 0)` 으로 돌려 놓는다.
+
+`BP_Customer` 는 **위치(Z −90)만 들어가 있고 회전이 0 이었다.** 그러면 모든
+손님이 액터 정면에서 **90도 왼쪽**을 본다.
+
+실측(레퍼런스 포즈, 허벅지·어깨 둘 다 일치) — 왼→오른 벡터가 메시 −X 이므로
+정면은 **+Y**, 따라서 컴포넌트 yaw 는 **−90**.
+
+⚠⚠ **이게 좌석 각도 문제의 진짜 원인이었다.** 90도가 통째로 밀려 있으니
+「의자는 맞고 소파만 틀렸다」처럼 보였고, 슬롯 쪽 `UseYawOffset` 을 맞출수록
+오히려 화면이 나빠졌다. **좌석을 의심하기 전에 이 값을 먼저 볼 것.**
+
+⚠ 걷는 것도 같이 틀어져 있었다 — `bOrientRotationToMovement=false` ·
+`bUseControllerRotationYaw=true` 라 액터는 진행 방향을 보는데 몸만 90도 돌아가
+**옆걸음**이었다. 애님이 정상이라 눈치채기 어렵다.
+
+### ⚠⚠ 커맨드릿에서 레벨 저장 — `True` 를 믿지 말 것
+
+액터 프로퍼티만 `set_editor_property` 로 고치면 **레벨 패키지가 dirty 로 안
+잡힌다.** 그 상태로 부르면 —
+
+```python
+les.save_current_level()          # -> True  (그런데 파일은 안 써진다)
+EditorAssetLibrary.save_asset(맵) # -> False
+```
+
+`True` 가 돌아오고 같은 프로세스에서 되읽으면 값도 맞게 나오니 **완전히 성공한
+것처럼 보인다.** 프로세스를 새로 띄우면 원래 값이다. 이것 때문에 좌석 각도
+수정이 두 번 헛돌았다.
+
+```python
+world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+unreal.EditorLoadingAndSavingUtils.save_packages([world.get_outer()], only_dirty=False)
+```
+
+`only_dirty=False` 로 **dirty 플래그를 무시**하게 해야 실제로 써진다.
+(`Package` 객체에는 `is_dirty()`·`mark_package_dirty()` 가 노출돼 있지 않다.)
+
+⚠ 액터를 **스폰**할 때는 이 문제가 없다 — 스폰이 레벨을 dirty 로 만든다.
+그래서 `ll_slots.py` 는 `save_current_level()` 로도 잘 돌아갔다.
+
+⚠ 검산은 **반드시 새 프로세스**에서. 같은 실행 안에서의 되읽기는 무의미하다.
 
 ---
 
@@ -307,7 +384,7 @@ Idle_Look · Interact_Reach     슬롯 DefaultSlot   ← 전신
 전부 **파이썬으로 못 하는 것**들이다. UE 5.8 파이썬은 그래프 노드를 만들 수 없고,
 StateTree 태스크 내부(`InstancedStruct`)와 몽타주 `SequenceLength` 는 읽기 전용이다.
 
-### 8-1. ⚠⚠ 액션 이름 오타 둘 — 워크인이 3초만 앉는다
+### 8-1. 액션 이름 오타 둘 — **별칭으로 막아 뒀다**
 
 ```
 K_Act    Play Action  Interaction_Reach   →  Interact_Reach
@@ -315,7 +392,21 @@ Eating   Play Action  Sit-Eat             →  Sit_Eat
 ```
 
 `FName` 이라 **조용히 실패한다** — 몽타주를 꽂아도 못 찾고, 증상이 「몽타주가
-없는 것」과 완전히 똑같다. 그 상태에서는 애님 없이 시간만 센다.
+없는 것」과 완전히 똑같다. 그 상태에서는 애님 없이 폴백 4초만 센다. **「워크인이
+잠깐 앉았다 일어선다」의 정체가 이것이었다.**
+
+같은 트리에 올바른 철자도 따로 있다 (`Sit_Eat` 1곳 · `Interact_Reach` 2곳) —
+즉 상태에 따라 되기도 하고 안 되기도 했다.
+
+지금은 `ll_montages.py` 가 **오타 이름도 같은 몽타주로 등록**해서 동작한다.
+
+```python
+ACTIONS['Sit-Eat'] = ACTIONS['Sit_Eat']
+ACTIONS['Interaction_Reach'] = ACTIONS['Interact_Reach']
+```
+
+⚠ 에디터에서 트리의 철자를 고치면 **위 두 줄도 같이 지울 것.** 안 지우면 쓰이지
+않는 항목이 남아 다음 사람이 어느 쪽이 진짜인지 헤맨다.
 
 ### 8-2. `Idle_Look` 몽타주가 너무 길다
 
@@ -349,9 +440,76 @@ Eating   Play Action  Sit-Eat             →  Sit_Eat
 
 ---
 
-## 9. 그 밖에 남은 것
+## 9. 이동 — 흔들림과 기물 파고듦
+
+「손님이 앞뒤로 움직인다」와 「벽·기물을 파고든다」는 **같은 뿌리**에서 나온다.
+`BP_Customer` 의 이동 기본값이 야외 액션 캐릭터 값 그대로였다.
+
+| 프로퍼티 | 전 | 후 | 왜 |
+|---|---|---|---|
+| `MaxWalkSpeed` | 600 | **100** | `Walking` 애님 실측이 **97.5cm/s** — 6배로 달려 발이 미끄러지고 목표를 지나쳐 되돌아왔다 |
+| `MaxAcceleration` | 2048 | 400 | 급출발·급정지가 앞뒤 흔들림으로 보인다 |
+| `BrakingDecelerationWalking` | 2048 | 600 | 위와 같음 |
+| `bOrientRotationToMovement` | false | **true** | 아래 참고 — 이것이 「앞뒤로 움직인다」의 정체다 |
+| `bUseControllerRotationYaw` | true | **false** | 위와 **상호 배타**다. 둘 다 켜면 orient 가 이긴다 |
+| `RotationRate.Yaw` | 360 | 540 | 좁은 통로에서 방향 전환이 따라와야 한다 |
+| `MaxStepHeight` | 45 | **30** | 의자 좌면이 45cm·소파가 40cm — 45면 **의자 위로 걸어 올라간다** |
+| `bUseRVOAvoidance` | false | **true** | 안 켜면 좁은 통로에서 서로 밀치며 진동한다 |
+| `AvoidanceConsiderationRadius` | 500 | 200 | 실내에서 500은 홀 전원을 고려해 과조향한다 |
+
+### ⚠⚠ 「앞뒤로 움직인다」의 정체 — 게걸음이다
+
+`bUseControllerRotationYaw = true` 면 폰은 **컨트롤 회전**을 따르는데, AI 는 그것을
+**최종 목적지**로 맞춘다. 경로가 기물을 돌아가면 몸은 목적지를 본 채 옆으로
+움직인다 — **게걸음**이다.
+
+그런데 `ABP_Customer` 에는 **`Speed` 변수 하나뿐이고 `Direction` 이 없다.**
+스트레이프 블렌드스페이스가 없으니 어느 방향으로 움직이든 **앞으로 걷는 애님**만
+나온다. 그래서 옆·뒤로 미끄러지는 그림이 된다.
+
+→ `bOrientRotationToMovement = true` 로 몸이 **실제 속도 방향**을 보게 하면
+전진 애님 하나로 항상 맞는다.
+
+⚠ **남은 부작용** — 이동이 끝나면 마지막 진행 방향 그대로 선다. 키오스크에
+도착한 손님이 키오스크를 등질 수 있다. 앉는 쪽은 `SitAt` 이, 프리필은
+`TeleportToPoint` 가 회전을 직접 넣으므로 영향이 없다. 고치려면 도착 시
+`Claim Slot` 태스크의 `UseRotation` 을 적용하는 한 수가 필요하다 (트리 배선).
+
+⚠ `MaxWalkSpeed` 를 **10 밑으로 내리지 말 것.** Locomotion 의 Idle↔Walk 전이가
+`Speed > 10` 이라 그 밑에서는 **Idle 포즈로 미끄러진다.**
+
+### 남은 것 — `AgentRadius` (검증이 필요해 안 건드렸다)
+
+`RecastNavMesh.AgentRadius` 가 **34** 로 캡슐 반지름 **34** 와 같다. 내비 가장자리가
+캡슐이 닿는 자리와 사실상 붙어 있어, 경로가 가장자리를 타면 캡슐이 계속 기물을
+스친다. **38~42** 로 올리는 것이 정석이다.
+
+⚠ 그런데 올린 만큼 통로가 양쪽에서 깎인다. 좁은 통로가 **끊겨 좌석에 못 가게 될
+수 있어** 값만 바꿔 두면 위험하다. 순서는 —
+
+```
+① AgentRadius 를 38 로
+② 에디터에서 Build > Build Paths      (커맨드릿은 내비를 안 굽는다)
+③ ll_nav_check.py 로 커버리지·슬롯 접근성 재확인
+```
+
+③ 이 통과할 때만 유지한다.
+
+⚠ 충돌 형상 자체는 문제가 없다 — 배치된 24종 전부 단순 충돌이 있고 `BlockAllDynamic`,
+셸(`LL_Shell`)은 complex-as-simple 이다. 통과는 충돌이 없어서가 아니라 **내비가
+기물에 너무 붙어 있고 `MaxStepHeight` 가 좌면보다 높아서**였다.
+
+---
+
+## 10. 그 밖에 남은 것
 
 - 좌석 선택이 **결정적**이다 — 늘 같은 순서로 같은 자리부터 찬다.
   다양성이 필요하면 `ClaimSlot(bRandom=true)`.
 - 주문번호 표시기 — 재질 `M_OrderDisp` 만 있고 UMG 위젯이 없다.
-- 손님끼리 회피 — `UCrowdFollowingComponent`·RVO 둘 다 미적용.
+- `UCrowdFollowingComponent` 는 아직 미적용 (RVO 만 켰다). 손님이 더 늘면
+  디투어 크라우드로 올리는 것이 다음 수다.
+- **정원에 장식 손님이 포함된다** — `FixedDesiredAlive 8` 에서 불멸 장식 5명을
+  빼면 워크인은 상시 **3명**뿐이다. 가게를 붐비게 하려면 `Alive` 를 장식과
+  워크인으로 나누거나 정원을 올려야 한다.
+- `PrefillPlacements` 를 만드는 `ll_spawner.py` 가 **저장소에 없다.** 지금 레벨의
+  5개 항목은 재생성이 안 된다 — 의자를 옮기면 손으로 고쳐야 한다.
