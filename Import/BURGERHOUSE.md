@@ -204,8 +204,9 @@ Anims/Mixamo/Anims/Eating_*        결과 (손님 리그) 6.9~9.2s
 손에 물건을 든 애님은 손 위치가 어긋나기 쉽다. 어긋나면 `RTG_*` 를 열어
 **Edit Pose** 로 맞추고 `ll_eat_retarget.py` 를 다시 돌린다.
 
-⚠ **이 애님들이 앉아서 먹는 것인지 서서 먹는 것인지도 확인할 것.** 서서 먹는
-것이면 `Sit_Eat` 이 아니라 `Idle_Look` 쪽으로 옮겨야 한다.
+⚠⚠ **이 애님들은 서서 먹는 동작이다** (hips Z 104.3 = `Idle` 과 같다). 다리는
+아예 안 움직인다. 그래서 **상체만 덧씌워야** 앉아서 먹는 그림이 된다 —
+그냥 `DefaultSlot` 으로 재생하면 앉아 있던 손님이 일어선다. §8-1 ④ 참조.
 
 ⚠ 예전에 쓰던 `AM_Sitting*` 몽타주 4개는 그대로 남아 있다. 다시 쓰려면
 `ll_montages.py` 의 `ACTIONS` 에 되돌려 넣으면 된다.
@@ -280,7 +281,51 @@ Sit  테두리 → Idle 로 드래그 :  ⬤ 더블클릭 → bIsSitting → [NO
 ⚠ `Walk → Sit` 은 안 만들어도 된다. 앉을 때 `MOVE_None` 이라 Speed 가 0 이 되어
   `Walk → Idle → Sit` 으로 두 단계를 거친다.
 
-**④ Compile > Save**
+**④ ⚠⚠ 먹는 동작은 상체만 덧씌운다 — 안 그러면 다시 일어선다**
+
+`Eating_*` 애님은 **서서 먹는 동작**이다. 측정값:
+
+```
+Idle              hips Z 103.5     ← 서 있음
+Walking                  100.7
+Sitting                   92.5
+Sitting_Thumbs_Up         77.6
+Eating_* 4개             104.3     ← Idle 과 같다 = 서 있다
+```
+
+넷 다 허벅지 회전이 정확히 `180.0` 으로 같다 — **다리가 아예 안 움직인다.**
+상체만 쓰는 팩이라는 뜻이고, 그래서 **상체만 덧씌우면 그대로 쓸 수 있다.**
+
+⚠ 그냥 `DefaultSlot` 으로 재생하면 **전신을 덮어써서** 앉아 있던 손님이
+일어선다. 슬롯을 나눠야 한다.
+
+```
+[상태 기계]──────────── Base Pose ──┐
+                                    ├─ [Layered blend per bone] ── [Slot 'DefaultSlot'] ── [Output Pose]
+[Slot 'UpperBody']───── Blend Poses ┘
+```
+
+**만드는 순서**
+
+```
+① 몽타주 4개(AM_Eating_*)를 열어 슬롯을 UpperBody 로 바꾼다
+     Anim Slot Manager 에서 UpperBody 슬롯을 먼저 만든다
+② AnimGraph 에 Slot 'UpperBody' 노드를 하나 추가한다 (입력은 비워 둔다)
+③ Layered blend per bone 노드 추가
+     Base Pose   ← 상태 기계
+     Blend Poses 0 ← Slot 'UpperBody'
+     Layer Setup > Branch Filters > [0] Bone Name = spine  · Blend Depth = 1
+④ Layered blend 출력 → 기존 Slot 'DefaultSlot' 입력 → Output Pose
+```
+
+⚠ **본 이름이 `spine` 이다.** 이 스켈레톤은 Mixamo 인데 트랙 이름에 `mixamorig:`
+접두사가 없다 — `hips` · `spine` · `spine1` · `spine2` · `neck` · `head` ·
+`rightupleg` 식이다. `spine_01` 을 넣으면 안 걸리고 **조용히 아무 일도 안 한다.**
+
+⚠ `Interact_Reach` 는 전신 동작이라 `DefaultSlot` 에 그대로 둔다. 상체만 쓰면
+서 있는 손님이 손만 뻗는 그림이 되는데 그게 맞다 — 굳이 옮기지 않는다.
+
+**⑤ Compile > Save**
 
 ### 8-2. 프리필 손님이 4.4초 뒤 일어나 나간다
 
