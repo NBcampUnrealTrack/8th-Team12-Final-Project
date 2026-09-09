@@ -1,0 +1,253 @@
+{
+  "id": "SolarCourier",
+  "display_name": "Solar Courier",
+  "prototype_scope": "Static multi-part low-poly sci-fi courier blockout assembled from non-destructive copies of Blender's factory-startup Cube; concept art guides the shared design language, while this exact numeric specification is the authoritative geometry contract.",
+  "concept": {
+    "prompt": "Create one square 1024x1024 full-body character concept for a low-poly sci-fi courier named Solar Courier. Show one centered character in a neutral A-pose, viewed from a near-orthographic front three-quarter angle, with the complete helmet, backpack, hands, and boots inside a generous 12 percent safe margin. Use a chunky cuboid silhouette intended for a simple Blender blockout: a box helmet with a compact gold visor, a deep navy courier suit, a teal chest solar panel, an orange cargo backpack, two teal solar cells on the back, graphite joints, and ash-gray boots. Keep every major body part visually separated and readable. Use clean flat studio lighting and a plain light-gray background. No weapons, scenery, text, letters, numbers, logos, watermarks, borders, frames, extra characters, extra limbs, missing limbs, cropped anatomy, or dramatic perspective.",
+    "size": 1024,
+    "format": "png",
+    "background": "Opaque flat light gray (#D9DEE3), without scenery, gradients, or cast-shadow clutter."
+  },
+  "materials": [
+    {
+      "id": "SuitNavy",
+      "name": "M_Revvy_SolarCourier_SuitNavy",
+      "base_color": [0.035, 0.08, 0.14, 1.0],
+      "metallic": 0.15,
+      "roughness": 0.48
+    },
+    {
+      "id": "SolarTeal",
+      "name": "M_Revvy_SolarCourier_SolarTeal",
+      "base_color": [0.02, 0.42, 0.46, 1.0],
+      "metallic": 0.35,
+      "roughness": 0.28
+    },
+    {
+      "id": "CargoOrange",
+      "name": "M_Revvy_SolarCourier_CargoOrange",
+      "base_color": [0.95, 0.28, 0.045, 1.0],
+      "metallic": 0.12,
+      "roughness": 0.42
+    },
+    {
+      "id": "VisorGold",
+      "name": "M_Revvy_SolarCourier_VisorGold",
+      "base_color": [1.0, 0.55, 0.08, 1.0],
+      "metallic": 0.65,
+      "roughness": 0.18
+    },
+    {
+      "id": "JointGraphite",
+      "name": "M_Revvy_SolarCourier_JointGraphite",
+      "base_color": [0.055, 0.065, 0.075, 1.0],
+      "metallic": 0.45,
+      "roughness": 0.52
+    },
+    {
+      "id": "BootAsh",
+      "name": "M_Revvy_SolarCourier_BootAsh",
+      "base_color": [0.16, 0.18, 0.21, 1.0],
+      "metallic": 0.2,
+      "roughness": 0.62
+    }
+  ],
+  "parts": [
+    {
+      "id": "Helmet",
+      "dimensions": [1.08, 0.92, 0.88],
+      "location": [0.0, 0.0, 4.92],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "SuitNavy",
+      "bevel_width": 0.1,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Visor",
+      "dimensions": [0.82, 0.16, 0.28],
+      "location": [0.0, -0.52, 4.94],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "VisorGold",
+      "bevel_width": 0.04,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Neck",
+      "dimensions": [0.38, 0.38, 0.3],
+      "location": [0.0, 0.0, 4.37],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "JointGraphite",
+      "bevel_width": 0.04,
+      "bevel_segments": 1
+    },
+    {
+      "id": "Torso",
+      "dimensions": [1.72, 0.82, 1.45],
+      "location": [0.0, 0.0, 3.56],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "SuitNavy",
+      "bevel_width": 0.1,
+      "bevel_segments": 2
+    },
+    {
+      "id": "ChestPanel",
+      "dimensions": [1.24, 0.12, 0.48],
+      "location": [0.0, -0.47, 3.72],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "SolarTeal",
+      "bevel_width": 0.035,
+      "bevel_segments": 2
+    },
+    {
+      "id": "CargoPack",
+      "dimensions": [1.28, 0.56, 1.15],
+      "location": [0.0, 0.69, 3.55],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "CargoOrange",
+      "bevel_width": 0.08,
+      "bevel_segments": 2
+    },
+    {
+      "id": "SolarCell_L",
+      "dimensions": [0.5, 0.08, 0.82],
+      "location": [-0.35, 1.01, 3.62],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "SolarTeal",
+      "bevel_width": 0.02,
+      "bevel_segments": 1
+    },
+    {
+      "id": "SolarCell_R",
+      "dimensions": [0.5, 0.08, 0.82],
+      "location": [0.35, 1.01, 3.62],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "SolarTeal",
+      "bevel_width": 0.02,
+      "bevel_segments": 1
+    },
+    {
+      "id": "Pelvis",
+      "dimensions": [1.42, 0.74, 0.6],
+      "location": [0.0, 0.0, 2.65],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "JointGraphite",
+      "bevel_width": 0.08,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Shoulder_L",
+      "dimensions": [0.64, 0.88, 0.32],
+      "location": [-1.02, 0.0, 4.0],
+      "rotation_degrees": [0.0, 8.0, 0.0],
+      "material_id": "CargoOrange",
+      "bevel_width": 0.065,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Shoulder_R",
+      "dimensions": [0.64, 0.88, 0.32],
+      "location": [1.02, 0.0, 4.0],
+      "rotation_degrees": [0.0, -8.0, 0.0],
+      "material_id": "CargoOrange",
+      "bevel_width": 0.065,
+      "bevel_segments": 2
+    },
+    {
+      "id": "UpperArm_L",
+      "dimensions": [0.46, 0.54, 1.0],
+      "location": [-1.12, 0.0, 3.52],
+      "rotation_degrees": [0.0, 8.0, 0.0],
+      "material_id": "SuitNavy",
+      "bevel_width": 0.06,
+      "bevel_segments": 2
+    },
+    {
+      "id": "UpperArm_R",
+      "dimensions": [0.46, 0.54, 1.0],
+      "location": [1.12, 0.0, 3.52],
+      "rotation_degrees": [0.0, -8.0, 0.0],
+      "material_id": "SuitNavy",
+      "bevel_width": 0.06,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Forearm_L",
+      "dimensions": [0.42, 0.5, 0.9],
+      "location": [-1.25, -0.02, 2.6],
+      "rotation_degrees": [0.0, 8.0, 0.0],
+      "material_id": "CargoOrange",
+      "bevel_width": 0.055,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Forearm_R",
+      "dimensions": [0.42, 0.5, 0.9],
+      "location": [1.25, -0.02, 2.6],
+      "rotation_degrees": [0.0, -8.0, 0.0],
+      "material_id": "CargoOrange",
+      "bevel_width": 0.055,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Thigh_L",
+      "dimensions": [0.64, 0.68, 1.1],
+      "location": [-0.43, 0.0, 2.05],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "SuitNavy",
+      "bevel_width": 0.075,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Thigh_R",
+      "dimensions": [0.64, 0.68, 1.1],
+      "location": [0.43, 0.0, 2.05],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "SuitNavy",
+      "bevel_width": 0.075,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Shin_L",
+      "dimensions": [0.56, 0.62, 1.0],
+      "location": [-0.43, 0.0, 1.02],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "JointGraphite",
+      "bevel_width": 0.065,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Shin_R",
+      "dimensions": [0.56, 0.62, 1.0],
+      "location": [0.43, 0.0, 1.02],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "JointGraphite",
+      "bevel_width": 0.065,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Boot_L",
+      "dimensions": [0.66, 1.05, 0.42],
+      "location": [-0.43, -0.2, 0.3],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "BootAsh",
+      "bevel_width": 0.07,
+      "bevel_segments": 2
+    },
+    {
+      "id": "Boot_R",
+      "dimensions": [0.66, 1.05, 0.42],
+      "location": [0.43, -0.2, 0.3],
+      "rotation_degrees": [0.0, 0.0, 0.0],
+      "material_id": "BootAsh",
+      "bevel_width": 0.07,
+      "bevel_segments": 2
+    }
+  ],
+  "qa": {
+    "max_total_triangles": 8000,
+    "require_uv": true,
+    "require_material": true,
+    "require_manifold": true,
+    "require_applied_scale": true
+  }
+}

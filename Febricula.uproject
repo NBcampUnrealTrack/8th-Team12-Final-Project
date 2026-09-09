@@ -69,6 +69,10 @@
 		{
 			"Name": "MotionWarping",
 			"Enabled": true
+		},
+		{
+			"Name": "Revvy",
+			"Enabled": true
 		}
 	]
 }
