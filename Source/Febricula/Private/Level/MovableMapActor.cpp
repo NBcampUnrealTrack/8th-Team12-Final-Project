@@ -12,6 +12,21 @@ AMovableMapActor::AMovableMapActor()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 }
 
+void AMovableMapActor::StartMove()
+{
+	return;
+}
+
+void AMovableMapActor::OpenActor()
+{
+	return;
+}
+
+void AMovableMapActor::CloseActor()
+{
+	return;
+}
+
 // Called when the game starts or when spawned
 void AMovableMapActor::BeginPlay()
 {

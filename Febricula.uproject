@@ -81,6 +81,10 @@
 		{
 			"Name": "Revvy",
 			"Enabled": true
+		},
+		{
+			"Name": "AlembicHairImporter",
+			"Enabled": true
 		}
 	]
 }

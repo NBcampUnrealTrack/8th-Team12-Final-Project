@@ -2,6 +2,7 @@
 
 #include "Dialogue/DialogueSubsystem.h"
 
+#include "CineCameraComponent.h"
 #include "Engine/DataTable.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -504,7 +505,7 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 		CameraToPlayerCam(Row->Camera.MoveTime);
 		break;
 	case EGameCameraType::Cinematic:
-		CameraToCinematicCam(Row->Camera.Location, Row->Camera.Rotation, Row->Camera.MoveTime);
+		CameraToCinematicCam(Row->Camera.Location, Row->Camera.Rotation, Row->Camera.MoveTime, Row->Camera.Focus);
 		break;
 	}
 	ExecuteActions(Row->OnEnterActions);
@@ -676,7 +677,7 @@ void UDialogueSubsystem::BlockPlayerInput(bool bLock)
 	}
 }
 
-void UDialogueSubsystem::CameraToCinematicCam(const FVector Loc, const FRotator Rot, const float MoveTime)
+void UDialogueSubsystem::CameraToCinematicCam(const FVector Loc, const FRotator Rot, const float MoveTime, const float Focus)
 {
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	if (!PC || !PC->GetPawn()) return;
@@ -691,6 +692,11 @@ void UDialogueSubsystem::CameraToCinematicCam(const FVector Loc, const FRotator 
 	}
 
 	Cam->SetActorLocationAndRotation(Loc, Rot);
+	if (Focus >= 0)
+	{
+		UCineCameraComponent* CineCameraComponent = Cam->GetCineCameraComponent();
+		CineCameraComponent->FocusSettings.ManualFocusDistance = Focus;
+	}
 	PC->SetViewTargetWithBlend(Cam, MoveTime, VTBlend_EaseInOut, 2.f, true);
 }
 

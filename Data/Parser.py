@@ -153,6 +153,7 @@ class Node:
     cam_loc: tuple = (0.0, 0.0, 0.0)
     cam_rot: tuple = (0.0, 0.0, 0.0)     # 디테일 패널 순서: X=Roll, Y=Pitch, Z=Yaw
     cam_blend: float = 0.0
+    cam_focus: float = 100000.00
     phantom: bool = False        # 붙을 대사가 없어 파서가 만들어낸 노드
     line: int = 0
  
@@ -181,6 +182,7 @@ class Node:
                     "Roll": self.cam_rot[0], "Pitch": self.cam_rot[1], "Yaw": self.cam_rot[2],
                 },
                 "MoveTime": self.cam_blend,
+                "Focus": self.cam_focus,
             },
         }
         return data
@@ -280,7 +282,10 @@ class Parser:
         self.p_line = 0
  
         if self.p_cam:
-            node.cam_mode, node.cam_loc, node.cam_rot, node.cam_blend = self.p_cam
+            if len(self.p_cam) < 5:
+                node.cam_mode, node.cam_loc, node.cam_rot, node.cam_blend = self.p_cam
+            else:
+                node.cam_mode, node.cam_loc, node.cam_rot, node.cam_blend, node.cam_focus = self.p_cam
             self.p_cam = None
  
         if node.hide_box and node.auto == "None":
@@ -607,7 +612,7 @@ class Parser:
                 except ValueError:
                     self.error(line_no, f"@cam의 값이 숫자가 아님: '{token}'")
                     return
-            if len(numbers) not in (6, 7):
+            if len(numbers) not in (6, 7, 8):
                 self.error(line_no,
                            f"@cam에 값이 6개(위치3+회전3) 또는 7개(+전환시간) 필요함 "
                            f"(받은 값: {len(numbers)}개)")
@@ -615,13 +620,16 @@ class Parser:
             loc = tuple(numbers[0:3])
             rot = tuple(numbers[3:6])
             blend = numbers[6] if len(numbers) == 7 else 0.0
+            focus = numbers[7] if len(numbers) == 8 else 100000.0
             if blend < 0:
                 self.error(line_no, f"@cam 전환 시간이 음수: {blend}")
                 return
-            self.p_cam = ("Cinematic", loc, rot, blend)
+            if focus < 0:
+                self.error(line_no, f"@cam 포커스 값이 음수: {blend}")
+            self.p_cam = ("Cinematic", loc, rot, blend, focus)
             return
  
-        loc, rot, blend, seen = None, None, 0.0, None
+        loc, rot, blend, focus, seen = None, None, 0.0, 0.0, None
         buffer = []
  
         def flush():
@@ -656,7 +664,10 @@ class Parser:
             if len(buffer) < 3:
                 buffer.append(number)
             else:
-                blend = number     # 3개를 넘겨서 온 마지막 숫자는 전환 시간
+                if(blend == 0.0 and number > 0.0):
+                    blend = number     # 3개를 넘겨서 온 마지막 숫자는 전환 시간
+                else:
+                    focus = number
         if not flush():
             return
  
@@ -667,7 +678,7 @@ class Parser:
         if blend < 0:
             self.error(line_no, f"@cam 전환 시간이 음수: {blend}")
             return
-        self.p_cam = ("Cinematic", loc, rot, blend)
+        self.p_cam = ("Cinematic", loc, rot, blend, focus)
  
     def cmd_dialogue(self, line, line_no):
         node = Node(line=line_no)
