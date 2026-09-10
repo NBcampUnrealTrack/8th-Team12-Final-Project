@@ -40,6 +40,13 @@ namespace SubNpcCrowdCVars
 		TEXT("서브 NPC 소프트 회피. 0이면 끈다 (측정용)."),
 		ECVF_Cheat);
 
+	static float SpawnSpacingOverride = -1.f;
+	static FAutoConsoleVariableRef CVarSpawnSpacing(
+		TEXT("crowd.SpawnSpacing"),
+		SpawnSpacingOverride,
+		TEXT("등장 간격(cm) 덮어쓰기. -1이면 코드 기본값, 0이면 간격 없이 등장."),
+		ECVF_Cheat);
+
 	static int32 PrintStats = 0;
 	static FAutoConsoleVariableRef CVarPrintStats(
 		TEXT("crowd.Stats"),
@@ -222,14 +229,22 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 
 	// [개선] 등장 지점이 이미 붐비면 경로를 따라 조금 밀어서 세운다.
 	// 같은 자리에 겹쳐 등장하면 한 덩어리로 몰려다니고, 보기에도 바로 티가 난다.
-	if (SpawnSpacing > 0.f)
+	const float EffectiveSpacing = (SubNpcCrowdCVars::SpawnSpacingOverride >= 0.f)
+		? SubNpcCrowdCVars::SpawnSpacingOverride
+		: SpawnSpacing;
+
+	if (EffectiveSpacing > 0.f)
 	{
 		const float PathLength = Path->GetPathLength();
-		const float Step = SpawnSpacing;
-		const float SpacingSq = FMath::Square(SpawnSpacing);
+		const float Step = EffectiveSpacing;
+		const float SpacingSq = FMath::Square(EffectiveSpacing);
 
 		// 최대 8칸까지만 밀어본다. 그래도 자리가 없으면 이번 등장은 포기한다.
-		bool bFoundSlot = false;
+		// 자리를 못 찾아도 등장 자체를 막지는 않는다.
+		//
+		// 처음에는 실패 시 풀에 되돌렸는데, 등장구가 적으면 입구가 금방 차서
+		// 그 뒤로 계속 실패하고 목표 인원에 영영 도달하지 못했다.
+		// 간격은 "겹쳐 보이지 않게" 하려는 편의 기능이지 인원을 제한하는 규칙이 아니다.
 		for (int32 Attempt = 0; Attempt < 8; ++Attempt)
 		{
 			const float Candidate = FMath::Clamp(
@@ -251,16 +266,8 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 			if (!bBlocked)
 			{
 				StartDistance = Candidate;
-				bFoundSlot = true;
 				break;
 			}
-		}
-
-		if (!bFoundSlot)
-		{
-			// 꺼낸 개체를 도로 넣어둔다. 다음 주기에 다시 시도된다.
-			PooledNpcs.Add(Npc);
-			return nullptr;
 		}
 	}
 

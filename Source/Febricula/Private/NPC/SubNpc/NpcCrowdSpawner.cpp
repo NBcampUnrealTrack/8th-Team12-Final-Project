@@ -177,14 +177,22 @@ void ANpcCrowdSpawner::TickSpawn()
 			return;
 		}
 
-		// 입구 경로의 앞쪽 어딘가에서 시작한다. 항상 0 지점이면 같은 자리에서 계속 튀어나온다.
-		const float StartDistance = FMath::FRandRange(0.f, FMath::Max(1.f, Entry->GetPathLength() * 0.2f));
+		// 경로가 "역방향으로 등장" 설정이면 뒤에서부터 걷는다.
+		// 스플라인을 반대로 그린 경우를 점을 다시 찍지 않고 데이터로 뒤집는다.
+		const bool bReversed = Entry->IsSpawnReversed();
+		const float Length = FMath::Max(1.f, Entry->GetPathLength());
+
+		// 입구 경로의 "시작 쪽" 어딘가에서 등장한다. 항상 같은 지점이면 한 자리에서 계속 튀어나온다.
+		// 역방향이면 시작 쪽이 곧 경로의 끝이다.
+		const float StartDistance = bReversed
+			? FMath::FRandRange(Length * 0.8f, Length)
+			: FMath::FRandRange(0.f, Length * 0.2f);
 
 		const int32 GroupSize = RollGroupSize();
 		const TArray<ASubNpcCharacter*> Spawned =
 			(GroupSize <= 1)
-			? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Entry, StartDistance, /*bReversed=*/false) }
-			: Director->SpawnGroupOnPath(Entry, StartDistance, /*bReversed=*/false, GroupSize);
+			? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Entry, StartDistance, bReversed) }
+			: Director->SpawnGroupOnPath(Entry, StartDistance, bReversed, GroupSize);
 
 		int32 Actual = 0;
 		for (ASubNpcCharacter* Npc : Spawned)

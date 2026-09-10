@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "NPC/MassCrowd/SubNpcStateTreeTasks.h"
+#include "NPC/SubNpc/SubNpcStateTreeTasks.h"
 
 #include "NPC/SubNpc/NpcActivitySpot.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
