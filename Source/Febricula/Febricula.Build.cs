@@ -32,7 +32,8 @@ public class Febricula : ModuleRules
 		PublicIncludePaths.AddRange(new string[] {
 			"Febricula",
 			// BurgerHouse — 손님 NPC 루프 (Import/BURGERHOUSE.md)
-			"Febricula/BurgerHouse",
+			"Febricula/BurgerHouse"
 		});
+
 	}
 }

@@ -38,6 +38,31 @@ ASubNpcCharacter::ASubNpcCharacter()
 
 	bUseControllerRotationYaw = false;
 
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		// [측정으로 찾은 낭비] 캡슐의 오버랩 이벤트를 끈다.
+		//
+		// stat game 프로파일링(90명):
+		//   MoveComponent(Primitive)   0.59 ms  (92 calls)
+		//   UpdateOverlaps Time        0.23 ms  (92 calls)
+		//   PerformOverlapQuery Time   0.19 ms  (92 calls)
+		//                              -------
+		//                              1.01 ms
+		//
+		// 호출 수가 행인 수와 정확히 일치한다. 매 틱 SetActorLocationAndRotation을
+		// 부를 때마다 캡슐이 오버랩 재계산을 하고 있었다. bSweep은 이미 false라
+		// 스윕 비용은 없었지만, 오버랩 갱신은 스윕과 무관하게 돈다.
+		//
+		// 행인은 오버랩 이벤트를 쓰지 않는다:
+		//   - 플레이어와 부딪히는 판정은 NotifyHit(블로킹 히트)이 담당한다
+		//   - E키 상호작용은 플레이어 쪽에서 쏘는 쿼리라 응답 채널만 있으면 된다
+		// 둘 다 오버랩 이벤트와 무관하므로 꺼도 동작이 바뀌지 않는다.
+		Capsule->SetGenerateOverlapEvents(false);
+
+		// 물리 볼륨(물속·중력 구역) 판정도 필요 없다. 이동할 때마다 도는 검사다.
+		Capsule->SetShouldUpdatePhysicsVolume(false);
+	}
+
 	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
 		// 메타휴먼 기준 이게 제일 큰 절약이다: 화면에 안 보이면 본 계산 자체를 하지 않는다.
@@ -45,6 +70,24 @@ ASubNpcCharacter::ASubNpcCharacter()
 
 		// 애니메이션 업데이트 레이트 최적화 - 멀수록 포즈 갱신 빈도를 자동으로 낮춘다.
 		MeshComp->bEnableUpdateRateOptimizations = true;
+
+		// [측정으로 찾은 낭비] 메시의 물리 본 갱신을 끈다.
+		//
+		// 프로파일링(stat anim)에서 UpdateKinematicBonesToAnim이 90명 기준 2.96ms로
+		// 잡혔다. 애니메이션 결과를 피직스 애셋의 본에 반영하는 작업인데,
+		// 행인은 충돌을 전부 캡슐로 처리하고 메시의 물리 본은 아무도 조회하지 않는다.
+		// 플레이어와 부딪히는 판정도, E키 상호작용도 캡슐이 담당한다.
+		//
+		// 즉 계산해놓고 아무도 안 쓰는 값이라 통째로 버릴 수 있다.
+		MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		MeshComp->SetGenerateOverlapEvents(false);
+		MeshComp->SetSimulatePhysics(false);
+
+		// 물리와 애니메이션을 섞지 않는다 (래그돌 블렌딩을 안 쓰므로).
+		MeshComp->bBlendPhysics = false;
+
+		// 본 트랜스폼을 물리로 되돌려 쓰지 않는다.
+		MeshComp->bUpdateJointsFromAnimation = false;
 	}
 }
 
@@ -202,6 +245,8 @@ void ASubNpcCharacter::ClearRuntimeState()
 	// [누수 방지] 새로 추가된 런타임 상태도 반드시 여기서 지운다.
 	// 하나라도 빠지면 재사용된 개체가 이전 개체의 행동을 물려받는다.
 	CurrentReaction = ESubNpcReaction::None;
+	bIsMoving = false;
+	CurrentSpeed = 0.f;
 	CurrentSpotOption = FNpcActivityOption();
 	CurrentSpotStep = -1;
 	bResumeSpotAfterReaction = false;
@@ -237,6 +282,7 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 			MeshComp->SetForcedLOD(0);                       // 0 = 자동 LOD에 맡김
 			MeshComp->SetCastShadow(true);
 			MeshComp->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+			ApplyAnimUpdateRate(MeshComp, 1);   // 매 프레임
 		}
 		break;
 
@@ -249,6 +295,7 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 			MeshComp->SetForcedLOD(MidForcedLod + 1);        // SetForcedLOD는 1-based (0은 자동)
 			// 그림자는 메타휴먼에서 가장 비싼 항목 중 하나다. 중간 거리부터 끈다.
 			MeshComp->SetCastShadow(false);
+			ApplyAnimUpdateRate(MeshComp, MidAnimFrameSkip);
 		}
 		break;
 
@@ -260,6 +307,7 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 			MeshComp->bPauseAnims = false;
 			MeshComp->SetForcedLOD(FarForcedLod + 1);
 			MeshComp->SetCastShadow(false);
+			ApplyAnimUpdateRate(MeshComp, FarAnimFrameSkip);
 		}
 		break;
 
@@ -285,6 +333,37 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 	}
 }
 
+void ASubNpcCharacter::ApplyAnimUpdateRate(USkeletalMeshComponent* MeshComp, int32 FrameSkip)
+{
+	// [측정으로 찾은 개선] 거리 밴드마다 포즈 갱신 빈도를 다르게 준다.
+	//
+	// 예전에는 LOD 밴드가 틱 간격·강제 메시LOD·그림자만 바꿨다. 그런데 프로파일링해보니
+	// 군중 비용의 대부분이 애니메이션이었고, 그 부분은 밴드와 무관하게 매 프레임 돌고 있었다.
+	// LOD를 껐다 켜도 게임 스레드가 거의 안 변하던 이유가 이것이다.
+	//
+	// UpdateRateOptimizations는 "N프레임에 한 번만 평가하고 사이는 보간"하는 기능이다.
+	// 멀리 있는 개체는 4~8프레임에 한 번만 평가해도 눈에 안 띈다.
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	FAnimUpdateRateParameters* Params = MeshComp->AnimUpdateRateParams;
+	if (!Params)
+	{
+		return;
+	}
+
+	// 엔진이 거리로 자동 계산하는 것을 끄고 우리가 직접 정한다.
+	// Director가 이미 거리 판정을 하고 있으므로 두 번 할 이유가 없다.
+	Params->bShouldUseLodMap = false;
+	Params->UpdateRate = FMath::Max(1, FrameSkip);
+	Params->EvaluationRate = FMath::Max(1, FrameSkip);
+
+	// 건너뛴 프레임을 보간해서 채운다. 안 켜면 뚝뚝 끊겨 보인다.
+	Params->bInterpolateSkippedFrames = (FrameSkip > 1);
+}
+
 // ---------------------------------------------------------------------------
 // 이동
 // ---------------------------------------------------------------------------
@@ -300,6 +379,12 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 
 	const UWorld* World = GetWorld();
 	const float Now = World ? World->GetTimeSeconds() : 0.f;
+
+	// ABP가 읽을 값을 갱신한다.
+	// 프로퍼티라 Property Access로 스레드 안전하게 읽힌다.
+	bIsMoving = (CurrentActivity == ESubNpcActivity::Walking) ||
+		(CurrentActivity == ESubNpcActivity::Reacting && CurrentReaction == ESubNpcReaction::Dodge);
+	CurrentSpeed = bIsMoving ? WalkSpeed : 0.f;
 
 	switch (CurrentActivity)
 	{

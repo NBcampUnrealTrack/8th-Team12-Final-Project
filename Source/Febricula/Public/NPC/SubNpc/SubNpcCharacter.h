@@ -132,6 +132,9 @@ protected:
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
 		bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
 
+	/** 거리 밴드에 맞는 애니메이션 갱신 빈도를 적용한다 (N프레임에 한 번 평가) */
+	static void ApplyAnimUpdateRate(class USkeletalMeshComponent* MeshComp, int32 FrameSkip);
+
 	/** 경로를 따라 전진. LOD에 따라 이동 방식이 달라진다 */
 	void TickPathFollow(float DeltaTime);
 
@@ -271,6 +274,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
 	float FarTickInterval = 0.3f;
 
+	/**
+	 * Mid / Far에서 몇 프레임에 한 번 포즈를 평가할지.
+	 *
+	 * 프로파일링에서 군중 비용의 86%가 애니메이션으로 나왔고, 그 부분은 거리와
+	 * 무관하게 매 프레임 돌고 있었다. 멀리 있는 개체를 4~8프레임에 한 번만
+	 * 평가하게 하면 그만큼 그대로 절약된다. 사이 프레임은 보간으로 채운다.
+	 *
+	 * 1이면 매 프레임 (절약 없음).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD", meta = (ClampMin = "1", ClampMax = "16"))
+	int32 MidAnimFrameSkip = 2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD", meta = (ClampMin = "1", ClampMax = "16"))
+	int32 FarAnimFrameSkip = 4;
+
 	/** Mid / Far에서 강제할 스켈레탈 메시 LOD 인덱스 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
 	int32 MidForcedLod = 2;
@@ -309,8 +327,34 @@ protected:
 	/** 그룹 추종 시 앞사람과 벌릴 간격 (cm) */
 	float GroupFollowGap = 0.f;
 
-	/** 이 개체의 걷기 속도 (cm/s) */
+	/**
+	 * 이 개체의 걷기 속도 (cm/s).
+	 *
+	 * [애님 블루프린트에 노출하는 이유]
+	 *   서브 NPC는 CharacterMovement를 쓰지 않고 위치를 직접 세팅한다.
+	 *   그래서 GetVelocity()가 항상 0이고, 서드퍼슨 ABP처럼 속도로 로코모션을
+	 *   판단하는 그래프는 영원히 대기 포즈만 낸다.
+	 *
+	 *   ABP가 이 값을 직접 읽게 하면 해결된다. 함수 호출이 아니라 프로퍼티 읽기라
+	 *   Property Access로 접근할 수 있고, 그러면 Thread Safe Update Animation
+	 *   안에서도 쓸 수 있다.
+	 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Crowd|Anim")
 	float WalkSpeed = 160.f;
+
+	/**
+	 * 지금 실제로 걷고 있는가. ABP의 걷기/대기 전환에 쓴다.
+	 * 스팟에서 활동 중이거나 반응 중이면 false다.
+	 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Crowd|Anim")
+	bool bIsMoving = false;
+
+	/**
+	 * ABP가 읽을 현재 속력 (cm/s). 걷는 중이면 WalkSpeed, 아니면 0.
+	 * 로코모션 블렌드스페이스에 그대로 넣을 수 있는 값이다.
+	 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Crowd|Anim")
+	float CurrentSpeed = 0.f;
 
 	/** 마지막으로 반응한 시각. 쿨다운 판정용 */
 	float LastReactionTime = -1000.f;

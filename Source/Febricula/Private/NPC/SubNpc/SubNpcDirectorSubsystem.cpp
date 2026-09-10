@@ -47,6 +47,13 @@ namespace SubNpcCrowdCVars
 		TEXT("등장 간격(cm) 덮어쓰기. -1이면 코드 기본값, 0이면 간격 없이 등장."),
 		ECVF_Cheat);
 
+	static int32 EnableMeshCollision = 0;
+	static FAutoConsoleVariableRef CVarMeshCollision(
+		TEXT("crowd.MeshCollision"),
+		EnableMeshCollision,
+		TEXT("서브 NPC 메시의 물리 콜리전. 1이면 켠다 (UpdateKinematicBonesToAnim 비용 비교용)."),
+		ECVF_Cheat);
+
 	static int32 PrintStats = 0;
 	static FAutoConsoleVariableRef CVarPrintStats(
 		TEXT("crowd.Stats"),
