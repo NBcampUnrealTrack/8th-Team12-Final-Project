@@ -6,7 +6,6 @@
 #include "TimerManager.h"
 #include "Engine/World.h"
 
-
 // Sets default values
 AMovableMapActor::AMovableMapActor()
 {
@@ -15,21 +14,17 @@ AMovableMapActor::AMovableMapActor()
 
 void AMovableMapActor::StartMove()
 {
-	if (NowState == EMoveState::NONE)
-	{
-		NowState = EMoveState::OPENING;
-	}		
-	GetWorldTimerManager().ClearTimer(MoveTimer);
-	if (NowState == EMoveState::OPENING)
-	{
-		GetWorldTimerManager().SetTimer(MoveTimer, this, &AMovableMapActor::OpenActor, .1f, true);
-	}
-	else if (NowState == EMoveState::CLOSING)
-	{
-		GetWorldTimerManager().SetTimer(MoveTimer, this, &AMovableMapActor::CloseActor, .1f, true);
-	}
-	bNowMove = true;
+	return;
+}
 
+void AMovableMapActor::OpenActor()
+{
+	return;
+}
+
+void AMovableMapActor::CloseActor()
+{
+	return;
 }
 
 // Called when the game starts or when spawned
@@ -44,6 +39,5 @@ void AMovableMapActor::BeginPlay()
 		}
 	}
 }
-
 // Called every frame
 

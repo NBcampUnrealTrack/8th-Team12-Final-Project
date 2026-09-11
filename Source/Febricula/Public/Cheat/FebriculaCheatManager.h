@@ -16,4 +16,22 @@ class FEBRICULA_API UFebriculaCheatManager : public UCheatManager
 public:
 	UFUNCTION(Exec)
 	void SkipDay(int32 Day = 1);
+	
+	UFUNCTION(Exec)
+	void SkipSchedule(int32 Count = 1);
+	
+	UFUNCTION(Exec)
+	void GetCachedCharacter();
+	
+	UFUNCTION(Exec)
+	void GetClearedEvents();
+	
+	UFUNCTION(Exec)
+	void AddClearedEvent(FName EventId);
+	
+	UFUNCTION(Exec)
+	void GetRunnableActivities();
+	
+	UFUNCTION(Exec)
+	void GetAllActivities();
 };

@@ -30,4 +30,5 @@ public:
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Schedule Default")
 	TSoftObjectPtr<UDayScheduleAsset> WeekEndSchedule;
 	
+	
 };

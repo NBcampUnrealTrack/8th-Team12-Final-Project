@@ -1,0 +1,133 @@
+[
+	{
+		"Name": "Student",
+		"AppearanceTag": "Student",
+		"SpawnWeight": 6.0,
+		"WalkSpeedMin": 150.0,
+		"WalkSpeedMax": 215.0,
+		"ScaleMin": 0.95,
+		"ScaleMax": 1.03,
+		"DodgeWeight": 3.0,
+		"AngryWeight": 1.0,
+		"SurprisedWeight": 3.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "학생",
+		"IdleBarks": [
+			"어? 무슨 일이야?",
+			"미안, 나 지금 좀 급해서.",
+			"다음 시간 어디였지...",
+			"매점 벌써 줄 섰더라.",
+			"쟤네 또 뭐 하고 있대?"
+		],
+		"BumpedBarks": [
+			"어깨 얼얼한데...",
+			"...사과는 안 해?",
+			"복도에서 그렇게 뛰면 위험하잖아.",
+			"뭐야, 급한 일 있어?"
+		],
+		"BumpShouts": [
+			"악!",
+			"어어!",
+			"뭐야?"
+		]
+	},
+	{
+		"Name": "StudentQuiet",
+		"AppearanceTag": "StudentQuiet",
+		"SpawnWeight": 3.0,
+		"WalkSpeedMin": 120.0,
+		"WalkSpeedMax": 165.0,
+		"ScaleMin": 0.93,
+		"ScaleMax": 1.0,
+		"DodgeWeight": 5.0,
+		"AngryWeight": 0.3,
+		"SurprisedWeight": 4.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "학생",
+		"IdleBarks": [
+			"...어, 안녕.",
+			"아, 나한테 물어본 거야?",
+			"난 잘 몰라서...",
+			"...."
+		],
+		"BumpedBarks": [
+			"아, 괜찮아. 괜찮아...",
+			"내가 길 막고 있었나 봐.",
+			"...아니야, 됐어."
+		],
+		"BumpShouts": [
+			"앗",
+			"어...",
+			"미안"
+		]
+	},
+	{
+		"Name": "Teacher",
+		"AppearanceTag": "Teacher",
+		"SpawnWeight": 2.5,
+		"WalkSpeedMin": 140.0,
+		"WalkSpeedMax": 180.0,
+		"ScaleMin": 0.98,
+		"ScaleMax": 1.05,
+		"DodgeWeight": 1.0,
+		"AngryWeight": 5.0,
+		"SurprisedWeight": 1.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "선생님",
+		"IdleBarks": [
+			"수업 시간 아니니?",
+			"교무실 갈 일 있으면 지금 오고.",
+			"복도에서 뛰지 마라.",
+			"명찰 똑바로 달고 다녀."
+		],
+		"BumpedBarks": [
+			"복도에서 뛰지 말라고 했지.",
+			"이름이 뭐니? 반은?",
+			"다치면 어쩌려고 그래.",
+			"한 번만 더 그러면 교무실이다."
+		],
+		"BumpShouts": [
+			"어허!",
+			"거기!",
+			"뛰지 마라!"
+		]
+	},
+	{
+		"Name": "Staff",
+		"AppearanceTag": "Staff",
+		"SpawnWeight": 1.0,
+		"WalkSpeedMin": 110.0,
+		"WalkSpeedMax": 150.0,
+		"ScaleMin": 0.96,
+		"ScaleMax": 1.04,
+		"DodgeWeight": 3.0,
+		"AngryWeight": 2.0,
+		"SurprisedWeight": 2.0,
+		"DodgeAnimId": "None",
+		"AngryAnimId": "None",
+		"SurprisedAnimId": "None",
+		"DisplayName": "교직원",
+		"IdleBarks": [
+			"행정실은 저쪽이란다.",
+			"바닥 방금 닦았으니까 조심하고.",
+			"학생은 이 시간에 여기 있으면 안 될 텐데.",
+			"곧 문 잠글 거야."
+		],
+		"BumpedBarks": [
+			"조심해서 다녀야지.",
+			"들고 있던 거 떨어질 뻔했네.",
+			"어디 다친 데는 없고?"
+		],
+		"BumpShouts": [
+			"어이쿠!",
+			"조심해!",
+			"아이고"
+		]
+	}
+]

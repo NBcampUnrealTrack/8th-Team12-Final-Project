@@ -1,0 +1,4 @@
+interface:
+  display_name: "Revvy External Control"
+  short_description: "Control Revvy from terminals and local programs"
+  default_prompt: "Use $revvy-external-control to connect to Revvy, inspect status, and run an Unreal tool safely."

@@ -9,17 +9,28 @@ void UPlayerHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (UDialogueSubsystem* Dialogue = GetDialogueSubsystem())
+	UDialogueSubsystem* Dialogue = GetDialogueSubsystem();
+	
+	if (Dialogue)
 	{
 		Dialogue->OnDialogueLine.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueLine);
 		Dialogue->OnDialogueChoices.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueChoices);
 		Dialogue->OnDialogueFinished.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueFinished);
 		Dialogue->OnDialogueBoxHidden.AddDynamic(this, &UPlayerHUDWidget::HandleDialogueBoxHidden);
 	}
-
+	
 	BP_HideDialogue();
 	BP_HideChoices();
 	BP_HideInteractionPrompt();
+	
+	if (Dialogue)
+	{
+		FText Speaker, Body;
+		if (Dialogue->GetCurrentLine(Speaker, Body))
+		{
+			HandleDialogueLine(Speaker, Body);
+		}
+	}
 }
 
 void UPlayerHUDWidget::NativeDestruct()

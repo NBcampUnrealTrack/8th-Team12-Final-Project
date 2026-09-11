@@ -77,13 +77,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|HUD")
 	TSubclassOf<UPlayerHUDWidget> HUDWidgetClass;
 
-	/** FNpcEventRow 기반 이벤트 테이블 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Data")
-	TObjectPtr<UDataTable> EventTable;
-
-	/** FDialogueNodeRow 기반 대화 테이블 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Data")
-	TObjectPtr<UDataTable> DialogueTable;
+	// /** FNpcEventRow 기반 이벤트 테이블 */
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Data")
+	// TObjectPtr<UDataTable> EventTable;
+	//
+	// /** FDialogueNodeRow 기반 대화 테이블 */
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Data")
+	// TObjectPtr<UDataTable> DialogueTable;
 
 	// ---- 런타임 ----
 

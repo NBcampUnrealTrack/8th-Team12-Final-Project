@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "MovableMapActor.h"
 #include "MoveState.h"
+#include "Dialogue/DialogueDataTypes.h"
+#include "Interaction/InteractableProp.h"
 #include "DoorMapActor.generated.h"
 
 UCLASS()
@@ -18,24 +20,19 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	void OpenActor() override;
-	void CloseActor() override;
+	virtual void OpenActor() override;
+	virtual void CloseActor() override;
+	virtual void StartMove() override;
 	
-	virtual void DoInteract_Implementation(AActor* Interactor) override;
-	virtual bool CanInteract_Implementation(AActor* Interactor) const override;
+	virtual void Interact_Implementation(AActor* Interactor) override;
 	
-
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")
 	// bool bCanChangeLevel;
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta = (AllowedClasses="/Script/Engine.World"))
 	// TSoftObjectPtr<UWorld> ConnectedLevel;
-	EMoveState NowState;
 		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	TArray<float> MinRotation;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Change")
-	TSoftObjectPtr<UWorld> TargetLevel;
-
 };
 

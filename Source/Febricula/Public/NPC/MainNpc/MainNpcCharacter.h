@@ -135,6 +135,14 @@ protected:
 	void SetBehaviorTreePaused(bool bPaused) const;
 
 	/**
+	 * Interaction Component에서 NPC로 이동
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Event")
+	TObjectPtr<UDataTable> ConnectedEventTable;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Event")
+	TSoftObjectPtr<UDataTable> DefaultDialogueTable;
+
+	/**
 	 * 레벨에 배치한 이동 경로. 순찰(Patrol)과 안내(Guide)가 같은 경로를 공유한다.
 	 * EditInstanceOnly라 "레벨에 배치된 NPC를 선택한 상태"의 디테일 패널에서 지정한다
 	 * (경로는 레벨마다 다르므로 클래스 디폴트가 아니라 인스턴스 값이 맞다).

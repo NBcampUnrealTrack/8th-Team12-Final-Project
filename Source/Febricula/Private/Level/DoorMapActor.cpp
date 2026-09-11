@@ -4,8 +4,6 @@
 #include "Public/Level/DoorMapActor.h"
 
 #include "TimerManager.h"
-#include "Components/TimelineComponent.h"
-#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
@@ -14,87 +12,32 @@ ADoorMapActor::ADoorMapActor()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 }
 
-// void ADoorMapActor::StartMove()
-// {
-// 	bNowMove = true;
-// 	if (bNowMove)
-// 	{
-// 		switch (NowState)
-// 		{
-// 		case EMoveState::CLOSING:
-// 			NowState = EMoveState::OPENING;
-// 			break;
-// 		case EMoveState::OPENING:
-// 			NowState = EMoveState::CLOSING;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		NowState = EMoveState::OPENING;
-// 	}
-// 	GetWorldTimerManager().ClearTimer(MoveTimer);
-// 	if (NowState == EMoveState::OPENING)
-// 	{
-// 		GetWorldTimerManager().SetTimer(MoveTimer, this, &ADoorMapActor::OpenActor, .1f, true);
-// 	}
-// 	else if (NowState == EMoveState::CLOSING)
-// 	{
-// 		GetWorldTimerManager().SetTimer(MoveTimer, this, &ADoorMapActor::CloseActor, .1f, true);
-// 	}
-// 	bNowMove = true;
-// }
-
-void ADoorMapActor::OpenActor()
+void ADoorMapActor::StartMove()
 {
-	if (!bLocked)
-	{
-		for (int i = 0; i < Hinges.Num(); i++)
-		{
-			Hinges[i]->AddRelativeRotation(FRotator(0, MoveSpeed, 0));// AddLocalRotation(FRotator(0.0f, 1.0f, 0.0f));
-			CurrentMove += MoveSpeed;
-			if (CurrentMove >= MaxMovement)
-			{
-				GetWorldTimerManager().ClearTimer(MoveTimer);
-				CurrentMove = MaxMovement;
-				Hinges[i]->SetRelativeRotation(FRotator(Hinges[i]->GetRelativeRotation().Pitch, MinRotation[i] + MaxMovement, Hinges[i]->GetRelativeRotation().Roll));
-				NowState = EMoveState::CLOSING;
-				bNowMove = false;
-				DoInteract_Implementation(GetOwner());
-			}
-		}
-	}
-}
+ 	bNowMove = true;
+ 	GetWorldTimerManager().ClearTimer(MoveTimer);
+ 	if (NowState == EMoveState::OPENING)
+ 	{
+ 		CurrentMove = 0.f;
+ 		GetWorldTimerManager().SetTimer(MoveTimer, this, &ADoorMapActor::OpenActor, .1f, true);
+ 		NowState = EMoveState::CLOSING;
+ 	}
+ 	else if (NowState == EMoveState::CLOSING)
+ 	{
+ 		if (CurrentMove == 0)
+ 		{
+ 			CurrentMove = MaxMovement;
+ 		}
+ 		GetWorldTimerManager().SetTimer(MoveTimer, this, &ADoorMapActor::CloseActor, .1f, true);
+ 		NowState = EMoveState::OPENING;
+ 	}
+ 	bNowMove = true;
+ }
 
-void ADoorMapActor::CloseActor()
+void ADoorMapActor::Interact_Implementation(AActor* Interactor)
 {
-	if (!bLocked)
-	{
-		for (int i = 0; i < Hinges.Num(); i++)
-		{
-			Hinges[i]->AddRelativeRotation(FRotator(0, -MoveSpeed, 0));// AddLocalRotation(FRotator(0.0f, 1.0f, 0.0f));
-			CurrentMove -= MoveSpeed;
-			if (CurrentMove <= 0)
-			{
-				GetWorldTimerManager().ClearTimer(MoveTimer);
-				Hinges[i]->SetRelativeRotation(FRotator(Hinges[i]->GetRelativeRotation().Pitch, MinRotation[i], Hinges[i]->GetRelativeRotation().Roll));
-				CurrentMove = 0;
-				NowState = EMoveState::OPENING;
-				bNowMove = false;
-			}
-		}
-	}
-}
-
-void ADoorMapActor::DoInteract_Implementation(AActor* Interactor)
-{
-	if (!Execute_CanInteract(this, Interactor)) { return;} 
-	if (TargetLevel.IsNull()) { return; }
-	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
-}
-
-bool ADoorMapActor::CanInteract_Implementation(AActor* Interactor) const
-{
-	return bCanInteract;
+	StartMove();
+	//Super::Interact_Implementation(Interactor);
 }
 
 // Called when the game starts or when spawned
@@ -104,5 +47,45 @@ void ADoorMapActor::BeginPlay()
 	for (USceneComponent* Hinge : Hinges)
 	{
 		MinRotation.Add(Hinge->GetRelativeRotation().Yaw);
+	}
+}
+
+void ADoorMapActor::OpenActor()
+{
+	Super::OpenActor();
+	if (MaxMovement > CurrentMove)
+	{
+		CurrentMove += MoveSpeed;
+		for (USceneComponent* Hinge : Hinges)
+		{
+			Hinge->AddRelativeRotation(FRotator(0, MoveSpeed, 0));
+		}
+	}
+	else
+	{
+		bNowMove = false;
+		GetWorldTimerManager().ClearTimer(MoveTimer);
+
+	}
+}
+
+void ADoorMapActor::CloseActor()
+{
+	Super::CloseActor();
+	bool bEnd = true;
+	CurrentMove -= MoveSpeed;
+	for (int i = 0; i < MinRotation.Num(); i++)
+	{
+		if (CurrentMove >= 0)
+		{
+			Hinges[i]->AddRelativeRotation(FRotator(0, -MoveSpeed, 0));
+			bEnd = false;
+		}
+	}
+	if (bEnd)
+	{
+		bNowMove = false;
+		GetWorldTimerManager().ClearTimer(MoveTimer);
+
 	}
 }

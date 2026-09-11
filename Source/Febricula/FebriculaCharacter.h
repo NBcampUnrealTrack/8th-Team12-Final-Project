@@ -7,6 +7,9 @@
 #include "Logging/LogMacros.h"
 #include "FebriculaCharacter.generated.h"
 
+class UCharacterAnimationComponent;
+class UInteractionComponent;
+class AInteractableProp;
 class AInteractableActor;
 class USphereComponent;
 class USpringArmComponent;
@@ -34,13 +37,14 @@ class AFebriculaCharacter : public ACharacter
 	UCameraComponent* FollowCamera;
 	
 protected:
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
-	float InteractionAngle;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
-	USphereComponent* InteractionCollider;
+	UPROPERTY(EditAnywhere, Category="Speed")
+	float WalkSpeed;
+	UPROPERTY(EditAnywhere, Category="Speed")
+	float SprintSpeed;
+	
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
-	TArray<TObjectPtr<AInteractableActor>> OverlappedActors; 
+	TArray<TObjectPtr<AInteractableProp>> OverlappedActors; 
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* JumpAction;
@@ -49,6 +53,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MoveAction;
 
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* SprintAction;
+	
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* LookAction;
@@ -60,29 +67,42 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* InteractAction;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Character Animation Component")
+	TObjectPtr<UCharacterAnimationComponent> CharacterAnimationComponent;
+
 public:
+	AFebriculaCharacter();	
+
+	
 	UFUNCTION()
 	void OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
 	                             const FHitResult& SweepResult);
 	UFUNCTION()
 	void OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Constructor */
-	AFebriculaCharacter();	
 	virtual void BeginPlay() override;
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
-protected:
-	void Interact(const FInputActionValue& InputActionValue);
-	AInteractableActor* GetBestInteractable();
+	
+	void FaceTowards(const AActor* TargetActor);
 
+	
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInteractionComponent> InteractComponent;
+	
+protected:
+	
+	
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-protected:
 
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+	
+	void StartSprint(const FInputActionValue& Value);
+	void EndSprint(const FInputActionValue& Value);
 
 public:
 
