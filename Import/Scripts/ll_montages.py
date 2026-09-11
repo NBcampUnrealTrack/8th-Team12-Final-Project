@@ -43,49 +43,86 @@ BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
 # 두면 대개 평범하고 가끔 눈에 띄는 그림이 된다.
 # 액션 -> [(애님, 가중치, 몽타주 이름, 슬롯)]
 #
-# ## ⚠ 슬롯이 둘인 이유
+# ## ⚠⚠ 슬롯은 **하나**다 — 상체 분리를 되돌렸다
 #
-# 몽타주는 슬롯을 **하나만** 갖는다. 그래서 같은 애님을 서 있는 손님과 앉은
-# 손님이 같이 쓰려면 **몽타주를 두 벌** 만들어야 한다.
+# 한동안 먹는 애님을 `UpperBody` 슬롯에 넣고 하체는 AnimBP 의 Sit 상태로
+# 덮었다. **전제가 틀렸다.**
 #
-#   DefaultSlot  전신을 덮어쓴다. 서 있는 손님용.
-#   UpperBody    상체만. 하체는 AnimBP 의 Sit 상태가 낸다. 앉은 손님용.
+#   「먹는 애님은 서서 먹는 동작이다」 ← 틀림
+#   원본(마네퀸)의 골반 Z 가 **57.4** 다. 앉음 57~63 · 섬 103 이므로
+#   **원래부터 앉아서 먹는 동작**이다.
 #
-# ⚠ 앉은 손님에게 DefaultSlot 몽타주를 틀면 **일어선다.** 먹는 애님이 원래
-#   서서 먹는 동작이기 때문이다 (`ll_eat_retarget.py` 주석).
+# 그 오판은 리타겟 결과가 **빈 애님**이던 시절에 내린 것이다. 움직임이 0이라
+# 자세를 확인할 방법이 없었다.
+#
+# ⚠ 상체만 덧씌우면 상체는 애님의 좌면 높이, 하체는 Sit 상태의 높이를 따라
+#   **상체가 공중에 뜬다.** 실제로 그렇게 보였다.
+#
+# → 앉은 동작은 앉은 동작 그대로 **전신(`DefaultSlot`)** 으로 튼다.
 DEFAULT = 'DefaultSlot'
-UPPER = 'UpperBody'
+UPPER = 'UpperBody'   # 지금은 안 쓴다. 서서 하는 몸짓을 앉은 손님에게 얹을
+                      # 일이 생기면 그때 쓸 것 (AnimBP 의 상체 레이어 필요).
 
 ACTIONS = {
     # 서 있는 손님 — 문 앞·줄에서
+    #
+    # ## ⚠⚠ **길이가 곧 대기 시간이다**
+    #
+    # `Play Action` 은 **몽타주 길이만큼 그 상태에 머문다.** 트리의 `Enter` 는
+    # `Idle_Look` 을 **한 번** 재생하고 끝나므로, 긴 변형이 걸리면 손님이 문
+    # 앞에서 그만큼 서 있다가 키오스크로 간다.
+    #
+    # 예전 구성은 최대 **37.2초**였다 (`Talking_On_A_Cell_Phone`). PIE 를 켜면
+    # 문 앞에 폰 보는 사람이 30초 넘게 서 있어서 「프리필 NPC 가 폰을 본다」로
+    # 오해하기 딱 좋았다 — 실제로는 방금 들어온 워크인이다.
+    #
+    #     예전  최대 37.2s · 기대값 24.7s
+    #     지금  최대 18.5s · 기대값 10.8s
+    #
+    # ⚠ 긴 둘(`Talking_On_A_Cell_Phone` 37.2s · `Texting_While_Standing` 23.6s)은
+    #   **뺐다.** 에셋은 남아 있으니 몽타주 구간을 5~8초로 자르면 되살릴 것.
+    #
+    # ⚠ `Idle` 은 첫·끝 프레임 차이가 **0.0** 인 진짜 순환 동작이라 줄에서
+    #   루프로 돌 때 이음매가 없다. 그래서 가장 큰 가중치를 준다.
     'Idle_Look': [
-        ('Texting_While_Standing', 1.0, 'AM_Texting_While_Standing', DEFAULT),
-        ('Talking_On_A_Cell_Phone', 0.5, 'AM_Talking_On_A_Cell_Phone', DEFAULT),
-        ('Texting', 0.4, 'AM_Texting', DEFAULT),
-        ('Telling_A_Secret', 0.2, 'AM_Telling_A_Secret', DEFAULT),
+        ('Idle', 1.0, 'AM_Idle', DEFAULT),                          # 8.33s
+        ('Telling_A_Secret', 0.6, 'AM_Telling_A_Secret', DEFAULT),  # 10.90s
+        ('Texting', 0.3, 'AM_Texting', DEFAULT),                    # 18.53s
     ],
     'Interact_Reach': [
         ('Reaching_Out', 1.0, 'AM_Reaching_Out', DEFAULT),
     ],
 
-    # 앉은 **장식 손님**이 끝없이 돌릴 몸짓 풀 — 먹기 + 폰 만지기를 섞는다.
-    # 먹는 쪽 가중치를 높였다. 가게에 앉아 있으면 대개 먹고 있어야 한다.
+    # 앉은 **장식 손님**이 끝없이 돌릴 몸짓 — 먹는 것 4종.
+    #
+    # ## ⚠ 한 사람은 **하나만** 돌린다
+    #
+    # 여기 넷을 넣어 두지만 손님 하나는 그중 **한 가지만** 평생 반복한다
+    # (`ACustomerCharacter::bDecorationSingleAction`). 앉아서 밥 먹는 사람이
+    # 「버거 → 폰 → 감자튀김」으로 계속 바꾸지는 않는다. 다양성은 한 사람
+    # 안에서가 아니라 **손님들 사이에서** 나와야 한다.
+    #
+    # 어느 것을 받을지는 **좌석 번호**에서 결정적으로 뽑는다 — 같은 의자는
+    # 늘 같은 몸짓, 옆자리는 다른 몸짓 (`DecorationSeed` 주석).
+    #
+    # ⚠ 폰 만지는 몸짓(`AM_Sit_Texting`·`AM_Sit_Talking_On_A_Cell_Phone`)은
+    #   여기서 뺐다. 그 둘은 **서 있는 동작**이라 전신으로 틀면 앉은 손님이
+    #   일어선다. 에셋은 남겨 둔다 — 되살리려면 AnimBP 의 상체 레이어가 필요하다.
     'Sit_Idle': [
-        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', UPPER),
-        ('Eating_Fries', 1.0, 'AM_Eating_Fries', UPPER),
-        ('Eating_a_Drumstick', 0.8, 'AM_Eating_a_Drumstick', UPPER),
-        ('Eating_Frantically', 0.5, 'AM_Eating_Frantically', UPPER),
-        # ⚠ 서 있는 쪽과 **다른 몽타주 에셋**이다 (슬롯이 달라서).
-        ('Texting', 0.6, 'AM_Sit_Texting', UPPER),
-        ('Talking_On_A_Cell_Phone', 0.5, 'AM_Sit_Talking_On_A_Cell_Phone', UPPER),
+        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', DEFAULT),
+        ('Eating_Fries', 1.0, 'AM_Eating_Fries', DEFAULT),
+        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', DEFAULT),
+        ('Eating_Frantically', 0.6, 'AM_Eating_Frantically', DEFAULT),
     ],
 
-    # 걸어 들어온 손님이 앉아서 먹는 것 — 트리의 `Sit_Eat` 이 쓴다
+    # 걸어 들어온 손님이 앉아서 먹는 것 — 트리의 `Sit_Eat` 이 쓴다.
+    # ⚠ 위와 **같은 몽타주 에셋**이다. 슬롯이 하나가 되면서 두 벌 만들 이유가
+    #   없어졌다 (예전에는 서 있는 손님용/앉은 손님용으로 갈라져 있었다).
     'Sit_Eat': [
-        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', UPPER),
-        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', UPPER),
-        ('Eating_Frantically', 1.0, 'AM_Eating_Frantically', UPPER),
-        ('Eating_Fries', 1.0, 'AM_Eating_Fries', UPPER),
+        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', DEFAULT),
+        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', DEFAULT),
+        ('Eating_Frantically', 1.0, 'AM_Eating_Frantically', DEFAULT),
+        ('Eating_Fries', 1.0, 'AM_Eating_Fries', DEFAULT),
     ],
 }
 
@@ -124,8 +161,30 @@ def set_slot(m, slot):
     m.set_editor_property('slot_anim_tracks', tr)
 
 
+# 몽타주 블렌드 시간(초).
+#
+# ⚠ 이 값이 **루프 이음매를 덮는 크로스페이드 길이**다. 장식 손님은 몽타주가
+#   끝나기 전에 다음 것을 겹쳐 거는데(`ACustomerCharacter::DecorationLoopCrossfade`),
+#   그때 실제로 섞이는 시간은 **들어오는 몽타주의 Blend In** 이 정한다.
+#
+# 먹는 애님은 첫·끝 자세가 팔뚝 기준 최대 68도 어긋난다. 0.35초에 걸치면
+# 초당 195도 — 사람 팔이 그 정도로 움직이므로 튀는 게 아니라 동작으로 보인다.
+#
+# ⚠ 너무 길면 두 자세가 오래 섞여 흐물거린다. 0.25~0.4 안에서 조정할 것.
+BLEND = 0.35
+
+
+def set_blend(m):
+    """블렌드 시간을 맞춘다. ⚠ 배열이 아니라 구조체라 되넣을 필요는 없지만,
+    `get_editor_property` 가 **복사본**을 주므로 고친 뒤 다시 넣어야 한다."""
+    for prop in ('blend_in', 'blend_out'):
+        b = m.get_editor_property(prop)
+        b.set_editor_property('blend_time', BLEND)
+        m.set_editor_property(prop, b)
+
+
 def make_montage(seq_name, mtg_name, slot):
-    """시퀀스 하나로 몽타주 하나. 이미 있으면 슬롯만 맞춘다."""
+    """시퀀스 하나로 몽타주 하나. 이미 있으면 슬롯·블렌드만 맞춘다."""
     seq = EAL.load_asset('%s/%s' % (ANIM_DIR, seq_name))
     if not seq:
         E('  %s — 시퀀스가 없다' % seq_name)
@@ -145,6 +204,7 @@ def make_montage(seq_name, mtg_name, slot):
             return None
 
     set_slot(m, slot)
+    set_blend(m)
     return m
 
 

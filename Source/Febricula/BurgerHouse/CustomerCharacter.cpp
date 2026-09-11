@@ -100,7 +100,10 @@ bool ACustomerCharacter::ApplyStartRole()
 		PlaceTrayAt(Use);
 
 		// 장식 손님은 트리를 안 타므로 여기서 몸짓을 걸어 준다.
-		StartDecorationLoop();
+		//
+		// ⚠ **좌석 번호를 넘긴다.** 이 값으로 몸짓을 결정적으로 고르므로 같은
+		//    의자는 늘 같은 몸짓이 된다 (`DecorationSeed` 주석).
+		StartDecorationLoop(Seat->SourceIndex);
 
 		UE_LOG(LogBurgerHouseNPC, Log, TEXT("%s 프리필 착석 — %s (일행 %d)%s"),
 			*GetName(), *Seat->GetName(), PartyId,
@@ -125,7 +128,7 @@ bool ACustomerCharacter::ApplyStartRole()
 
 		const FTransform Use = Kiosk->GetUseTransform();
 		TeleportToPoint(Use.GetLocation(), Use.GetRotation().Rotator());
-		StartDecorationLoop();
+		StartDecorationLoop(Kiosk->SourceIndex);
 
 		UE_LOG(LogBurgerHouseNPC, Log, TEXT("%s 프리필 키오스크 — %s%s"),
 			*GetName(), *Kiosk->GetName(), bDecoration ? TEXT(" [장식]") : TEXT(""));
@@ -143,7 +146,8 @@ bool ACustomerCharacter::ApplyStartRole()
 			OrderNumber = Store->PlaceOrder(this);
 		}
 		const int32 Index = Store->EnterWaitArea(this);
-		StartDecorationLoop();
+		// 줄에는 슬롯이 없다 — 줄 순번을 자리 대신 쓴다 (같은 자리 = 같은 몸짓).
+		StartDecorationLoop(Index);
 
 		// ⚠ **자리 좌표는 여기서 못 만든다.** 줄의 기하(`QueueStart`·`QueueStep`)는
 		//    StateTree 태스크의 파라미터로 **레벨마다** 들어 있고, 서브시스템은
@@ -355,11 +359,69 @@ int32 ACustomerCharacter::PickVariant(FName ActionName, const FCustomerAction& A
 	return INDEX_NONE;
 }
 
-float ACustomerCharacter::PlayAction(FName ActionName, float FallbackSeconds)
+int32 ACustomerCharacter::PickStableVariant(FName ActionName, int32 StableKey) const
+{
+	const FCustomerAction* Found = Actions.Find(ActionName);
+	if (!Found || Found->Variants.Num() == 0 || StableKey == INDEX_NONE)
+	{
+		return INDEX_NONE;
+	}
+
+	// ⚠ **해시를 통과시킨다.** `StableKey % Num` 으로 하면 좌석 번호가 연속이라
+	//    옆자리끼리 「버거·감자·버거·감자」가 줄줄이 나온다. 눈에 바로 띈다.
+	const uint32 Hash = HashCombine(GetTypeHash(ActionName),
+		GetTypeHash(static_cast<uint32>(StableKey) * 2654435761u
+			+ static_cast<uint32>(DecorationSeed)));
+
+	// 가중치는 그대로 쓴다 — 난수 자리에만 해시에서 뽑은 0~1 을 넣는다.
+	float Total = 0.f;
+	for (const FCustomerActionVariant& V : Found->Variants)
+	{
+		if (V.Montage)
+		{
+			Total += FMath::Max(V.Weight, 0.f);
+		}
+	}
+	if (Total <= KINDA_SMALL_NUMBER)
+	{
+		// 가중치가 전부 0 — 몽타주가 있는 것 중에서 균등하게 고른다
+		TArray<int32, TInlineAllocator<8>> Usable;
+		for (int32 i = 0; i < Found->Variants.Num(); ++i)
+		{
+			if (Found->Variants[i].Montage)
+			{
+				Usable.Add(i);
+			}
+		}
+		return Usable.Num() ? Usable[Hash % static_cast<uint32>(Usable.Num())] : INDEX_NONE;
+	}
+
+	float R = (static_cast<float>(Hash % 100000u) / 100000.f) * Total;
+	for (int32 i = 0; i < Found->Variants.Num(); ++i)
+	{
+		if (!Found->Variants[i].Montage)
+		{
+			continue;
+		}
+		R -= FMath::Max(Found->Variants[i].Weight, 0.f);
+		if (R <= 0.f)
+		{
+			return i;
+		}
+	}
+	return INDEX_NONE;
+}
+
+float ACustomerCharacter::PlayAction(FName ActionName, float FallbackSeconds, int32 ForceVariant)
 {
 	if (const FCustomerAction* Found = Actions.Find(ActionName))
 	{
-		const int32 Idx = PickVariant(ActionName, *Found);
+		// ⚠ 범위를 꼭 검사한다. 고정 번호는 몽타주 목록이 바뀌면 남아 있던
+		//    옛 번호가 그대로 들어올 수 있다.
+		const int32 Idx = (Found->Variants.IsValidIndex(ForceVariant)
+				&& Found->Variants[ForceVariant].Montage)
+			? ForceVariant
+			: PickVariant(ActionName, *Found);
 		if (Idx != INDEX_NONE)
 		{
 			UAnimMontage* M = Found->Variants[Idx].Montage;
@@ -399,17 +461,32 @@ float ACustomerCharacter::PlayAction(FName ActionName, float FallbackSeconds)
 
 // ---------------------------------------------------------------- 반복 재생
 
-void ACustomerCharacter::StartActionLoop(FName ActionName)
+void ACustomerCharacter::StartActionLoop(FName ActionName, int32 FixedVariant)
 {
 	if (ActionName.IsNone())
 	{
 		return;
 	}
 	LoopingAction = ActionName;
+	LoopVariant = FixedVariant;
+
+	// ⚠ **첫 재생만 흩는다.** 안 흩으면 같이 앉은 손님들이 같은 프레임에
+	//    시작해 8초마다 **동시에 같은 동작**을 한다 — 군무처럼 보인다.
+	//    한 번 어긋나 두면 그 위상차가 계속 유지된다.
+	const float Delay = FMath::FRandRange(0.f, FMath::Max(DecorationGap, 0.f));
+	if (Delay > KINDA_SMALL_NUMBER)
+	{
+		if (UWorld* W = GetWorld())
+		{
+			W->GetTimerManager().SetTimer(LoopTimer, this,
+				&ACustomerCharacter::PlayLoopedAction, Delay, false);
+			return;
+		}
+	}
 	PlayLoopedAction();
 }
 
-void ACustomerCharacter::StartDecorationLoop()
+void ACustomerCharacter::StartDecorationLoop(int32 StableKey)
 {
 	if (!bDecoration)
 	{
@@ -424,12 +501,23 @@ void ACustomerCharacter::StartDecorationLoop()
 			*GetName(), *StartRole.ToString());
 		return;
 	}
-	StartActionLoop(*Action);
+	// 한 사람은 한 가지 몸짓만 — 다양성은 손님들 **사이에서** 나온다
+	// (`bDecorationSingleAction` 주석). 자리에서 결정적으로 뽑으므로 같은
+	// 의자는 늘 같은 몸짓이고 옆자리와는 겹치지 않는다.
+	const int32 Fixed = bDecorationSingleAction
+		? PickStableVariant(*Action, StableKey)
+		: INDEX_NONE;
+
+	StartActionLoop(*Action, Fixed);
+
+	UE_LOG(LogBurgerHouseNPC, Log, TEXT("%s 장식 몸짓 %s · 변형 %d (자리 %d · 씨앗 %d)"),
+		*GetName(), *Action->ToString(), Fixed, StableKey, DecorationSeed);
 }
 
 void ACustomerCharacter::StopActionLoop()
 {
 	LoopingAction = NAME_None;
+	LoopVariant = INDEX_NONE;
 	if (UWorld* W = GetWorld())
 	{
 		W->GetTimerManager().ClearTimer(LoopTimer);
@@ -444,14 +532,27 @@ void ACustomerCharacter::PlayLoopedAction()
 		return;
 	}
 
-	// ⚠ `PlayAction` 이 **매번 변형을 새로 뽑는다.** 그래서 같은 행동 이름으로
-	//    반복해도 몸짓이 계속 바뀐다 (`PickVariant` 의 가중 무작위 +
-	//    `bAvoidRepeatVariant` 로 연속 중복 회피).
-	const float Len = PlayAction(LoopingAction, /*FallbackSeconds=*/4.f);
+	// `LoopVariant` 가 있으면 **그 몽타주만** 계속 돈다 (장식 손님). 없으면
+	// `PlayAction` 이 매번 새로 뽑아 몸짓이 바뀐다.
+	const float Len = PlayAction(LoopingAction, /*FallbackSeconds=*/4.f, LoopVariant);
 
-	// 쉬는 시간을 섞는다 — 안 섞으면 여럿이 같이 앉아 있을 때 몸짓이 동시에
-	// 바뀌어 군무처럼 보인다.
-	const float Next = Len + FMath::FRandRange(0.f, FMath::Max(DecorationGap, 0.f));
+	// ---------------------------------------------------------- 이음매 감추기
+	//
+	// ⚠⚠ **몽타주가 끝나기 전에** 다음 것을 건다. 끝까지 두면 —
+	//
+	//     먹는 중 → (BlendOut) 앉은 Idle → 빈 시간 → (BlendIn) 먹는 중
+	//
+	//   즉 손님이 루프마다 **버거를 내려놨다 다시 든다.** `Auto Blend Out` 이
+	//   기본 포즈로 되돌리기 때문인데, 증상이 「애님 첫·끝 프레임이 안 맞는다」
+	//   와 똑같아 보여서 애님을 자르려 들기 쉽다.
+	//
+	// 겹쳐 걸면 기본 포즈를 안 거치고 **끝 자세 → 시작 자세로 직접** 블렌드된다.
+	//
+	// ⚠ 먹는 애님은 **순환 동작이 아니다** — 시작 자세로 돌아오는 지점이 애님
+	//   안에 아예 없다 (실측: 가장 비슷한 지점도 지금 끝과 차이가 거의 같다).
+	//   그래서 「첫·끝 프레임 맞추기」로는 못 고치고, 이렇게 덮어야 한다.
+	//   팔뚝이 최대 68도 차이인데 0.35초에 걸치면 초당 195도 — 그냥 팔 동작이다.
+	const float Next = FMath::Max(Len - FMath::Max(DecorationLoopCrossfade, 0.f), 0.25f);
 
 	if (UWorld* W = GetWorld())
 	{
