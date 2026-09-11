@@ -14,6 +14,29 @@
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
 
+// ---------------------------------------------------------------------------
+// 그룹 추종 튜닝값.
+//
+// [왜 UPROPERTY가 아닌가]
+//   ASubNpcCharacter에 데이터 멤버를 추가하면 그 뒤 프로퍼티들의 메모리 오프셋이
+//   전부 밀린다. WalkSpeed / bIsMoving / CurrentSpeed가 뒤쪽에 있는데,
+//   AnimBP의 Property Access는 컴파일 시점 오프셋을 들고 있어서
+//   ABP를 다시 컴파일하기 전까지 엉뚱한 값을 읽는다.
+//   실제로 이것 때문에 bIsMoving이 false로 읽혀 걷기 애니메이션이 깨졌다.
+//
+//   값 조정 빈도가 낮으므로 상수로 둔다. 에디터 노출이 필요해지면
+//   반드시 클래스 "맨 끝"에 추가하고 ABP를 다시 컴파일할 것.
+// ---------------------------------------------------------------------------
+namespace SubNpcGroupTuning
+{
+	/** 이만큼(cm) 벌어지면 최대 속도차를 낸다 */
+	constexpr float CatchUpRange = 150.f;
+
+	/** 추종자 속도 배율 범위. 하한이 0보다 커야 뒷걸음질이 없다 */
+	constexpr float SpeedScaleMin = 0.55f;
+	constexpr float SpeedScaleMax = 1.65f;
+}
+
 ASubNpcCharacter::ASubNpcCharacter()
 {
 	// 행인은 Director가 LOD에 따라 틱 간격을 조절한다.
@@ -429,29 +452,46 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 
 	// 그룹으로 다니는 경우 앞사람의 진행도에서 간격만큼 뒤를 따라간다.
 	// 각자 독립적으로 걸으면 신호에 걸릴 때마다 대열이 흩어진다.
+	// 진행 부호. 역방향이면 PathDistance가 줄어드는 쪽이 "앞"이다.
+	const float Along = bReversedOnPath ? -1.f : 1.f;
+
 	if (ASubNpcCharacter* Leader = GroupLeader.Get())
 	{
 		if (Leader->CurrentPath == CurrentPath && !Leader->IsPooled())
 		{
-			// [버그 수정] 진행 방향을 고려해야 한다.
-			// 역방향으로 걷는 그룹은 진행 거리가 줄어드는 쪽이므로, 그냥 빼면
-			// 추종자가 리더보다 "앞"에 서서 앞질러 가버린다.
+			// [버그 수정] 리더 위치를 그대로 대입하지 않는다.
+			//
+			// 예전에는 PathDistance = Leader->PathDistance - Gap 으로 매 틱 덮어썼다.
+			// 그래서 세 가지가 눈에 보이는 결함으로 나타났다.
+			//   1) 리더가 스팟에 들어가 멈추면 추종자도 그 자리에 얼어붙는다
+			//   2) 리더가 막다른 길에서 방향을 돌리면 추종자가 순간이동으로 뒤로 간다
+			//   3) 리더의 회피 흔들림이 추종자에게 그대로 복사돼 대열이 떤다
+			//
+			// 대신 추종자도 자기 속도로 걷되, 벌어진 만큼 속도만 조절한다.
+			// 위치를 직접 건드리지 않으므로 뒷걸음질도 순간이동도 없다.
 			const float Behind = bReversedOnPath ? GroupFollowGap : -GroupFollowGap;
 			const float Desired = Leader->PathDistance + Behind;
 
-			// 리더가 경로 초입에 있으면 추종자 목표가 경로 밖(음수)으로 나간다.
-			// 그대로 두면 시작점에 붙어 얼어 있으므로 경로 안으로 가둔다.
-			PathDistance = FMath::Clamp(Desired, 0.f, CurrentPath->GetPathLength());
+			// 진행 방향 기준 오차. 양수면 뒤처진 상태다.
+			const float Error = (Desired - PathDistance) * Along;
+
+			const float SpeedScale = FMath::Clamp(
+				1.f + Error / SubNpcGroupTuning::CatchUpRange,
+				SubNpcGroupTuning::SpeedScaleMin,
+				SubNpcGroupTuning::SpeedScaleMax);
+
+			PathDistance += WalkSpeed * SpeedScale * DeltaTime * Along;
 		}
 		else
 		{
 			// 리더가 다른 경로로 갔거나 회수됐으면 그룹을 해산하고 혼자 걷는다.
 			GroupLeader = nullptr;
+			PathDistance += WalkSpeed * DeltaTime * Along;
 		}
 	}
 	else
 	{
-		PathDistance += WalkSpeed * DeltaTime * (bReversedOnPath ? -1.f : 1.f);
+		PathDistance += WalkSpeed * DeltaTime * Along;
 	}
 
 	// 이웃이 밀어낸 양을 반영한다. Director가 이번 프레임에 누적해 둔 값이다.

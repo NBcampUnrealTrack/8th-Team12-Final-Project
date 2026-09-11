@@ -40,6 +40,13 @@ namespace SubNpcCrowdCVars
 		TEXT("서브 NPC 소프트 회피. 0이면 끈다 (측정용)."),
 		ECVF_Cheat);
 
+	static int32 AvoidPairsOverride = -1;
+	static FAutoConsoleVariableRef CVarAvoidPairs(
+		TEXT("crowd.AvoidPairs"),
+		AvoidPairsOverride,
+		TEXT("회피 계산에 참여시킬 최대 인원. -1이면 코드 기본값."),
+		ECVF_Cheat);
+
 	static float SpawnSpacingOverride = -1.f;
 	static FAutoConsoleVariableRef CVarSpawnSpacing(
 		TEXT("crowd.SpawnSpacing"),
@@ -452,9 +459,16 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		return;
 	}
 
+	// [측정 근거] stat game에서 Director 전체(TickableGameObjects Time)의
+	// 0명 -> 90명 델타가 0.06 ms에 불과했다. 예전 기본값 24는 근거 없이 보수적이었고,
+	// 그 탓에 90명 중 24명만 회피에 참여해 나머지가 그대로 겹쳐 보였다.
+	const int32 PairBudget = (SubNpcCrowdCVars::AvoidPairsOverride >= 0)
+		? SubNpcCrowdCVars::AvoidPairsOverride
+		: MaxAvoidancePairs;
+
 	// 가까이 보이는 개체만 모은다. 여기가 회피 비용을 결정한다.
 	TArray<ASubNpcCharacter*> Nearby;
-	Nearby.Reserve(MaxAvoidancePairs);
+	Nearby.Reserve(PairBudget);
 
 	for (ASubNpcCharacter* Npc : ActiveNpcs)
 	{
@@ -470,7 +484,7 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		}
 
 		Nearby.Add(Npc);
-		if (Nearby.Num() >= MaxAvoidancePairs)
+		if (Nearby.Num() >= PairBudget)
 		{
 			break;
 		}
@@ -490,6 +504,13 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 			// 같은 경로 위에 있는 개체끼리만 비교한다.
 			// 다른 경로라면 좌우 오프셋을 밀어도 서로 멀어지지 않는다.
 			if (A->GetCurrentPath() != B->GetCurrentPath())
+			{
+				continue;
+			}
+
+			// [의도] 같은 그룹(친구)끼리는 밀어내지 않는다.
+			// "친구는 붙고 남남은 떨어진다"는 그림이 이 한 줄에서 나온다.
+			if (A->IsSameGroup(B))
 			{
 				continue;
 			}

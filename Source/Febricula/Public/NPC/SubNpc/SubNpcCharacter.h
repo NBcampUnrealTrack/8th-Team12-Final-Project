@@ -380,6 +380,33 @@ public:
 	/** 회피 계산에 필요한 값들. Director가 이웃끼리 비교할 때 읽는다 */
 	float GetPathDistance() const { return PathDistance; }
 	float GetLaneOffset() const { return LaneOffset; }
+
+	/** 그룹 리더 (없으면 nullptr) */
+	ASubNpcCharacter* GetGroupLeader() const { return GroupLeader.Get(); }
+
+	/**
+	 * 같은 그룹인가.
+	 *
+	 * 친구끼리는 회피로 밀어내면 안 된다. 붙어 다니라고 묶어놓고 떼어놓으면
+	 * 대형이 계속 흔들려서 오히려 더 어색하다.
+	 *
+	 * [주의] 이 클래스에 데이터 멤버를 새로 추가하지 않는다.
+	 * WalkSpeed / bIsMoving / CurrentSpeed 앞에 멤버가 끼면 오프셋이 밀려서
+	 * AnimBP의 Property Access가 엉뚱한 값을 읽는다 (걷기 애니메이션이 깨진다).
+	 * 메서드 추가는 레이아웃에 영향이 없으므로 안전하다.
+	 */
+	bool IsSameGroup(const ASubNpcCharacter* Other) const
+	{
+		if (!Other || Other == this)
+		{
+			return false;
+		}
+		const ASubNpcCharacter* MyLeader = GroupLeader.Get();
+		const ASubNpcCharacter* ItsLeader = Other->GroupLeader.Get();
+		return (MyLeader && MyLeader == ItsLeader)
+			|| (MyLeader == Other)
+			|| (ItsLeader == this);
+	}
 	bool IsWalkingOnPath() const { return CurrentActivity == ESubNpcActivity::Walking && CurrentPath != nullptr; }
 
 	/**

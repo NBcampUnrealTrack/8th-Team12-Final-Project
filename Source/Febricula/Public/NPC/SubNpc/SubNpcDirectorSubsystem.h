@@ -185,7 +185,7 @@ protected:
 	 * 화면에 가까이 보이는 개체만 대상이라 실제로는 훨씬 적다.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Crowd|Avoidance", meta = (ClampMin = "2"))
-	int32 MaxAvoidancePairs = 24;
+	int32 MaxAvoidancePairs = 128;
 
 	/**
 	 * 등장 간격 (cm).
