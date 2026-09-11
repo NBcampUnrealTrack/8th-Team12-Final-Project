@@ -19,9 +19,9 @@ public:
 
 protected:
 	
-	virtual void StartMove();
-	virtual void OpenActor();
-	virtual void CloseActor();
+	virtual void StartMove(AActor* Interactor);
+	virtual void OpenActor(AActor* Interactor);
+	virtual void CloseActor(AActor* Interactor);
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

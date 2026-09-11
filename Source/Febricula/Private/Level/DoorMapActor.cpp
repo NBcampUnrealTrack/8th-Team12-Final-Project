@@ -12,14 +12,16 @@ ADoorMapActor::ADoorMapActor()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 }
 
-void ADoorMapActor::StartMove()
+void ADoorMapActor::StartMove(AActor* Interactor)
 {
  	bNowMove = true;
  	GetWorldTimerManager().ClearTimer(MoveTimer);
  	if (NowState == EMoveState::OPENING)
  	{
  		CurrentMove = 0.f;
- 		GetWorldTimerManager().SetTimer(MoveTimer, this, &ADoorMapActor::OpenActor, .1f, true);
+ 		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &ADoorMapActor::OpenActor, Interactor);
+
+ 		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
  		NowState = EMoveState::CLOSING;
  	}
  	else if (NowState == EMoveState::CLOSING)
@@ -28,7 +30,9 @@ void ADoorMapActor::StartMove()
  		{
  			CurrentMove = MaxMovement;
  		}
- 		GetWorldTimerManager().SetTimer(MoveTimer, this, &ADoorMapActor::CloseActor, .1f, true);
+ 		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &ADoorMapActor::CloseActor, Interactor);
+
+ 		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
  		NowState = EMoveState::OPENING;
  	}
  	bNowMove = true;
@@ -36,7 +40,7 @@ void ADoorMapActor::StartMove()
 
 void ADoorMapActor::Interact_Implementation(AActor* Interactor)
 {
-	StartMove();
+	StartMove(Interactor);
 	//Super::Interact_Implementation(Interactor);
 }
 
@@ -50,9 +54,9 @@ void ADoorMapActor::BeginPlay()
 	}
 }
 
-void ADoorMapActor::OpenActor()
+void ADoorMapActor::OpenActor(AActor* Interactor)
 {
-	Super::OpenActor();
+	Super::OpenActor(Interactor);
 	if (MaxMovement > CurrentMove)
 	{
 		CurrentMove += MoveSpeed;
@@ -65,13 +69,13 @@ void ADoorMapActor::OpenActor()
 	{
 		bNowMove = false;
 		GetWorldTimerManager().ClearTimer(MoveTimer);
-
+		Super::Interact_Implementation(Interactor);
 	}
 }
 
-void ADoorMapActor::CloseActor()
+void ADoorMapActor::CloseActor(AActor* Interactor)
 {
-	Super::CloseActor();
+	Super::CloseActor(Interactor);
 	bool bEnd = true;
 	CurrentMove -= MoveSpeed;
 	for (int i = 0; i < MinRotation.Num(); i++)

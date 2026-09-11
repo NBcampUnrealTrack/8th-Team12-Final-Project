@@ -69,7 +69,7 @@
 
 
 @label D1_060
-@cam Loc -1138.9 -4884.0 -76.4 Rot 0 12.6 -39.1 0
+@cam Loc -1138.9 -4884.0 -76.4 Rot 0 12.6 -39.1 .1
 @FadeIn 3 
 @wait 3
 @hide
@@ -125,7 +125,6 @@ AI의 끊임없는 발전.
 
 @cam reset
 @NpcStartGuide NPC_Suyun FirtSuyunMove
-@PlayAnim NPC_Suyun Walk 1 
 @wait_arrive 100 NPC_Suyun
 @hide
 
@@ -247,7 +246,6 @@ AI의 끊임없는 발전.
 응. 원래는 저 자리에 별관이 있었는데 오래되서 위험하다고 헐어버리고 저렇게 강당을 세웠다 그러더라고.
 안에는…
 @NpcStartPatrol NPC_Doyun DoyunFirstMove
-@PlayAnim NPC_Doyun Walk 
 @wait_arrive 100 NPC_Doyun
 @hide
 
@@ -271,7 +269,6 @@ AI의 끊임없는 발전.
 서윤: 나가. 
 도윤: 거 참 까탈스럽네. 간다 가.
 
-@PlayAnim NPC_Doyun Walk2 1
 @NpcStartPatrol NPC_Doyun DoyunMoveSecond
 @wait_arrive 100 NPC_Doyun
 @hide

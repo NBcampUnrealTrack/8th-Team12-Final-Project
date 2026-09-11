@@ -629,7 +629,7 @@ class Parser:
             self.p_cam = ("Cinematic", loc, rot, blend, focus)
             return
  
-        loc, rot, blend, focus, seen = None, None, 0.0, 0.0, None
+        loc, rot, blend, focus, seen = None, None, 0.0, 10000.0, None
         buffer = []
  
         def flush():
@@ -644,8 +644,8 @@ class Parser:
             else:
                 rot = tuple(buffer)
             return True
- 
-        for token in args:
+        check_blend = False
+        for i, token in enumerate(args):
             low = token.lower()
             if low in ("loc", "rot"):
                 if not flush():
@@ -664,9 +664,10 @@ class Parser:
             if len(buffer) < 3:
                 buffer.append(number)
             else:
-                if(blend == 0.0 and number > 0.0):
-                    blend = number     # 3개를 넘겨서 온 마지막 숫자는 전환 시간
-                else:
+                if i == 8:
+                    blend = number
+                    check_blend = True
+                elif i == 9:
                     focus = number
         if not flush():
             return

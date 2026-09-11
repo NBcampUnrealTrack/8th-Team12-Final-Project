@@ -20,9 +20,9 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	virtual void OpenActor() override;
-	virtual void CloseActor() override;
-	virtual void StartMove() override;
+	virtual void OpenActor(AActor* Interactor) override;
+	virtual void CloseActor(AActor* Interactor) override;
+	virtual void StartMove(AActor* Interactor) override;
 	
 	virtual void Interact_Implementation(AActor* Interactor) override;
 	

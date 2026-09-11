@@ -997,8 +997,8 @@
         "Pitch": 12.6,
         "Yaw": -39.1
       },
-      "MoveTime": 0.0,
-      "Focus": 0.0
+      "MoveTime": 0.1,
+      "Focus": 10000.0
     }
   },
   {
@@ -1494,7 +1494,7 @@
         "Yaw": -36.3
       },
       "MoveTime": 0.0,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -1588,7 +1588,7 @@
         "Yaw": -108.9
       },
       "MoveTime": 0.5,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -1725,12 +1725,6 @@
         "Key": "NPC_Suyun",
         "Key2": "FirtSuyunMove",
         "Value": 0
-      },
-      {
-        "Type": "PlayAnim",
-        "Key": "NPC_Suyun",
-        "Key2": "Walk",
-        "Value": 1
       }
     ],
     "Choices": [],
@@ -1915,7 +1909,7 @@
         "Yaw": 0.8
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -2237,7 +2231,7 @@
         "Yaw": -257.7
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -2681,7 +2675,7 @@
         "Yaw": -176.0
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -2945,7 +2939,7 @@
         "Yaw": -55.4
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -3395,7 +3389,7 @@
         "Yaw": -70.0
       },
       "MoveTime": 0.0,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -3553,12 +3547,6 @@
         "Type": "NpcStartPatrol",
         "Key": "NPC_Doyun",
         "Key2": "DoyunFirstMove",
-        "Value": 0
-      },
-      {
-        "Type": "PlayAnim",
-        "Key": "NPC_Doyun",
-        "Key2": "Walk",
         "Value": 0
       }
     ],
@@ -3972,12 +3960,6 @@
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
-      {
-        "Type": "PlayAnim",
-        "Key": "NPC_Doyun",
-        "Key2": "Walk2",
-        "Value": 1
-      },
       {
         "Type": "NpcStartPatrol",
         "Key": "NPC_Doyun",
