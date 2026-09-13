@@ -6,7 +6,7 @@
 	"backend_auth": "hmac-sha1-exact-v2",
 	"proxy_port": 8089,
 	"bridge_running": false,
-	"bridge_instance_id": "ca85262c4de69cb389195fa56ab7b7a1",
+	"bridge_instance_id": "4a1d86c54375a30b63620780fb4c6765",
 	"ue_port": 8088,
 	"project_name": "Febricula",
 	"project_path": "D:/febricula/Febricula",
@@ -20,6 +20,6 @@
 		"name": "Febricula",
 		"path": "D:/febricula/Febricula"
 	},
-	"updated_at": "2026-09-11T10:56:44.269Z",
-	"bearer_token": "3fe7a402485affe83e60bdb2bd2a2d564c14d2104c843203cf09119b02dff571"
+	"updated_at": "2026-09-11T13:11:52.156Z",
+	"bearer_token": "89e87d214d04532488e5ae95e6d022c153b191d440c60f577aa79ba306654cb1"
 }
