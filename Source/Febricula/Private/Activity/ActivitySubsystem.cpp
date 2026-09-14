@@ -27,11 +27,14 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (UTimeSubsystem* TimeSub = GetGameInstance()->GetSubsystem<UTimeSubsystem>())
 	{
 		TimeSub->OnScheduleChanged.AddDynamic(this, &UActivitySubsystem::OnChangeSchedule);
+		NowSchedule = TimeSub->GetNowScheduleTag();
 	}
 
 	// 레벨 로드 완료 시 활동 목록 재검사
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UActivitySubsystem::OnLevelLoaded);
-
+	
+	
+	
 	CurrentAP = 6;
 	MaxAP = 6;
 }

@@ -1,25 +1,25 @@
 {
 	"config_version": 3,
 	"engine": "unreal",
-	"engine_version": "5.8.2-56702186+++UE5+Release-5.8",
+	"engine_version": "5.8.1-56057345+++UE5+Release-5.8",
 	"bearer_scope": "read_only",
 	"backend_auth": "hmac-sha1-exact-v2",
 	"proxy_port": 8089,
-	"bridge_running": false,
-	"bridge_instance_id": "f007e13e4b16b2d6ba7b20ab92699515",
+	"bridge_running": true,
+	"bridge_instance_id": "fd5f8b184d6bdc49d33ada9e1d8f3ae3",
 	"ue_port": 8088,
 	"project_name": "Febricula",
-	"project_path": "C:/Project/Unreal",
+	"project_path": "D:/febricula/Febricula",
 	"active_project":
 	{
 		"name": "Febricula",
-		"path": "C:/Project/Unreal"
+		"path": "D:/febricula/Febricula"
 	},
 	"installed_project":
 	{
 		"name": "Febricula",
 		"path": "D:/febricula/Febricula"
 	},
-	"updated_at": "2026-09-11T18:32:22.062Z",
-	"bearer_token": "5fa5ec4643521ad6c6d0d49e9931264c74f6a69e4a9294195afca2a97be9682b"
+	"updated_at": "2026-09-14T08:20:52.367Z",
+	"bearer_token": "9dcc5f924e0d07e089e4aa920d6bda2325938c7043778aa39e108197726f955d"
 }

@@ -11,6 +11,7 @@
 #include "Activity/ActivitySetting.h"
 #include "Animation/CharacterAnimationComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Dialogue/NpcCrowdManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/FebriculaGameMode.h"
@@ -893,7 +894,37 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			MainNpc->PauseAIDuringTalk();
 		}
 		break;
+		
+	case EGameActionType::StartCrowdSpawn:
+		if (!Action.Key.IsNone())
+		{
+			TArray<AActor*> Founds;
+			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
+			if (Founds.Num() > 0)
+			{
+				if (IsValid(Founds[0]))
+				{
+					if (ANpcCrowdManager* CrowdManager = Cast<ANpcCrowdManager>(Founds[0]))
+					{
+						if (!Action.Key2.IsNone())
+						{
+							CrowdManager->Play(Action.Key2);
+						}
+						else
+						{
+							UE_LOG(LogTemp, Warning, TEXT("Path 식별자가 지정되지 않음"))
+						}
+					}
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("CrowdManager를 찾을 수 없음"))
+			}
 
+		}
+		break;
+		
 	// ---- 애니메이션 ----
 
 	case EGameActionType::PlayAnim:
