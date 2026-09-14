@@ -28,7 +28,7 @@
 마치 호수 속으로 잠기어 가듯 풍경은 물빛으로 물들며 천천히 가라앉아 간다.
 ....... ...하아....
 @HideActor
-@cam Loc -195.7 -74.6 157.7 Rot 0.0 90.0 -90 .01
+@cam Loc -195.7 -74.6 157.7 Rot 0.0 90.0 -90 .01 160
 나는 눈을 떴다.
 @FadeIn 1
 @wait 1.0
@@ -39,7 +39,7 @@
 나를 쏘아보는 차가운 시선.
 @Teleport Player BedTarget
 @PlayAnim Player SitMale 1
-@cam Loc 43.8 24.8 102.0 Rot 0 0 -130 2.0
+@cam Loc 43.8 24.8 102.0 Rot 0 0 -130 2.0 160
 @wait 2.0
 @ShowActor Player
 
@@ -109,8 +109,8 @@ AI의 끊임없는 발전.
 @cast 서윤 = "한서윤"
 
 @label D1_090
-학생부장 그래. 뭔가 힘든 일이 생기거나 언제든지 편하게 찾아오고.
-천율 네. 감사합니다.
+학생부장: 그래. 뭔가 힘든 일이 생기거나 언제든지 편하게 찾아오고.
+천율: 네. 감사합니다.
 @SpawnActor NPC_Suyun FirstSuyun
 @cam Loc 441.4 750.5 104.9 Rot 0 3.2 -108.9 .5
 @wait .5

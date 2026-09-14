@@ -230,6 +230,23 @@ public:
 	int32 PrefillCount = 0;
 
 	/**
+	 *	프리필 손님에게 **AI 를 붙일 것인가.**
+	 *
+	 *	기본은 **끔** — 프리필은 가게를 채우는 **장식**이다. AI 컨트롤러를 안
+	 *	붙이면 StateTree 가 시작조차 안 하므로 `Move To` · `Leave` · `Despawn` 이
+	 *	구조적으로 불가능하고, 손님이 자리에 **영원히** 남는다. 대신
+	 *	`ACustomerCharacter::DecorationActions` 의 몸짓을 계속 반복한다.
+	 *
+	 *	⚠ 켜면 프리필도 트리를 타서 먹고 나가는 한 바퀴를 돈다. 그때는
+	 *	  `ST_Customer` 의 프리필 갈래(`P_Eating` 등)가 제대로 배선돼 있어야 한다.
+	 *
+	 *	⚠ 장식 손님도 **슬롯은 예약한다.** 그래서 걸어 들어온 손님이 그 의자에
+	 *	  겹쳐 앉지 않는다. 대신 그만큼 자리가 영구히 준다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn|Prefill")
+	bool bPrefillRunsAI = false;
+
+	/**
 	 *	프리필된 것들에게 나눠 줄 **역할과 비율**.
 	 *
 	 *	    Eating   3.0   ← 앉아서 먹는 중
@@ -307,7 +324,10 @@ private:
 	 *	⚠ 인자가 `Role` 이 아니라 `InRole` 인 이유 — **`AActor::Role` 이 이미
 	 *	  있다** (`TEnumAsByte<ENetRole>`). 가리면 C4458 로 빌드가 깨진다.
 	 */
-	int32 SpawnGroup(int32 Count, FName InRole);
+	/**
+	 *	@param bAsDecoration true 면 AI 를 안 붙이고 장식으로 남긴다 (프리필용).
+	 */
+	int32 SpawnGroup(int32 Count, FName InRole, bool bAsDecoration = false);
 
 	bool SampleLocation(FVector& OutLocation) const;
 	APawn* SpawnOne();

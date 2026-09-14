@@ -68,6 +68,34 @@ SPEC = {
     'Kiosk_A':   ('Kiosk', unreal.Vector(0.0, 60.0, 0.0)),
 }
 
+# ⚠⚠ **가구 정면과 캐릭터 정면이 다르다 — 그런데 가구마다 다르다.**
+#
+# UE 캐릭터 정면은 **+X** 다. 좌석 슬롯은 가구 회전을 그대로 물려받으므로
+# 가구 정면이 +X 가 아니면 손님이 옆을 보고 앉는다.
+#
+#     Chair_A     정면 = 로컬 **+Y**  ->  +90 을 줘야 한다
+#     Sofa_Unit   정면 = 로컬 **+X**  ->  보정 없음 (0)
+#
+# ⚠⚠ **의자만 보고 「좌석은 전부 +90」 이라고 단정하지 말 것.** 처음에 그렇게
+#   했다가 소파 8석이 벽을 보고 앉았다. 실측 —
+#
+#     의자 29석: 액터 로컬 +Y 가 테이블 (+X 는 85~95° 어긋남)
+#     소파  8석: 액터 로컬 **+X** 로 56cm 앞이 테이블, 옆으로 y≈0
+#                (그 너머 110cm 에 마주보는 Chair_A — 부스 배치)
+#
+# 그래서 이 표의 키는 **종류(kind)가 아니라 에셋 이름**이다.
+#
+# ⚠ 아래 `KIOSK`·`PICKUP`·`DOOR` 목록은 **UE yaw 를 손으로 적어** 두므로
+#   보정이 필요 없다 (0). 가구 회전을 상속하는 것에만 준다.
+#
+# ⚠ `LocalOffset` 은 이 값의 영향을 안 받는다 — 오프셋은 가구 기준으로 이미
+#   맞춰져 있다 (둘 다 +Y 쪽이 앉는 사람 앞).
+USE_YAW_OFFSET = {
+    'Chair_A':   90.0,
+    'Sofa_Unit':  0.0,
+    'Kiosk_A':    0.0,
+}
+
 # 카운터 픽업 — 인스턴스가 아니라 직접 지정한다 (블렌더 미터)
 # 카운터 앞면이 y 11.368, 파티션이 11.398 이므로 그 앞 1m 쯤에 선다.
 #
@@ -240,6 +268,7 @@ def main():
         a.set_actor_label('%s%s_%02d' % (PREFIX, kind, idx))
         a.set_editor_property('kind', unreal.Name(kind))
         a.set_editor_property('local_offset', offset)
+        a.set_editor_property('use_yaw_offset', USE_YAW_OFFSET.get(asset, 0.0))
         a.set_editor_property('source_asset', unreal.Name(asset))
         a.set_editor_property('source_index', idx)
 

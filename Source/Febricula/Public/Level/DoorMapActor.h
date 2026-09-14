@@ -20,8 +20,12 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void OpenActor() override;
+	virtual void CloseActor() override;
+	virtual void StartMove() override;
 	
-
+	virtual void Interact_Implementation(AActor* Interactor) override;
+	
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")
 	// bool bCanChangeLevel;
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta = (AllowedClasses="/Script/Engine.World"))

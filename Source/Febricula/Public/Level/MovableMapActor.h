@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "MapActorBase.h"
+#include "MoveState.h"
 #include "Interaction/InteractionBranch.h"
 #include "MovableMapActor.generated.h"
 
@@ -18,7 +19,10 @@ public:
 
 protected:
 	
-	
+	virtual void StartMove();
+	virtual void OpenActor();
+	virtual void CloseActor();
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta=(UseComponentPicker, AllowedClasses="/Script/Engine.SceneComponent"))
@@ -36,5 +40,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	bool bNowMove;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
+	EMoveState NowState;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	float CurrentMove;
+	
+	FTimerHandle MoveTimer;
 };

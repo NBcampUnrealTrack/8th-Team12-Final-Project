@@ -322,6 +322,9 @@ struct FGameCamera
 	FRotator Rotation = FRotator::ZeroRotator;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
 	float MoveTime = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float Focus = -1000.f;
+
 };
 
 /**

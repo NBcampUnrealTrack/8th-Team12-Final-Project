@@ -63,14 +63,14 @@ struct FCustomerAction
 	TArray<FCustomerActionVariant> Variants;
 };
 
-/**
- *	매장 손님.
- *
- *	⚠ **주문 번호를 여기 두는 것은 캐시일 뿐이다.** 진실은 `UStoreSubsystem` 이
- *	  들고 있다 (§9.1 — "주문 번호는 매장의 상태지 손님의 상태가 아니다").
- *	  여기 값은 "내가 어느 번호를 기다리는가" 를 태스크가 빨리 보려는 것뿐이고,
- *	  발급·수령 판정은 전부 서브시스템이 한다.
- */
+// /**
+//  *	매장 손님.
+//  *
+//  *	⚠ **주문 번호를 여기 두는 것은 캐시일 뿐이다.** 진실은 `UStoreSubsystem` 이
+//  *	  들고 있다 (§9.1 — "주문 번호는 매장의 상태지 손님의 상태가 아니다").
+//  *	  여기 값은 "내가 어느 번호를 기다리는가" 를 태스크가 빨리 보려는 것뿐이고,
+//  *	  발급·수령 판정은 전부 서브시스템이 한다.
+//  */
 UCLASS()
 class ACustomerCharacter : public ACharacter
 {
@@ -225,13 +225,144 @@ public:
 	 *	몽타주가 있으면 재생 길이 / 없으면 `FallbackSeconds`. 호출부는 구별하지
 	 *	않는다 — 경로가 하나여야 디버깅 경로도 하나다 (§9.1 의 "BP 태스크로 가지
 	 *	말 것" 과 같은 이유).
+	 *
+	 *	@param ForceVariant `-1` 이면 평소대로 가중 무작위로 뽑는다. 그 외에는
+	 *	                    **그 번호의 변형**을 쓴다 (장식 손님의 고정 몸짓용).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
-	float PlayAction(FName ActionName, float FallbackSeconds = 2.f);
+	float PlayAction(FName ActionName, float FallbackSeconds = 2.f, int32 ForceVariant = -1);
 
 	/** 재생 중인 행동을 끊는다 (상태 이탈 시) */
 	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
 	void StopAction();
+
+	// ------------------------------------------------------- 장식 손님(프리필)
+	/**
+	 *	**StateTree 를 안 태우는 손님.** 스포너가 프리필로 낳을 때 켜 준다.
+	 *
+	 *	장식 손님은 AI 컨트롤러를 안 받으므로 트리가 시작조차 하지 않는다 —
+	 *	`Move To` · `Leave` · `Despawn` 이 구조적으로 불가능하다. 대신 아래
+	 *	`StartActionLoop` 이 역할에 맞는 몸짓을 계속 돌린다.
+	 *
+	 *	⚠ 장식 손님도 **슬롯은 예약한다.** 안 그러면 걸어 들어온 손님이 같은
+	 *	  의자에 겹쳐 앉는다.
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "BurgerHouse|Spawn")
+	bool bDecoration = false;
+
+	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Spawn")
+	void SetDecoration(bool bIn) { bDecoration = bIn; }
+
+	/**
+	 *	역할별로 장식 손님이 반복할 행동 이름.
+	 *
+	 *	⚠ 여기 이름이 `Actions` 맵의 키와 **철자까지 같아야** 한다. 틀리면
+	 *	  `PlayAction` 이 몽타주를 못 찾아 시간만 세고, 손님이 **가만히 서 있는
+	 *	  것처럼** 보인다 — 조용히 실패한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Action")
+	TMap<FName, FName> DecorationActions = {
+		{ TEXT("Eating"),   TEXT("Sit_Idle")  },
+		{ TEXT("Waiting"),  TEXT("Idle_Look") },
+		{ TEXT("Ordering"), TEXT("Idle_Look") },
+	};
+
+	/**
+	 *	**첫 재생을 늦추는** 무작위 시간(초). `0 ~ 이 값` 에서 뽑는다.
+	 *
+	 *	⚠ 이것은 루프 **사이의 쉬는 시간이 아니다.** 한 번만 쓰인다.
+	 *
+	 *	## 왜 필요한가 — 군무 방지
+	 *
+	 *	장식 손님들은 같은 프레임에 태어난다. 안 흩으면 8초마다 **전원이 동시에
+	 *	같은 동작**을 해서 군무처럼 보인다. 첫 재생을 한 번 어긋내 두면 그 위상
+	 *	차이가 계속 유지된다.
+	 *
+	 *	⚠ 이 시간 동안 손님은 AnimBP 의 앉은 Idle 자세로 있는다. 너무 크게 주면
+	 *	  가게가 열리고 한참 아무도 안 먹는다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Action",
+		meta = (Units = "s", ClampMin = "0.0"))
+	float DecorationGap = 3.0f;
+
+	/**
+	 *	루프를 이을 때 **앞 몽타주와 겹치는 시간(초).**
+	 *
+	 *	## ⚠⚠ 이게 없으면 손님이 매 루프마다 버거를 내려놨다 다시 든다
+	 *
+	 *	몽타주를 끝까지 재생하면 `Auto Blend Out` 이 **기본 포즈(앉은 Idle)로
+	 *	되돌린다.** 그 다음 재생이 거기서 다시 블렌드인하므로 —
+	 *
+	 *	    먹는 중 → (BlendOut) 앉은 Idle → (BlendIn) 먹는 중
+	 *
+	 *	끝나기 전에 겹쳐 걸면 기본 포즈를 안 거치고 **끝 자세에서 시작 자세로
+	 *	직접** 넘어간다.
+	 *
+	 *	⚠ 증상이 「애님 첫·끝 프레임이 안 맞는다」와 똑같아 보인다. 그래서 애님을
+	 *	  자르려 들기 쉬운데, 먹는 애님은 **순환 동작이 아니라** 시작 자세로
+	 *	  돌아오는 지점이 아예 없다 — 잘라도 안 고쳐진다.
+	 *
+	 *	⚠ 몽타주의 `Blend In` 과 **비슷하게** 둘 것. 크로스페이드 길이는 들어오는
+	 *	  몽타주의 Blend In 이 정하므로, 이 값만 키우면 겹치는 동안 앞 몽타주가
+	 *	  그냥 계속 재생될 뿐이다. 현재 몽타주는 전부 0.35 다.
+	 *
+	 *	⚠ 0 이면 예전 동작(기본 포즈를 거침)으로 돌아간다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Action",
+		meta = (Units = "s", ClampMin = "0.0"))
+	float DecorationLoopCrossfade = 0.35f;
+
+	/**
+	 *	장식 손님이 **한 가지 몸짓만** 계속 반복하게 한다.
+	 *
+	 *	## 왜 기본이 켬인가
+	 *
+	 *	끄면 반복할 때마다 변형을 새로 뽑아 손님 하나가 「버거 → 폰 → 감자튀김」
+	 *	으로 계속 바뀐다. 앉아서 밥 먹는 사람은 그러지 않는다. 다양성은 **한 사람
+	 *	안에서**가 아니라 **손님들 사이에서** 나와야 한다.
+	 *
+	 *	⚠ 켜면 이 손님에게 `bAvoidRepeatVariant` 는 의미가 없다 (늘 같은 것을
+	 *	  고르는 것이 목적이므로).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Action")
+	bool bDecorationSingleAction = true;
+
+	/**
+	 *	장식 손님의 몸짓을 고르는 **씨앗.**
+	 *
+	 *	## 왜 「NPC 마다 랜덤」이 아니라 **자리 기반**인가
+	 *
+	 *	몸짓은 **좌석 번호**(`ASlotPoint::SourceIndex`)와 이 값에서 결정적으로
+	 *	뽑는다. 그래서 —
+	 *
+	 *	  · 같은 의자는 **늘 같은 몸짓**이다. PIE 를 다시 켜도 그림이 같아
+	 *	    스크린샷·리뷰가 재현된다.
+	 *	  · 해시로 흩어 두므로 **옆자리끼리 안 겹친다.** 좌석 번호를 그대로
+	 *	    나머지 연산하면 「버거·감자·버거·감자」가 줄줄이 나온다.
+	 *	  · 그림이 마음에 안 들면 **이 값 하나만** 바꿔 전체를 다시 섞는다.
+	 *
+	 *	⚠ NPC 마다 `InitialSeed` 를 주는 방법도 있다. 그런데 프리필 손님은 PIE
+	 *	  마다 새로 태어나므로 씨앗을 **스포너의 배치 목록에 저장**해야 재현되고,
+	 *	  자리를 옮기면 씨앗도 같이 옮겨야 한다. 자리에서 뽑으면 저장할 것이 없고
+	 *	  레벨만 보면 결과를 알 수 있다.
+	 *
+	 *	⚠ 가중치(`FCustomerActionVariant::Weight`)는 **그대로 존중된다** —
+	 *	  뽑는 방식은 같고 난수 자리에 결정적인 값이 들어갈 뿐이다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Action")
+	int32 DecorationSeed = 0;
+
+	/**
+	 *	`ActionName` 을 **끝없이 반복한다.**
+	 *
+	 *	@param FixedVariant `INDEX_NONE` 이면 반복할 때마다 새로 뽑는다.
+	 *	                    그 외에는 **그 변형 하나만** 계속 돌린다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
+	void StartActionLoop(FName ActionName, int32 FixedVariant = -1);
+
+	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
+	void StopActionLoop();
 
 	// ---------------------------------------------------------------- 착석
 	/**
@@ -324,8 +455,35 @@ private:
 	/** 행동마다 **직전에 뽑은** 변형. `bAvoidRepeatVariant` 용. */
 	TMap<FName, int32> LastVariant;
 
+	/** 반복 재생 중인 행동. 비어 있으면 반복 안 함. */
+	FName LoopingAction;
+
+	/** 반복할 때 고정할 변형. `INDEX_NONE` 이면 매번 새로 뽑는다. */
+	int32 LoopVariant = INDEX_NONE;
+
+	FTimerHandle LoopTimer;
+
+	/** 다음 몸짓을 재생하고 그 길이 + 쉬는 시간만큼 타이머를 다시 건다. */
+	void PlayLoopedAction();
+
+	/**
+	 *	장식 손님이면 `StartRole` 에 맞는 행동을 반복 재생한다.
+	 *
+	 *	@param StableKey 몸짓을 결정적으로 고를 때 쓰는 값 — **좌석 번호**를
+	 *	                 넣는다. `INDEX_NONE` 이면 무작위로 뽑는다.
+	 */
+	void StartDecorationLoop(int32 StableKey = INDEX_NONE);
+
 	/** 가중 무작위로 변형 하나를 고른다. 없으면 INDEX_NONE. */
 	int32 PickVariant(FName ActionName, const FCustomerAction& Action);
+
+	/**
+	 *	`StableKey` 에서 **결정적으로** 변형을 고른다 (`DecorationSeed` 반영).
+	 *
+	 *	가중치는 그대로 쓰고 난수 자리에만 해시를 넣는다 — 같은 자리는 늘 같은
+	 *	결과, 옆자리는 다른 결과.
+	 */
+	int32 PickStableVariant(FName ActionName, int32 StableKey) const;
 
 	bool bSitting = false;
 	bool bHasTray = false;

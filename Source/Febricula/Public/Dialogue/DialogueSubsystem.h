@@ -116,7 +116,7 @@ public:
 	void BlockPlayerInput(bool bLock);
 	
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
-	void CameraToCinematicCam(const FVector Loc, const FRotator Rot, const float MoveTime);
+	void CameraToCinematicCam(const FVector Loc, const FRotator Rot, const float MoveTime, const float Focus);
 	
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
 	void CameraToPlayerCam(const float MoveTime);
