@@ -72,6 +72,20 @@ public:
 	 */
 	void ApplyLodBand(ESubNpcLodBand NewBand);
 
+	/**
+	 * 이동 틱 주기를 정한다. **거리만** 본다.
+	 *
+	 * 예전에는 ApplyLodBand가 틱 주기까지 같이 정했다. 그런데 그 밴드는
+	 * "지금 화면에 그려지고 있나"로도 한 단계 내려간다. 카메라를 돌리면
+	 * 뒤쪽 개체가 순식간에 Far로 떨어졌다가 다시 올라오고, 그때마다 틱 주기가
+	 * 0초 <-> 0.3초를 오가면서 위치 갱신이 뚝뚝 끊겼다.
+	 * 애니메이션은 계속 재생되니 "걷는데 순간이동하는" 그림이 된다.
+	 *
+	 * 이동은 화면에 보이든 말든 매끄러워야 한다. 그래서 분리했다.
+	 * 절약 효과가 큰 쪽(포즈 평가, 강제 LOD, 그림자)은 ApplyLodBand가 그대로 맡는다.
+	 */
+	void ApplyMovementTickRate(ESubNpcLodBand DistanceBand);
+
 	UFUNCTION(BlueprintPure, Category = "Crowd|LOD")
 	ESubNpcLodBand GetLodBand() const { return CurrentLodBand; }
 

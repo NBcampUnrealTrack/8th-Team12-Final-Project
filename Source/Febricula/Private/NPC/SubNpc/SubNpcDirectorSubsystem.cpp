@@ -606,18 +606,40 @@ void USubNpcDirectorSubsystem::UpdateLodSlice()
 		{
 			// 측정 모드: 거리와 무관하게 최고 상세도.
 			// 회수는 그대로 살려둔다 (안 그러면 맵 밖까지 걸어간 개체가 계속 쌓인다).
+			Npc->ApplyMovementTickRate(ESubNpcLodBand::Near);
 			Npc->ApplyLodBand(ESubNpcLodBand::Near);
 			continue;
 		}
 
-		ESubNpcLodBand Band;
-		if (DistSq <= NearSq)       { Band = ESubNpcLodBand::Near; }
-		else if (DistSq <= MidSq)   { Band = ESubNpcLodBand::Mid; }
-		else if (DistSq <= FarSq)   { Band = ESubNpcLodBand::Far; }
-		else                        { Band = ESubNpcLodBand::Culled; }
+		// 거리만으로 정한 밴드. 아래에서 렌더링 여부로 한 단계 더 내려갈 수 있지만,
+		// **이동 틱 주기는 이 값으로 고정한다.**
+		ESubNpcLodBand DistanceBand;
+		if (DistSq <= NearSq)       { DistanceBand = ESubNpcLodBand::Near; }
+		else if (DistSq <= MidSq)   { DistanceBand = ESubNpcLodBand::Mid; }
+		else if (DistSq <= FarSq)   { DistanceBand = ESubNpcLodBand::Far; }
+		else                        { DistanceBand = ESubNpcLodBand::Culled; }
+
+		// 카메라를 돌리면 뒤쪽 개체가 순간적으로 "안 그려짐" 판정을 받는다.
+		// 그때 틱 주기까지 같이 널뛰면 위치 갱신이 뚝뚝 끊겨서 순간이동으로 보인다.
+		// 이동은 보이든 말든 매끄러워야 하므로 거리 기준으로만 정한다.
+		Npc->ApplyMovementTickRate(DistanceBand);
+
+		ESubNpcLodBand Band = DistanceBand;
 
 		// 실제로 화면에 안 그려지고 있으면 한 단계 낮춘다.
 		// WasRecentlyRendered는 렌더 스레드가 채워주는 값이라 공짜에 가깝다.
+		//
+		// [버그 수정] 예전에는 이 강등이 Culled까지 갈 수 있었다. 그런데 Culled는
+		// 메시를 SetVisibility(false)로 숨긴다. 숨은 메시는 영원히 렌더링되지 않으므로
+		// WasRecentlyRendered가 계속 false로 남고, 다음 갱신에서 또 Culled로 떨어진다.
+		// 한 번 숨으면 거리가 Mid 안쪽으로 들어올 때까지 스스로 못 빠져나오는 자물쇠였다.
+		//
+		// 3인칭이라 카메라를 돌릴 때마다 등 뒤 개체가 "안 그려짐" 판정을 받는다.
+		// 그래서 경계 근처에서 사라졌다 나타났다를 반복했다.
+		//
+		// 이제 "안 그려진다"를 이유로 한 강등은 Far까지만 허용한다.
+		// Culled(=숨김)는 오직 거리로만 판정한다. 거리는 숨겨도 계속 갱신되므로
+		// 스스로 되돌아올 수 있다.
 		if (bDemoteWhenNotRendered && Band != ESubNpcLodBand::Culled)
 		{
 			if (!Npc->WasRecentlyRendered(0.5f))
@@ -626,7 +648,7 @@ void USubNpcDirectorSubsystem::UpdateLodSlice()
 				// 양쪽을 int32로 맞춰서 비교한 뒤 다시 enum으로 되돌린다.
 				const int32 Demoted = FMath::Min(
 					static_cast<int32>(Band) + 1,
-					static_cast<int32>(ESubNpcLodBand::Culled));
+					static_cast<int32>(ESubNpcLodBand::Far));
 				Band = static_cast<ESubNpcLodBand>(Demoted);
 			}
 		}

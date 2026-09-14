@@ -200,6 +200,7 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 
 	// LOD는 Director가 다음 갱신에서 정한다. 그때까지는 가장 싼 상태로 둔다.
 	CurrentLodBand = ESubNpcLodBand::Culled;
+	ApplyMovementTickRate(ESubNpcLodBand::Far);
 	ApplyLodBand(ESubNpcLodBand::Far);
 
 	// 블루프린트에서 외형(메시/머티리얼/의상)을 갈아끼울 기회.
@@ -282,6 +283,24 @@ void ASubNpcCharacter::ClearRuntimeState()
 // LOD
 // ---------------------------------------------------------------------------
 
+void ASubNpcCharacter::ApplyMovementTickRate(ESubNpcLodBand DistanceBand)
+{
+	// 거리만 본다. 렌더링 여부로 내려간 밴드를 쓰면 카메라 회전마다 주기가 널뛴다.
+	float Interval = 0.f;
+	switch (DistanceBand)
+	{
+	case ESubNpcLodBand::Near:	Interval = 0.f;					break;
+	case ESubNpcLodBand::Mid:	Interval = MidTickInterval;		break;
+	default:					Interval = FarTickInterval;		break;
+	}
+
+	// 같은 값이면 건드리지 않는다. 틱 함수를 매번 다시 등록시킬 이유가 없다.
+	if (!FMath::IsNearlyEqual(PrimaryActorTick.TickInterval, Interval))
+	{
+		SetActorTickInterval(Interval);
+	}
+}
+
 void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 {
 	if (NewBand == CurrentLodBand)
@@ -297,7 +316,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 	switch (NewBand)
 	{
 	case ESubNpcLodBand::Near:
-		SetActorTickInterval(0.f);
 		if (MeshComp)
 		{
 			MeshComp->SetComponentTickEnabled(true);
@@ -310,7 +328,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 		break;
 
 	case ESubNpcLodBand::Mid:
-		SetActorTickInterval(MidTickInterval);
 		if (MeshComp)
 		{
 			MeshComp->SetComponentTickEnabled(true);
@@ -323,7 +340,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 		break;
 
 	case ESubNpcLodBand::Far:
-		SetActorTickInterval(FarTickInterval);
 		if (MeshComp)
 		{
 			MeshComp->SetComponentTickEnabled(true);
@@ -336,7 +352,6 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 
 	case ESubNpcLodBand::Culled:
 	default:
-		SetActorTickInterval(FarTickInterval);
 		if (MeshComp)
 		{
 			// 렌더링도 애니메이션도 멈춘다. 위치 갱신(액터 틱)만 살려두면
@@ -629,10 +644,35 @@ void ASubNpcCharacter::AdvanceToNextPath()
 		return;
 	}
 
+	// [수정] 예전에는 다음 경로의 0 지점(역방향이면 끝점)으로 무조건 보냈다.
+	// 두 스플라인의 이음매가 딱 붙어 있지 않으면 그 간격만큼 순간이동한다.
+	// 「걷다가 갑자기 사라졌다가 엉뚱한 데서 나타난다」의 정체가 이것이다.
+	//
+	// 지금은 지금 서 있는 자리에서 가장 가까운 지점으로 들어간다.
+	// 이음매가 붙어 있으면 그 값이 사실상 0이라 동작이 같고,
+	// 떨어져 있어도 튀는 거리를 최소로 줄인다.
+	const ANpcCrowdPath* PrevPath = CurrentPath;
+	const FVector HandoffLocation = GetActorLocation();
+
 	CurrentPath = Next;
 	bReversedOnPath = bNextReversed;
-	PathDistance = bNextReversed ? Next->GetPathLength() : 0.f;
+
+	float EnterDistance = bNextReversed ? Next->GetPathLength() : 0.f;
+	const float GapSq = Next->FindClosestPointOnPath(HandoffLocation, EnterDistance);
+
+	PathDistance = EnterDistance;
 	NextSpotCheckDistance = PathDistance;
+
+#if !UE_BUILD_SHIPPING
+	// 그래도 멀다면 레벨 배치 문제다. 어느 경로 쌍이 벌어져 있는지 찍어준다.
+	constexpr float AcceptableGapSq = 300.f * 300.f;
+	if (GapSq > AcceptableGapSq)
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("[Crowd] 경로 이음매가 %.0f cm 벌어져 있습니다: %s -> %s. 스플라인 끝점을 서로 붙여주세요."),
+			FMath::Sqrt(GapSq), *GetNameSafe(PrevPath), *GetNameSafe(Next));
+	}
+#endif
 
 	// 새 구간마다 차선을 조금 다시 굴린다. 계속 같은 오프셋이면 대열이 너무 반듯하다.
 	const float HalfWidth = Next->GetLaneHalfWidth();
