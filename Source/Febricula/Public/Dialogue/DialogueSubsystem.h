@@ -12,6 +12,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CineCameraActor.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Dialogue/DialogueDataTypes.h"
 #include "DialogueSubsystem.generated.h"
@@ -105,6 +106,31 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsWaitingForAutoAdvance() const { return PendingAutoAdvance != EDialogueAutoAdvance::None; }
 
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Action")
+	void ExecuteAction(const FGameAction& Action);
+	void ChangeActorHidden(FName Name, bool bHidden);
+
+	void ExecuteActions(const TArray<FGameAction>& Actions);
+
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Input")
+	void BlockPlayerInput(bool bLock);
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
+	void CameraToCinematicCam(const FVector Loc, const FRotator Rot, const float MoveTime, const float Focus);
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
+	void CameraToPlayerCam(const float MoveTime);
+	 
+	//지연 생성된 위젯을 위한 함수
+	UFUNCTION(BlueprintCallable, Category= "Dialogue | Dialogue Holder")
+	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine);
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
+	void AddCharacterByName(FName Name, ACharacter* Character);
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
+	void RemoveCharacterByName(FName Name, ACharacter* Character);
+	
 	// ---- HUD가 구독할 델리게이트 ----
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
@@ -118,6 +144,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
 	FOnDialogueBoxHidden OnDialogueBoxHidden;
+	
+	TMap<FName,TWeakObjectPtr<ACharacter>> GetCachedCharacter() const;
 
 protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
@@ -128,9 +156,6 @@ protected:
 
 	/** 선택지를 HUD에 표시하고 입력을 선택 대기 상태로 바꾼다 */
 	void PresentChoices(const TArray<FDialogueChoice>& InChoices);
-
-	void ExecuteActions(const TArray<FGameAction>& Actions);
-	void ExecuteAction(const FGameAction& Action);
 
 	UGameProgressSubsystem* GetProgress() const;
 	UNpcRelationshipSubsystem* GetRelationship() const;
@@ -143,6 +168,8 @@ protected:
 
 	/** 참가자 전원을 Talk 상태에서 풀어준다 */
 	void ReleaseParticipants();
+	
+	ACharacter* GetCharacterInCache(FName CharacterName) const;
 
 	/** 이번 대화에 참여 중인 NPC들. 끝날 때 한꺼번에 풀어주기 위해 들고 있는다 */
 	UPROPERTY()
@@ -184,4 +211,30 @@ protected:
 	TArray<FText> SimpleLineQueue;
 	FText SimpleLineSpeaker;
 	bool bRunningSimpleLines = false;
+	
+	//인 게임 시네마틱용 카메라
+	UPROPERTY()
+	TObjectPtr<ACineCameraActor> CinematicCamera[2];
+	
+	int32 ActiveCamIndex;
+	
+	//자동재생 대사 홀더. 위젯 생성보다 Broadcast가 빨랐을 때 대비
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	bool bHasHoldingLine;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	FText HoldingSpeaker;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	FText HoldingDialogue;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
+	TArray<FDialogueChoice> HoldingChoices;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	bool bBlockPlayerInput;
+	
+	UPROPERTY()
+	TMap<FName, TWeakObjectPtr<ACharacter>> CachedCharacter;
+	
+	UPROPERTY()
+	TArray<FName> ClearedEvents;
+	
 };

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "Revvy": {
+      "type": "http",
+      "url": "http://127.0.0.1:8089/projects/8940822a7690d5df4d425e1c/mcp/safe"
+    },
+    "Revvy-Full": {
+      "type": "http",
+      "url": "http://127.0.0.1:8089/projects/8940822a7690d5df4d425e1c/mcp",
+      "headers": {
+        "Authorization": "Bearer ${REVVY_FULL_ACCESS_TOKEN}"
+      },
+      "bearerTokenEnvVar": "REVVY_FULL_ACCESS_TOKEN"
+    }
+  }
+}

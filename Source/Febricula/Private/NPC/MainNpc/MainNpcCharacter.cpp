@@ -22,7 +22,7 @@ AMainNpcCharacter::AMainNpcCharacter()
 void AMainNpcCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
 	// 레벨 디테일 패널에서 DefaultRoute와 AutoStartMode만 지정해두면 여기서 알아서 시작한다.
 	// (AIController 빙의와 RunBehaviorTree는 PostInitializeComponents 단계에서 이미 끝나 있으므로
 	//  BeginPlay 시점엔 Blackboard가 준비된 상태다.)
@@ -83,6 +83,15 @@ void AMainNpcCharacter::Interact_Implementation(AActor* Interactor)
 	StartTalk(Interactor);
 
 	// 조건을 만족하는 이벤트를 찾아 시작. 없으면 기본 잡담으로 폴백.
+	if (UDataTable* DialogueDT = DefaultDialogueTable.LoadSynchronous())
+	{
+		Dialogue->SetDataTables(ConnectedEventTable, DialogueDT);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 테이블 '%s'의 기본 Dialogue Table '%s'을(를) 찾지 못했습니다."), *GetNameSafe(ConnectedEventTable), *DefaultDialogueTable.GetAssetName());	
+		return;
+	}
 	bool bStarted = Dialogue->TryStartEventForNpc(GetNpcId(), this);
 	if (!bStarted && !DefaultIdleNodeId.IsNone())
 	{
@@ -156,7 +165,7 @@ void AMainNpcCharacter::StartTalk(AActor* Talker)
 	OnNpcTalkStateChanged.Broadcast(true);
 
 	// 대화 상대를 바라보도록 회전 (스냅. 부드럽게 돌리고 싶으면 여기 대신 Tick/타임라인에서 보간)
-	FaceTowards(Talker);
+	//FaceTowards(Talker);
 
 	OnTalkStarted(Talker);
 }
