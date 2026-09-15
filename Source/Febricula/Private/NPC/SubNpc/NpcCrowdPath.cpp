@@ -3,6 +3,7 @@
 #include "NPC/SubNpc/NpcCrowdPath.h"
 
 #include "Components/SplineComponent.h"
+#include "Components/ArrowComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "NPC/SubNpc/NpcActivitySpot.h"
@@ -166,6 +167,110 @@ ANpcCrowdPath* ANpcCrowdPath::PickNextPath(bool& bOutReversed) const
 }
 
 #if WITH_EDITOR
+void ANpcCrowdPath::RebuildDirectionArrows()
+{
+	// 이전 화살표를 지우고 다시 만든다. 점을 옮기거나 방향을 뒤집을 때마다 갱신된다.
+	for (UArrowComponent* Arrow : DirectionArrows)
+	{
+		if (IsValid(Arrow))
+		{
+			Arrow->DestroyComponent();
+		}
+	}
+	DirectionArrows.Reset();
+
+	if (!bShowDirectionArrows || !Spline)
+	{
+		return;
+	}
+
+	const float Length = Spline->GetSplineLength();
+	if (Length < 1.f)
+	{
+		return;
+	}
+
+	// 너무 많이 만들면 에디터가 무거워진다. 40개로 제한한다.
+	const int32 Count = FMath::Clamp(FMath::FloorToInt(Length / FMath::Max(50.f, ArrowSpacing)), 1, 40);
+
+	for (int32 i = 0; i < Count; ++i)
+	{
+		const float Dist = Length * (static_cast<float>(i) + 0.5f) / Count;
+
+		const FVector Loc = Spline->GetLocationAtDistanceAlongSpline(Dist, ESplineCoordinateSpace::World);
+
+		// bSpawnReversed면 실제로 걷는 방향이 뒤집히므로 화살표도 뒤집는다.
+		FVector Dir = Spline->GetDirectionAtDistanceAlongSpline(Dist, ESplineCoordinateSpace::World);
+		if (bSpawnReversed)
+		{
+			Dir = -Dir;
+		}
+
+		UArrowComponent* Arrow = NewObject<UArrowComponent>(this, NAME_None, RF_Transient | RF_TextExportTransient);
+		if (!Arrow)
+		{
+			continue;
+		}
+
+		Arrow->SetupAttachment(Spline);
+		Arrow->SetIsVisualizationComponent(true);
+		Arrow->bIsEditorOnly = true;
+		Arrow->SetHiddenInGame(true);
+		Arrow->ArrowColor = bSpawnEntry ? FColor::Green : FColor::Cyan;
+		Arrow->ArrowSize = 1.2f;
+		Arrow->ArrowLength = 60.f;
+		Arrow->bTreatAsASprite = false;
+		Arrow->RegisterComponent();
+
+		// 등록한 뒤에 월드 좌표를 세팅해야 부모 트랜스폼이 반영된다.
+		Arrow->SetWorldLocationAndRotation(Loc + FVector(0.f, 0.f, 20.f), Dir.Rotation());
+
+		DirectionArrows.Add(Arrow);
+	}
+
+	// 출구 연결도 화살표로 남긴다. 경로 끝에서 다음 경로 진입점을 가리킨다.
+	// 주황색이라 진행 방향(하늘색)과 구분된다.
+	const FVector End = Spline->GetLocationAtDistanceAlongSpline(Length, ESplineCoordinateSpace::World);
+
+	for (const FNpcPathExit& Exit : Exits)
+	{
+		const ANpcCrowdPath* Next = Exit.NextPath;
+		if (!Next || !Next->GetSpline())
+		{
+			continue;
+		}
+
+		const USplineComponent* NextSpline = Next->GetSpline();
+		const float TargetDist = Exit.bEnterReversed ? NextSpline->GetSplineLength() : 0.f;
+		const FVector NextEntry = NextSpline->GetLocationAtDistanceAlongSpline(TargetDist, ESplineCoordinateSpace::World);
+
+		FVector ToNext = NextEntry - End;
+		if (ToNext.IsNearlyZero())
+		{
+			continue;
+		}
+
+		UArrowComponent* Arrow = NewObject<UArrowComponent>(this, NAME_None, RF_Transient | RF_TextExportTransient);
+		if (!Arrow)
+		{
+			continue;
+		}
+
+		Arrow->SetupAttachment(Spline);
+		Arrow->SetIsVisualizationComponent(true);
+		Arrow->bIsEditorOnly = true;
+		Arrow->SetHiddenInGame(true);
+		Arrow->ArrowColor = FColor::Orange;
+		Arrow->ArrowSize = 1.6f;
+		Arrow->ArrowLength = FMath::Max(60.f, ToNext.Size());
+		Arrow->bTreatAsASprite = false;
+		Arrow->RegisterComponent();
+		Arrow->SetWorldLocationAndRotation(End + FVector(0.f, 0.f, 40.f), ToNext.Rotation());
+
+		DirectionArrows.Add(Arrow);
+	}
+}
+
 void ANpcCrowdPath::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
@@ -177,21 +282,6 @@ void ANpcCrowdPath::OnConstruction(const FTransform& Transform)
 		return;
 	}
 
-	const FVector End = Spline->GetLocationAtDistanceAlongSpline(
-		Spline->GetSplineLength(), ESplineCoordinateSpace::World);
-
-	for (const FNpcPathExit& Exit : Exits)
-	{
-		if (!Exit.NextPath || !Exit.NextPath->GetSpline())
-		{
-			continue;
-		}
-
-		const USplineComponent* NextSpline = Exit.NextPath->GetSpline();
-		const float TargetDist = Exit.bEnterReversed ? NextSpline->GetSplineLength() : 0.f;
-		const FVector Start = NextSpline->GetLocationAtDistanceAlongSpline(TargetDist, ESplineCoordinateSpace::World);
-
-		DrawDebugDirectionalArrow(GetWorld(), End, Start, 60.f, FColor::Green, false, 5.f, 0, 4.f);
-	}
+	RebuildDirectionArrows();
 }
 #endif
