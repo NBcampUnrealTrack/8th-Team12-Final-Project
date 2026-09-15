@@ -77,6 +77,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
 	bool IsDespawnAtEnd() const { return bDespawnAtEnd; }
 
+	/** 출구 목록 (Mass 경로 캐시를 구울 때 읽는다) */
+	const TArray<FNpcPathExit>& GetExits() const { return Exits; }
+
+	/** 이 경로에서 등장할 때 역방향(끝 -> 시작)으로 걷게 할지 */
+	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
+	bool IsSpawnReversed() const { return bSpawnReversed; }
+
 protected:
 	/** 경로 모양. 에디터에서 점을 찍어 곡선을 만든다 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
@@ -108,6 +115,18 @@ protected:
 	bool bSpawnEntry = false;
 
 	/**
+	 * 등장한 행인이 이 경로를 역방향으로 걷게 한다.
+	 *
+	 * 진행 방향은 스플라인 점 순서(0번 -> 마지막)로 정해진다. 경로를 반대로 그렸다면
+	 * 점을 다시 찍는 대신 이 체크박스를 켜면 된다. 이미 배치한 경로를 다시 그리는 건
+	 * 이어붙인 출구 연결까지 흔들기 때문에, 뒤집는 스위치를 두는 쪽이 안전하다.
+	 *
+	 * 에디터에서 파란 화살표로 실제 진행 방향을 확인할 수 있다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
+	bool bSpawnReversed = false;
+
+	/**
 	 * 이 경로의 끝을 "퇴장구"로 취급한다.
 	 *
 	 * 기본(끔)은 막다른 길에서 보이는 거리면 되돌아가게 한다. 눈앞에서 사람이 뻥 사라지는 걸
@@ -120,8 +139,31 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
 	bool bDespawnAtEnd = false;
 
+#if WITH_EDITORONLY_DATA
+	/**
+	 * 진행 방향을 보여주는 화살표들 (에디터 전용).
+	 *
+	 * 처음에는 DrawDebugDirectionalArrow로 그렸는데 수명이 지나면 사라져서,
+	 * 경로를 배치하는 동안 계속 보이지 않았다. 컴포넌트로 두면 액터가 살아있는 한 남는다.
+	 * bIsEditorOnly라 게임에는 아예 만들어지지 않는다.
+	 */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<class UArrowComponent>> DirectionArrows;
+
+	/** 방향 화살표를 몇 cm 간격으로 놓을지 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Debug", meta = (ClampMin = "50.0"))
+	float ArrowSpacing = 400.f;
+
+	/** 방향 화살표를 표시할지 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Debug")
+	bool bShowDirectionArrows = true;
+#endif
+
 #if WITH_EDITOR
-	/** 에디터에서 출구 연결을 선으로 그려서 망 구조를 눈으로 확인할 수 있게 한다 */
+	/** 에디터에서 진행 방향과 출구 연결을 눈으로 확인할 수 있게 한다 */
 	virtual void OnConstruction(const FTransform& Transform) override;
+
+	/** 방향 화살표를 다시 만든다 */
+	void RebuildDirectionArrows();
 #endif
 };
