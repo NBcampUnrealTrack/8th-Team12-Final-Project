@@ -169,6 +169,14 @@ void ANpcCrowdSpawner::TickSpawn()
 	// 한 번에 우르르 등장하면 "갑자기 나타났다"가 눈에 보인다. 조금씩 채운다.
 	int32 SpawnedThisTick = 0;
 
+	// [개선] 대량 충원(게임 시작 직후)인지 판별한다.
+	//
+	// 목표의 절반 이상이 비어 있으면 전원이 입구 근처 20% 구간에 몰려 등장한다.
+	// 90명이면 그 좁은 구간에 수십 명이 겹쳐 한 덩어리가 되고, 이후에도 비슷한
+	// 속도로 움직여 잘 풀리지 않는다. 초기 충원만 경로 전체에 흩어 놓는다.
+	// 정상 운영 중의 개별 보충은 그대로 입구에서 등장시킨다.
+	const bool bBulkFill = (Deficit >= FMath::Max(1, Target / 2));
+
 	while (Deficit > 0 && SpawnedThisTick < MaxSpawnPerTick)
 	{
 		ANpcCrowdPath* Entry = PickEntryPath();
@@ -177,14 +185,30 @@ void ANpcCrowdSpawner::TickSpawn()
 			return;
 		}
 
-		// 입구 경로의 앞쪽 어딘가에서 시작한다. 항상 0 지점이면 같은 자리에서 계속 튀어나온다.
-		const float StartDistance = FMath::FRandRange(0.f, FMath::Max(1.f, Entry->GetPathLength() * 0.2f));
+		// 경로가 "역방향으로 등장" 설정이면 뒤에서부터 걷는다.
+		// 스플라인을 반대로 그린 경우를 점을 다시 찍지 않고 데이터로 뒤집는다.
+		const bool bReversed = Entry->IsSpawnReversed();
+		const float Length = FMath::Max(1.f, Entry->GetPathLength());
+
+		// 입구 경로의 "시작 쪽" 어딘가에서 등장한다. 항상 같은 지점이면 한 자리에서 계속 튀어나온다.
+		// 역방향이면 시작 쪽이 곧 경로의 끝이다.
+		float StartDistance;
+		if (bBulkFill)
+		{
+			StartDistance = FMath::FRandRange(Length * 0.05f, Length * 0.95f);
+		}
+		else
+		{
+			StartDistance = bReversed
+				? FMath::FRandRange(Length * 0.8f, Length)
+				: FMath::FRandRange(0.f, Length * 0.2f);
+		}
 
 		const int32 GroupSize = RollGroupSize();
 		const TArray<ASubNpcCharacter*> Spawned =
 			(GroupSize <= 1)
-			? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Entry, StartDistance, /*bReversed=*/false) }
-			: Director->SpawnGroupOnPath(Entry, StartDistance, /*bReversed=*/false, GroupSize);
+			? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Entry, StartDistance, bReversed) }
+			: Director->SpawnGroupOnPath(Entry, StartDistance, bReversed, GroupSize);
 
 		int32 Actual = 0;
 		for (ASubNpcCharacter* Npc : Spawned)
