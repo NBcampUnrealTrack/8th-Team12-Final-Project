@@ -456,4 +456,19 @@ protected:
 
 	/** 다음 스팟 판정을 할 경로 진행 거리. 경로 진입 시 한 번만 보는 문제를 없앤다 */
 	float NextSpotCheckDistance = 0.f;
+
+	/**
+	 * 경로를 갈아탈 때 생기는 위치 튐을 흡수하는 잔여 오프셋 (월드 공간).
+	 *
+	 * 경로 전환은 본질적으로 불연속이다. 새 스플라인의 어느 지점으로 옮겨 앉는 순간
+	 * 위치가 한 프레임 만에 바뀌고, 그게 「사라졌다가 다른 데서 나타남」으로 보인다.
+	 *
+	 * 그래서 전환 순간의 어긋난 양을 여기에 담아두고, 매 틱 조금씩 0으로 줄인다.
+	 * 결과적으로 사람이 새 경로 쪽으로 **부드럽게 미끄러져 들어간다.**
+	 *
+	 * [주의] 이 멤버에는 UPROPERTY를 붙이지 않는다. 리플렉션 프로퍼티를 추가하면
+	 * ABP_Passerby의 Property Access가 읽는 WalkSpeed / bIsMoving / CurrentSpeed의
+	 * 오프셋 계산에 영향을 줄 수 있다. 여기 순수 C++ 멤버로 두면 안전하다.
+	 */
+	FVector PathHandoffOffset = FVector::ZeroVector;
 };

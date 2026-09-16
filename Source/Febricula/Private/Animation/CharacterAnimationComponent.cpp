@@ -72,7 +72,6 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 
 void UCharacterAnimationComponent::StopAnim(float BlendOutTime)
 {
-	UE_LOG(LogTemp, Warning, TEXT("STOP ANIM!"));
 	ACharacter* Owner = Cast<ACharacter>(GetOwner());
 	if (!Owner) return;
 

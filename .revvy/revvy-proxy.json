@@ -5,21 +5,21 @@
 	"bearer_scope": "read_only",
 	"backend_auth": "hmac-sha1-exact-v2",
 	"proxy_port": 8089,
-	"bridge_running": false,
-	"bridge_instance_id": "eba251224b7dd2f40b411eb4bbab180e",
+	"bridge_running": true,
+	"bridge_instance_id": "1b9680e646a4a37074aec4b0cbc645fe",
 	"ue_port": 8088,
 	"project_name": "Febricula",
-	"project_path": "C:/Unreal Projects/Febricula",
+	"project_path": "C:/Users/c9606/Desktop/unreal/8th-Team12-Final-Project",
 	"active_project":
 	{
 		"name": "Febricula",
-		"path": "C:/Unreal Projects/Febricula"
+		"path": "C:/Users/c9606/Desktop/unreal/8th-Team12-Final-Project"
 	},
 	"installed_project":
 	{
 		"name": "Febricula",
 		"path": "D:/febricula/Febricula"
 	},
-	"updated_at": "2026-09-15T07:04:13.653Z",
-	"bearer_token": "e357f0f14b79b2eb99e5729f54c7c9950c3a73f749f724d1db36c987311560d4"
+	"updated_at": "2026-09-16T01:28:20.611Z",
+	"bearer_token": "2f4250e44adb7bc040df8baf57f33544ee7529634a232544115cb694d4bcc0bf"
 }

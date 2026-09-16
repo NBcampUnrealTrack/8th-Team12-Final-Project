@@ -27,6 +27,18 @@
 //   값 조정 빈도가 낮으므로 상수로 둔다. 에디터 노출이 필요해지면
 //   반드시 클래스 "맨 끝"에 추가하고 ABP를 다시 컴파일할 것.
 // ---------------------------------------------------------------------------
+namespace SubNpcPathHandoff
+{
+	/** 경로 전환 시 어긋남을 흡수하는 속도. 클수록 빨리 따라붙는다 (1/초) */
+	constexpr float BlendSpeed = 5.f;
+
+	/** 이보다 크게 벌어진 이음매는 흡수를 포기한다 (cm). 레벨 배치가 잘못된 경우다 */
+	constexpr float MaxBlendDistance = 2000.f;
+
+	/** 이보다 작아지면 0으로 끊는다 (cm) */
+	constexpr float SnapThreshold = 1.f;
+}
+
 namespace SubNpcGroupTuning
 {
 	/** 이만큼(cm) 벌어지면 최대 속도차를 낸다 */
@@ -255,6 +267,7 @@ void ASubNpcCharacter::ClearRuntimeState()
 	PathDistance = 0.f;
 	bReversedOnPath = false;
 	LaneOffset = 0.f;
+	PathHandoffOffset = FVector::ZeroVector;
 	GroupFollowGap = 0.f;
 	ActivityEndTime = 0.f;
 	DodgeTargetOffset = 0.f;
@@ -541,8 +554,23 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 		return;
 	}
 
-	const FVector Target = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
+	FVector Target = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
 	FVector Dir = CurrentPath->GetDirectionAtDistance(PathDistance) * (bReversedOnPath ? -1.f : 1.f);
+
+	// 경로를 막 갈아탔다면, 그때 어긋난 양을 조금씩 갚아나가며 따라붙는다.
+	// 이게 없으면 전환 프레임에 위치가 뚝 끊겨서 순간이동으로 보인다.
+	if (!PathHandoffOffset.IsNearlyZero())
+	{
+		PathHandoffOffset = FMath::VInterpTo(
+			PathHandoffOffset, FVector::ZeroVector, DeltaTime, SubNpcPathHandoff::BlendSpeed);
+
+		if (PathHandoffOffset.SizeSquared() < FMath::Square(SubNpcPathHandoff::SnapThreshold))
+		{
+			PathHandoffOffset = FVector::ZeroVector;
+		}
+
+		Target += PathHandoffOffset;
+	}
 
 	// [설계] 행인은 CharacterMovement를 쓰지 않고 위치를 직접 세팅한다.
 	//
@@ -677,6 +705,18 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	// 새 구간마다 차선을 조금 다시 굴린다. 계속 같은 오프셋이면 대열이 너무 반듯하다.
 	const float HalfWidth = Next->GetLaneHalfWidth();
 	LaneOffset = FMath::Clamp(LaneOffset + FMath::FRandRange(-30.f, 30.f), -HalfWidth, HalfWidth);
+
+	// [부드러운 전환] 새 경로에서의 첫 위치와 지금 서 있는 자리의 차이를 기억해둔다.
+	//
+	// 다음 틱부터 이 오프셋이 더해진 자리에 서고, 그 값이 매 틱 0을 향해 줄어든다.
+	// 그래서 사람이 새 경로로 **미끄러져 들어가지, 순간이동하지 않는다.**
+	// 차선 오프셋을 다시 굴린 것까지 여기서 함께 흡수된다.
+	const FVector NewTarget = Next->GetLocationAtDistance(PathDistance, LaneOffset);
+	const FVector Gap = HandoffLocation - NewTarget;
+
+	PathHandoffOffset = (Gap.SizeSquared() <= FMath::Square(SubNpcPathHandoff::MaxBlendDistance))
+		? Gap
+		: FVector::ZeroVector;   // 너무 멀면 흡수를 포기한다 (위 경고 로그가 이미 알려준다)
 
 	RollForActivitySpot();
 }

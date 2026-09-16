@@ -2,6 +2,7 @@
 
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
 
+#include "DrawDebugHelpers.h"
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
 // TActorIterator를 쓰려면 반드시 필요하다. 없으면 "정의되지 않은 class TActorIterator" 에러가 난다.
@@ -61,6 +62,15 @@ namespace SubNpcCrowdCVars
 		TEXT("서브 NPC 메시의 물리 콜리전. 1이면 켠다 (UpdateKinematicBonesToAnim 비용 비교용)."),
 		ECVF_Cheat);
 
+	static int32 DebugDraw = 0;
+	static FAutoConsoleVariableRef CVarDebugDraw(
+		TEXT("crowd.Debug"),
+		DebugDraw,
+		TEXT("활성 서브 NPC 위에 디버그 표식을 그린다. 메시가 보이든 안 보이든 항상 그린다.\n")
+		TEXT("표식은 있는데 사람이 안 보이면 = 렌더링 문제.\n")
+		TEXT("표식까지 같이 사라지면 = 풀로 회수된 것(게임플레이 문제)."),
+		ECVF_Cheat);
+
 	static int32 PrintStats = 0;
 	static FAutoConsoleVariableRef CVarPrintStats(
 		TEXT("crowd.Stats"),
@@ -116,6 +126,13 @@ void USubNpcDirectorSubsystem::Tick(float DeltaTime)
 	// 회수 예약된 개체를 먼저 정리한다.
 	// 순회 도중에 활성 배열이 바뀌지 않도록, 실제 회수는 항상 이 시점에만 일어난다.
 	ProcessPendingRecycles();
+
+#if !UE_BUILD_SHIPPING
+	if (SubNpcCrowdCVars::DebugDraw != 0)
+	{
+		DrawDebugMarkers();
+	}
+#endif
 
 	if (SubNpcCrowdCVars::PrintStats != 0)
 	{
@@ -429,6 +446,49 @@ bool USubNpcDirectorSubsystem::GetViewerLocation(FVector& OutLocation) const
 	}
 	return false;
 }
+
+#if !UE_BUILD_SHIPPING
+void USubNpcDirectorSubsystem::DrawDebugMarkers() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 이 표식은 액터 위치에 직접 그린다. 스켈레탈 메시가 숨겨져 있어도,
+	// LOD가 최저여도, 애니메이션이 멈춰 있어도 상관없이 그려진다.
+	// 그래서 "사람이 안 보이는" 원인이 렌더링인지 회수인지 눈으로 가를 수 있다.
+	for (const TObjectPtr<ASubNpcCharacter>& Npc : ActiveNpcs)
+	{
+		if (!IsValid(Npc))
+		{
+			continue;
+		}
+
+		FColor Color = FColor::White;
+		const TCHAR* BandName = TEXT("?");
+		switch (Npc->GetLodBand())
+		{
+		case ESubNpcLodBand::Near:		Color = FColor::Green;	BandName = TEXT("N"); break;
+		case ESubNpcLodBand::Mid:		Color = FColor::Yellow;	BandName = TEXT("M"); break;
+		case ESubNpcLodBand::Far:		Color = FColor::Orange;	BandName = TEXT("F"); break;
+		case ESubNpcLodBand::Culled:	Color = FColor::Red;	BandName = TEXT("C"); break;
+		default: break;
+		}
+
+		const FVector Loc = Npc->GetActorLocation();
+
+		// 발밑 원 - 위치가 어디인지
+		DrawDebugCircle(World, Loc - FVector(0, 0, 88.f), 34.f, 12, Color,
+			/*bPersistentLines=*/false, /*LifeTime=*/-1.f, 0, 2.f,
+			FVector(1, 0, 0), FVector(0, 1, 0), /*bDrawAxis=*/false);
+
+		// 머리 위 글자 - 지금 어느 LOD 밴드인지
+		DrawDebugString(World, Loc + FVector(0, 0, 110.f), BandName, nullptr, Color, 0.f, true, 1.2f);
+	}
+}
+#endif
 
 void USubNpcDirectorSubsystem::ProcessPendingRecycles()
 {
