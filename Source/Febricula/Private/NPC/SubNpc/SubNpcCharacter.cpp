@@ -27,16 +27,71 @@
 //   값 조정 빈도가 낮으므로 상수로 둔다. 에디터 노출이 필요해지면
 //   반드시 클래스 "맨 끝"에 추가하고 ABP를 다시 컴파일할 것.
 // ---------------------------------------------------------------------------
+namespace SubNpcGroundSnap
+{
+	/**
+	 * 지면에 붙여 세우기.
+	 *
+	 * 행인은 CharacterMovement를 안 쓰므로 중력이 없다. 원래 설계는 "스플라인의
+	 * 높이가 곧 바닥"이었는데, 그러면 경로를 그릴 때 지형 높이를 일일이 맞춰야 한다.
+	 *
+	 * 대신 발밑으로 짧은 라인 트레이스를 한 번 쏴서 바닥 높이에 맞춘다.
+	 * 경로는 대충 그려도 되고, 계단·경사로 위에서도 제대로 선다.
+	 *
+	 * 비용은 가까운 개체당 프레임에 트레이스 1회다. 부담되면 crowd.GroundSnap 0.
+	 */
+	static int32 Enabled = 1;
+	static FAutoConsoleVariableRef CVarGroundSnap(
+		TEXT("crowd.GroundSnap"),
+		Enabled,
+		TEXT("행인을 지면에 붙여 세운다. 0이면 스플라인 높이를 그대로 쓴다."),
+		ECVF_Cheat);
+
+	/** 발밑에서 위로 이만큼 올린 지점에서 아래로 쏜다 (cm) */
+	constexpr float TraceUp = 120.f;
+
+	/** 아래로 이만큼까지 찾는다 (cm). 못 찾으면 스플라인 높이를 그대로 쓴다 */
+	constexpr float TraceDown = 400.f;
+}
+
 namespace SubNpcPathHandoff
 {
-	/** 경로 전환 시 어긋남을 흡수하는 속도. 클수록 빨리 따라붙는다 (1/초) */
-	constexpr float BlendSpeed = 5.f;
+	/**
+	 * 경로 전환 시 어긋남을 흡수하는 감쇠율 (1/초). 클수록 빨리 따라붙는다.
+	 *
+	 * [버그 수정] 예전에는 FMath::VInterpTo를 썼다. 그 함수는 내부적으로
+	 * Dist * Clamp(DeltaTime * Speed, 0, 1) 만큼 움직인다. 그런데 행인의 틱 간격은
+	 * LOD 밴드마다 다르다 - Far는 0.3초다. 0.3 * 5 = 1.5 가 1.0으로 클램프되면
+	 * **한 틱에 곧바로 0이 되어 보간이 통째로 사라진다.**
+	 * 실제로 이 보간은 Near에서만 동작했고 Far에서는 예전 그대로 순간이동이었다.
+	 *
+	 * 지수 감쇠는 틱 간격이 아무리 커도 0에 닿지 않는다. 프레임률·틱 주기와 무관하게
+	 * 같은 시간 상수를 유지한다.
+	 */
+	constexpr float BlendRate = 4.f;
 
 	/** 이보다 크게 벌어진 이음매는 흡수를 포기한다 (cm). 레벨 배치가 잘못된 경우다 */
 	constexpr float MaxBlendDistance = 2000.f;
 
 	/** 이보다 작아지면 0으로 끊는다 (cm) */
 	constexpr float SnapThreshold = 1.f;
+}
+
+namespace SubNpcCrowdFlow
+{
+	/** 감속 배율이 목표값을 따라가는 속도 (1/초). 크면 급브레이크처럼 보인다 */
+	constexpr float SpeedScaleInterpRate = 6.f;
+
+	/**
+	 * 감속 요청이 원래 속도로 되돌아가는 속도 (1/초).
+	 *
+	 * [버그 수정] 예전에는 매 틱 PendingSpeedScale = 1.f 로 초기화했다.
+	 * 그런데 요청을 넣는 회피 계산은 AvoidUpdateInterval(기본 0.1초)마다만 돈다.
+	 * 60 FPS면 6프레임 중 5프레임은 "요청 없음"이 되어 다시 가속해버렸고,
+	 * 결국 감속이 거의 적용되지 않았다.
+	 * 이제는 천천히 회복시켜서, 다음 갱신까지 감속이 유지되게 한다.
+	 */
+	constexpr float SpeedScaleRecoverRate = 1.5f;
 }
 
 namespace SubNpcGroupTuning
@@ -268,6 +323,8 @@ void ASubNpcCharacter::ClearRuntimeState()
 	bReversedOnPath = false;
 	LaneOffset = 0.f;
 	PathHandoffOffset = FVector::ZeroVector;
+	PendingSpeedScale = 1.f;
+	CurrentSpeedScale = 1.f;
 	GroupFollowGap = 0.f;
 	ActivityEndTime = 0.f;
 	DodgeTargetOffset = 0.f;
@@ -435,7 +492,8 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 	// 프로퍼티라 Property Access로 스레드 안전하게 읽힌다.
 	bIsMoving = (CurrentActivity == ESubNpcActivity::Walking) ||
 		(CurrentActivity == ESubNpcActivity::Reacting && CurrentReaction == ESubNpcReaction::Dodge);
-	CurrentSpeed = bIsMoving ? WalkSpeed : 0.f;
+	// 감속까지 반영해야 걷기 애니메이션 재생 속도가 실제 이동과 맞는다.
+	CurrentSpeed = bIsMoving ? WalkSpeed * CurrentSpeedScale : 0.f;
 
 	switch (CurrentActivity)
 	{
@@ -478,6 +536,16 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 		return;
 	}
 
+	// 앞사람 때문에 걸린 제동을 반영한다. 목표 배율로 곧장 튀면 급브레이크로 보이므로
+	// 부드럽게 따라가고, 요청값은 매 틱 1로 되돌려 Director가 다시 채우게 한다.
+	CurrentSpeedScale = FMath::FInterpTo(
+		CurrentSpeedScale, PendingSpeedScale, DeltaTime, SubNpcCrowdFlow::SpeedScaleInterpRate);
+
+	// 요청은 회피 갱신 주기마다만 들어온다. 매 틱 1로 되돌리면 그 사이 프레임에서
+	// 다시 가속해버리므로, 천천히 회복시켜 다음 갱신까지 감속을 유지한다.
+	PendingSpeedScale = FMath::Min(
+		1.f, PendingSpeedScale + DeltaTime * SubNpcCrowdFlow::SpeedScaleRecoverRate);
+
 	// 그룹으로 다니는 경우 앞사람의 진행도에서 간격만큼 뒤를 따라간다.
 	// 각자 독립적으로 걸으면 신호에 걸릴 때마다 대열이 흩어진다.
 	// 진행 부호. 역방향이면 PathDistance가 줄어드는 쪽이 "앞"이다.
@@ -508,18 +576,18 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 				SubNpcGroupTuning::SpeedScaleMin,
 				SubNpcGroupTuning::SpeedScaleMax);
 
-			PathDistance += WalkSpeed * SpeedScale * DeltaTime * Along;
+			PathDistance += WalkSpeed * SpeedScale * CurrentSpeedScale * DeltaTime * Along;
 		}
 		else
 		{
 			// 리더가 다른 경로로 갔거나 회수됐으면 그룹을 해산하고 혼자 걷는다.
 			GroupLeader = nullptr;
-			PathDistance += WalkSpeed * DeltaTime * Along;
+			PathDistance += WalkSpeed * CurrentSpeedScale * DeltaTime * Along;
 		}
 	}
 	else
 	{
-		PathDistance += WalkSpeed * DeltaTime * Along;
+		PathDistance += WalkSpeed * CurrentSpeedScale * DeltaTime * Along;
 	}
 
 	// 이웃이 밀어낸 양을 반영한다. Director가 이번 프레임에 누적해 둔 값이다.
@@ -557,12 +625,37 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	FVector Target = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
 	FVector Dir = CurrentPath->GetDirectionAtDistance(PathDistance) * (bReversedOnPath ? -1.f : 1.f);
 
+	// 지면에 붙여 세운다. 경로 높이를 대충 그려도 계단·경사로 위에 제대로 선다.
+	// 가까운 개체만 한다 - 멀리 있는 사람의 발밑 몇 cm는 화면에서 안 보인다.
+	if (SubNpcGroundSnap::Enabled != 0 &&
+		(CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid))
+	{
+		if (const UWorld* World = GetWorld())
+		{
+			const float HalfHeight = GetCapsuleComponent()
+				? GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
+				: 88.f;
+
+			FHitResult Hit;
+			FCollisionQueryParams Params(SCENE_QUERY_STAT(SubNpcGroundSnap), /*bTraceComplex=*/false, this);
+
+			const FVector Foot = Target - FVector(0.f, 0.f, HalfHeight);
+			const FVector Start = Foot + FVector(0.f, 0.f, SubNpcGroundSnap::TraceUp);
+			const FVector End = Foot - FVector(0.f, 0.f, SubNpcGroundSnap::TraceDown);
+
+			if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+			{
+				Target.Z = Hit.ImpactPoint.Z + HalfHeight;
+			}
+		}
+	}
+
 	// 경로를 막 갈아탔다면, 그때 어긋난 양을 조금씩 갚아나가며 따라붙는다.
 	// 이게 없으면 전환 프레임에 위치가 뚝 끊겨서 순간이동으로 보인다.
 	if (!PathHandoffOffset.IsNearlyZero())
 	{
-		PathHandoffOffset = FMath::VInterpTo(
-			PathHandoffOffset, FVector::ZeroVector, DeltaTime, SubNpcPathHandoff::BlendSpeed);
+		// 지수 감쇠. DeltaTime이 커도(Far는 0.3초 틱) 0으로 튀지 않는다.
+		PathHandoffOffset *= FMath::Exp(-SubNpcPathHandoff::BlendRate * DeltaTime);
 
 		if (PathHandoffOffset.SizeSquared() < FMath::Square(SubNpcPathHandoff::SnapThreshold))
 		{
@@ -955,6 +1048,24 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	LastReactionTime = Now;
 	LastBumpTime = Now;
 
+	// ---- 부딪힌 방향 판정 ---------------------------------------------------
+	//
+	// 플레이어가 내 오른쪽에 있으면 오른쪽에서 부딪힌 것이므로 **왼쪽으로** 밀린다.
+	// 그 반대도 마찬가지다. 좌우가 반대로 나오면 여기 부호만 뒤집으면 된다.
+	const FVector ToPlayerDir = Player->GetActorLocation() - GetActorLocation();
+	const float SideDot = FVector::DotProduct(ToPlayerDir, GetActorRightVector());
+
+	// 정확히 정면이면 판정이 흔들린다. 이름 해시로 한쪽을 정해 매번 같게 만든다.
+	const bool bPushedLeft = (FMath::Abs(SideDot) > 1.f)
+		? (SideDot > 0.f)
+		: ((GetTypeHash(GetFName()) & 1) != 0);
+
+	// 왼쪽으로 밀리면 차선 오프셋은 음수 방향으로 간다.
+	const float PushSign = bPushedLeft ? -1.f : 1.f;
+
+	// 걷던 중이면 "비켜서는" 동작, 서 있었으면 "밀리는" 동작이 자연스럽다.
+	const bool bWasWalking = (CurrentActivity == ESubNpcActivity::Walking);
+
 	// [개선] 스팟에서 뭔가 하던 중이었으면 반응이 끝난 뒤 하던 일로 되돌아간다.
 	//
 	// 예전에는 점유를 즉시 풀고 걷기로 빠져나갔다. 그래서 앉아서 책을 보던 사람이
@@ -969,18 +1080,26 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	switch (Reaction)
 	{
 	case ESubNpcReaction::Dodge:
-		AnimId = Archetype.DodgeAnimId;
 		{
-			// 플레이어 반대쪽으로 비킨다.
-			const FVector ToPlayer = Player->GetActorLocation() - GetActorLocation();
-			const float Side = FVector::DotProduct(ToPlayer, GetActorRightVector()) > 0.f ? -1.f : 1.f;
-			DodgeTargetOffset = LaneOffset + Side * DodgeSideStep;
+			// 방향 × 상태(걷는 중/서 있음)로 네 가지 중 하나를 고른다.
+			// 비어 있으면 기존 DodgeAnimId로 대체한다 - 애니메이션을 하나만
+			// 만들어도 동작하고, 나중에 하나씩 채워 넣을 수 있다.
+			const FName Specific = bWasWalking
+				? (bPushedLeft ? Archetype.DodgeLeftAnimId : Archetype.DodgeRightAnimId)
+				: (bPushedLeft ? Archetype.ShoveLeftAnimId : Archetype.ShoveRightAnimId);
+
+			AnimId = Specific.IsNone() ? Archetype.DodgeAnimId : Specific;
+
+			// 밀린 쪽으로 실제로 몸을 옮긴다. 애니메이션만 재생하고 제자리면
+			// "맞았는데 안 밀리는" 어색함이 남는다.
+			DodgeTargetOffset = LaneOffset + PushSign * DodgeSideStep;
 		}
 		break;
 
 	case ESubNpcReaction::Angry:
 		AnimId = Archetype.AngryAnimId;
-		DodgeTargetOffset = LaneOffset;
+		// 화를 내도 몸은 부딪힌 만큼 밀린다. 물리적 반응과 감정 반응은 별개다.
+		DodgeTargetOffset = LaneOffset + PushSign * DodgeSideStep * 0.4f;
 		// 화낼 때는 멈춰서 플레이어를 쳐다본다.
 		FaceTowards(Player);
 		break;
@@ -988,7 +1107,7 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	case ESubNpcReaction::Surprised:
 	default:
 		AnimId = Archetype.SurprisedAnimId;
-		DodgeTargetOffset = LaneOffset;
+		DodgeTargetOffset = LaneOffset + PushSign * DodgeSideStep * 0.6f;
 		FaceTowards(Player);
 		break;
 	}
@@ -999,6 +1118,10 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	}
 
 	SetMovementState(ENpcMovementState::Interacting);
+
+	// 블루프린트 연출 훅. 몽타주·사운드·이펙트를 붙이고 싶을 때 쓴다.
+	OnBumpReaction(Reaction, bPushedLeft, bWasWalking);
+
 	OnBumped.Broadcast(Player);
 }
 

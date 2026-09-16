@@ -124,6 +124,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Reaction")
 	void ReactToPlayerBump(AActor* Player, float ImpactSpeed);
 
+	/**
+	 * 부딪힘 반응이 결정된 순간 블루프린트에 알린다.
+	 *
+	 * C++가 고른 애니메이션으로 충분하면 구현하지 않아도 된다.
+	 * 몽타주·사운드·나이아가라 등 연출을 붙이고 싶을 때 쓴다.
+	 *
+	 * @param Reaction      고른 반응 종류 (피하기 / 화내기 / 놀라기)
+	 * @param bPushedLeft   true면 왼쪽으로 밀린다 (= 오른쪽에서 부딪혔다)
+	 * @param bWasWalking   부딪힐 때 걷고 있었는가. false면 서 있던 중
+	 *
+	 * [주의] UFUNCTION은 클래스 크기에 영향이 없다. 여기에 변수를 추가하면
+	 * WalkSpeed / bIsMoving / CurrentSpeed 오프셋이 밀려 AnimBP가 깨진다.
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Crowd|Reaction")
+	void OnBumpReaction(ESubNpcReaction Reaction, bool bPushedLeft, bool bWasWalking);
+
 	UPROPERTY(BlueprintAssignable, Category = "Crowd|Reaction")
 	FOnNpcInteracted OnBumped;
 
@@ -429,6 +445,20 @@ public:
 	 */
 	void AddAvoidanceNudge(float Amount) { PendingAvoidNudge += Amount; }
 
+	/**
+	 * 앞사람이 막고 있으니 속도를 줄이라는 요청 (0~1 배율).
+	 *
+	 * 행인은 1차원 경로 위를 걷기 때문에, 좌우로만 밀어내면 앞사람이 느릴 때
+	 * **그대로 뚫고 지나간다.** 진행 방향으로도 제동이 필요하다.
+	 * 여러 요청이 오면 가장 강한(가장 느린) 것을 따른다.
+	 */
+	void RequestSlowDown(float Scale)
+	{
+		PendingSpeedScale = FMath::Min(PendingSpeedScale, FMath::Clamp(Scale, 0.f, 1.f));
+	}
+
+	bool IsReversedOnPath() const { return bReversedOnPath; }
+
 	/** 회수 예약 여부. 순회 중에 배열이 바뀌지 않도록 Director가 나중에 처리한다 */
 	bool IsPendingRecycle() const { return bPendingRecycle; }
 	void ClearPendingRecycle() { bPendingRecycle = false; }
@@ -471,4 +501,10 @@ protected:
 	 * 오프셋 계산에 영향을 줄 수 있다. 여기 순수 C++ 멤버로 두면 안전하다.
 	 */
 	FVector PathHandoffOffset = FVector::ZeroVector;
+
+	/** 이번 갱신에서 요청된 감속 배율 (1 = 감속 없음). Director가 채우고 틱이 소비한다 */
+	float PendingSpeedScale = 1.f;
+
+	/** 실제로 적용 중인 감속 배율. 급브레이크로 보이지 않게 보간한다 */
+	float CurrentSpeedScale = 1.f;
 };

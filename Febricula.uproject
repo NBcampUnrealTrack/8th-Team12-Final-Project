@@ -97,7 +97,7 @@
 		},
 		{
 			"Name": "Revvy",
-			"Enabled": true
+			"Enabled": false
 		},
 		{
 			"Name": "AlembicHairImporter",

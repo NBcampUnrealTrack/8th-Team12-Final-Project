@@ -3,6 +3,7 @@
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 
 #include "Engine/GameInstance.h"
+#include "Misc/ScopeExit.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameMode/TimeSubsystem.h"
@@ -69,9 +70,15 @@ void ANpcCrowdSpawner::BeginPlay()
 		}
 	}
 
-	World->GetTimerManager().SetTimer(
-		SpawnTimerHandle, this, &ANpcCrowdSpawner::TickSpawn,
-		FMath::Max(SpawnInterval, 0.1f), /*bLoop=*/true);
+	// 시작 시점에 거리를 미리 채운다. 입구에서 90명이 걸어 나오는 그림을 피한다.
+	if (bSpreadInitialPopulation)
+	{
+		SpreadInitialPopulation();
+	}
+	bInitialFillDone = true;
+
+	// 반복 타이머가 아니라 매번 다시 건다. 간격을 흔들려면 이 방법뿐이다.
+	RearmSpawnTimer();
 }
 
 void ANpcCrowdSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -165,8 +172,167 @@ bool ANpcCrowdSpawner::GetViewerLocation(FVector& OutLocation) const
 	return false;
 }
 
+void ANpcCrowdSpawner::RearmSpawnTimer()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// [중요] 월드가 정리되는 중이거나 이 액터가 죽는 중이면 타이머를 다시 걸지 않는다.
+	//
+	// 반복 타이머를 없애고 매번 다시 거는 방식으로 바꾸면서 생긴 위험이다.
+	// EndPlay가 타이머를 지운 뒤에 마지막 TickSpawn이 빠져나오며 다시 걸면,
+	// 타이머 매니저가 **이미 파괴된 액터를 가리킨 채 남는다.**
+	// PIE를 끌 때 엉뚱한 곳에서 터지는 원인이 된다.
+	if (!IsValid(this) || IsActorBeingDestroyed() || World->bIsTearingDown)
+	{
+		return;
+	}
+
+	// 간격을 매번 흔든다. 정확히 같은 간격으로 내보내면 사람들이 등간격으로
+	// 줄지어 걷는 게 눈에 보인다 - 행렬처럼 느껴지는 원인 중 하나다.
+	const float Base = FMath::Max(SpawnInterval, 0.1f);
+	const float Jitter = FMath::Clamp(SpawnIntervalJitter, 0.f, 0.9f);
+	const float Next = Base * FMath::FRandRange(1.f - Jitter, 1.f + Jitter);
+
+	World->GetTimerManager().SetTimer(
+		SpawnTimerHandle, this, &ANpcCrowdSpawner::TickSpawn, Next, /*bLoop=*/false);
+}
+
+void ANpcCrowdSpawner::SpreadInitialPopulation()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	USubNpcDirectorSubsystem* Director = World->GetSubsystem<USubNpcDirectorSubsystem>();
+	if (!Director)
+	{
+		return;
+	}
+
+	// 레벨의 모든 경로를 모은다. 입구뿐 아니라 전 구간에 뿌려야
+	// "이미 사람이 다니고 있는 거리"로 보인다.
+	TArray<ANpcCrowdPath*> Paths;
+	float TotalLength = 0.f;
+	for (TActorIterator<ANpcCrowdPath> It(World); It; ++It)
+	{
+		const float Len = It->GetPathLength();
+		if (Len >= 200.f)
+		{
+			Paths.Add(*It);
+			TotalLength += Len;
+		}
+	}
+
+	if (Paths.Num() == 0 || TotalLength <= 0.f)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crowd] 초기 배치: 쓸 만한 경로가 없습니다."));
+		return;
+	}
+
+	const int32 Target = GetCurrentTargetCount();
+	int32 Remaining = Target;
+
+	// [진단] 군중이 "뭉쳐 보이는" 가장 흔한 원인은 코드가 아니라 **경로가 짧은 것**이다.
+	// 사람을 아무리 고르게 뿌려도 1미터에 한 명씩이면 그건 인파다.
+	// 편하게 걷는 거리의 밀도는 대략 3미터에 한 명(0.3명/m) 수준이다.
+	const float Density = Target / (TotalLength / 100.f);   // 명/m
+	UE_LOG(LogTemp, Log,
+		TEXT("[Crowd] 경로 총 길이 %.0fm / 목표 %d명 → 밀도 %.2f명/m"),
+		TotalLength / 100.f, Target, Density);
+
+	if (Density > 0.5f)
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("[Crowd] 밀도가 높습니다(%.2f명/m). 이 인원이 겹쳐 보이는 건 정상입니다. ")
+			TEXT("경로를 더 길게 그리거나(권장 총 %.0fm 이상) 목표 인원을 %d명 이하로 줄이세요."),
+			Density, Target / 0.3f / 1.f, FMath::RoundToInt(TotalLength / 100.f * 0.3f));
+	}
+
+	for (ANpcCrowdPath* Path : Paths)
+	{
+		if (Remaining <= 0)
+		{
+			break;
+		}
+
+		// 길이에 비례해 인원을 나눈다. 짧은 골목에 30명이 몰리지 않게.
+		const float Len = Path->GetPathLength();
+		const int32 Quota = (Path == Paths.Last())
+			? Remaining
+			: FMath::Min(Remaining, FMath::RoundToInt(Target * (Len / TotalLength)));
+
+		if (Quota <= 0)
+		{
+			continue;
+		}
+
+		// 이 경로에 몇 무리를 세울지. 무리 하나의 평균 인원으로 나눈다.
+		int32 Placed = 0;
+		int32 GroupIndex = 0;
+		const int32 EstimatedGroups = FMath::Max(1, Quota / FMath::Max(1, (MaxGroupSize + 1) / 2));
+		const float Slot = Len / static_cast<float>(EstimatedGroups + 1);
+
+		while (Placed < Quota && GroupIndex < EstimatedGroups * 2)
+		{
+			++GroupIndex;
+
+			// 균등 배치 + 흔들기. 완전 랜덤으로 뿌리면 우연히 뭉치는 자리가 생기고,
+			// 완전 균등이면 등간격으로 늘어선 게 눈에 보인다. 둘을 섞는다.
+			const float Center = Slot * GroupIndex;
+			const float StartDistance = FMath::Clamp(
+				Center + FMath::FRandRange(-Slot * 0.4f, Slot * 0.4f), 0.f, Len);
+
+			const int32 GroupSize = FMath::Min(RollGroupSize(), Quota - Placed);
+
+			// [버그 수정] 예전에는 여기서 방향을 반반 랜덤으로 굴렸다.
+			// "거리니까 양방향이 자연스럽다"고 생각했는데, 이 경로들은 방향이
+			// 정해진 일방 경로다. 그래서 절반이 역주행하는 것처럼 보였다.
+			// 경로가 정한 방향을 그대로 따른다.
+			const bool bReversed = Path->IsSpawnReversed();
+
+			const TArray<ASubNpcCharacter*> Spawned =
+				(GroupSize <= 1)
+				? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Path, StartDistance, bReversed) }
+				: Director->SpawnGroupOnPath(Path, StartDistance, bReversed, GroupSize);
+
+			int32 Actual = 0;
+			for (ASubNpcCharacter* Npc : Spawned)
+			{
+				if (Npc)
+				{
+					++Actual;
+				}
+			}
+
+			if (Actual == 0)
+			{
+				// 풀이 비었거나 정원이 찼다. 더 세울 수 없다.
+				Remaining = 0;
+				break;
+			}
+
+			Placed += Actual;
+		}
+
+		Remaining -= Placed;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Crowd] 초기 배치 완료: 경로 %d개에 %d명"),
+		Paths.Num(), Target - FMath::Max(0, Remaining));
+}
+
 void ANpcCrowdSpawner::TickSpawn()
 {
+	// 이 함수는 반복 타이머가 아니라 매번 다시 걸린다. 어디로 빠져나가든
+	// 타이머를 다시 걸어야 하므로 스코프 가드로 보장한다.
+	ON_SCOPE_EXIT{ RearmSpawnTimer(); };
+
 	const UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -186,64 +352,39 @@ void ANpcCrowdSpawner::TickSpawn()
 		return;
 	}
 
-	// 초기 대량 충원인가.
-	//
-	// 전원이 입구 근처 20% 구간에 몰려 등장하면 90명이 한 덩어리가 되고
-	// 이후에도 비슷한 속도로 움직여 잘 풀리지 않는다. 그래서 첫 충원만
-	// 경로 전체에 흩어 놓는다.
-	//
-	// [버그 수정 1] 예전 조건은 "부족 인원이 목표의 절반 이상"이었다. 그러면
-	// 퇴장구에서 여러 명이 한꺼번에 회수될 때마다 다시 참이 되어, 플레이 도중에
-	// 경로 한복판에서 사람이 우르르 생겨났다. 깜빡임의 정체가 이것이었다.
-	//
-	// [버그 수정 2] 그 다음 조건("활성 0")은 반대로 너무 좁았다. 첫 주기에
-	// MaxSpawnPerTick(기본 2)만큼만 등장하면 활성이 0이 아니게 되어, 대량 충원이
-	// 두 번 다시 발동하지 않았다. 그래서 90명을 요청해도 20명도 안 찼다.
-	// 이제 "한 번 다 채울 때까지"를 플래그로 기억한다.
-	const bool bBulkFill = !bInitialFillDone;
+	// 한 주기에 한 무리씩만 내보내는 게 기본이다. 사람이 크게 모자랄 때만
+	// (예: 시간대가 바뀌어 목표가 확 늘었을 때) 여러 무리까지 허용한다.
+	const int32 GroupBudget = (Deficit > Target / 3)
+		? FMath::Max(1, MaxGroupsPerTick)
+		: 1;
 
-	// 초기 충원은 한 프레임에 목표치까지 밀어 넣는다. 어차피 로딩 직후라
-	// 플레이어가 보고 있지 않고, 조금씩 채우면 사람이 계속 생겨나는 게 보인다.
-	const int32 SpawnBudget = bBulkFill ? FMath::Max(MaxSpawnPerTick, Deficit) : MaxSpawnPerTick;
-
-	int32 SpawnedThisTick = 0;
-
-	while (Deficit > 0 && SpawnedThisTick < SpawnBudget)
+	for (int32 g = 0; g < GroupBudget && Deficit > 0; ++g)
 	{
 		ANpcCrowdPath* Entry = PickEntryPath();
 		if (!Entry)
 		{
+			UE_LOG(LogTemp, Warning,
+				TEXT("[Crowd] 보충 불가: 입구 경로가 없습니다. ")
+				TEXT("NpcCrowdPath 중 하나 이상에서 'Spawn Entry'를 켜거나 ")
+				TEXT("스포너의 Entry Paths에 직접 넣으세요. (목표 %d / 활성 %d)"),
+				Target, Director->GetActiveCount());
 			return;
 		}
 
-		// 경로가 "역방향으로 등장" 설정이면 뒤에서부터 걷는다.
-		// 스플라인을 반대로 그린 경우를 점을 다시 찍지 않고 데이터로 뒤집는다.
 		const bool bReversed = Entry->IsSpawnReversed();
 		const float Length = FMath::Max(1.f, Entry->GetPathLength());
 
-		// 입구 경로의 "시작 쪽" 어딘가에서 등장한다. 항상 같은 지점이면 한 자리에서 계속 튀어나온다.
-		// 역방향이면 시작 쪽이 곧 경로의 끝이다.
-		float StartDistance;
-		if (bBulkFill)
-		{
-			StartDistance = FMath::FRandRange(Length * 0.05f, Length * 0.95f);
-		}
-		else
-		{
-			StartDistance = bReversed
-				? FMath::FRandRange(Length * 0.8f, Length)
-				: FMath::FRandRange(0.f, Length * 0.2f);
-		}
+		// 입구 경로의 "시작 쪽" 어딘가. 항상 같은 지점이면 한 자리에서 계속 튀어나온다.
+		float StartDistance = bReversed
+			? FMath::FRandRange(Length * 0.8f, Length)
+			: FMath::FRandRange(0.f, Length * 0.2f);
 
 		// 플레이어 눈앞에서 사람이 생기는 것을 되도록 피한다.
 		//
-		// [중요] 이건 금지가 아니라 **선호**다. 후보 지점을 몇 번 굴려보고
-		// 조건을 만족하는 게 있으면 그걸 쓰고, 없으면 그 중 가장 먼 자리를 쓴다.
-		//
-		// 예전에는 조건을 못 채우면 그 주기를 통째로 건너뛰었다. 그런데 입구
-		// 구간이 플레이어 근처에 있는 레벨에서는 매 주기가 전부 실패해서
-		// **군중이 아예 채워지지 않았다.** 인원이 안 차는 것이 팝인보다 훨씬 나쁘다.
-		if (!bBulkFill && MinSpawnDistanceFromViewer > 0.f)
+		// [중요] 금지가 아니라 선호다. 후보를 몇 번 굴려보고 조건을 만족하는 게
+		// 있으면 그걸 쓰고, 없으면 그중 가장 먼 자리를 쓴다. 조건을 못 채웠다고
+		// 등장을 막으면 입구가 화면 안에 있는 레벨에서 군중이 아예 안 찬다.
+		if (MinSpawnDistanceFromViewer > 0.f)
 		{
 			FVector ViewerLocation;
 			if (GetViewerLocation(ViewerLocation))
@@ -274,7 +415,7 @@ void ANpcCrowdSpawner::TickSpawn()
 			}
 		}
 
-		const int32 GroupSize = RollGroupSize();
+		const int32 GroupSize = FMath::Min(RollGroupSize(), Deficit);
 		const TArray<ASubNpcCharacter*> Spawned =
 			(GroupSize <= 1)
 			? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Entry, StartDistance, bReversed) }
@@ -296,13 +437,6 @@ void ANpcCrowdSpawner::TickSpawn()
 		}
 
 		Deficit -= Actual;
-		SpawnedThisTick += Actual;
-	}
-
-	// 목표치를 채웠으면 초기 충원 종료. 이후 보충은 입구에서만 등장한다.
-	if (bBulkFill && Deficit <= 0)
-	{
-		bInitialFillDone = true;
 	}
 }
 
