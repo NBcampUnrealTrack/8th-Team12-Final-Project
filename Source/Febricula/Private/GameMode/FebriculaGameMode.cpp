@@ -38,7 +38,7 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 	{
 		AFebriculaPlayerStart* Now = *It;
 		UE_LOG(LogTemp, Warning, TEXT("%s"), *Now->SpawnPointTag.GetTagName().ToString());
-		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %d"), Now->SpawnPointTag.IsValid());
+		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %s"), *NowSchedule.ToString());
 		UE_LOG(LogTemp, Warning, TEXT("%d"), NowSchedule.MatchesTag(Now->SpawnPointTag));
 		if (!Now->SpawnPointTag.IsValid())
 		{

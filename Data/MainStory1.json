@@ -997,8 +997,8 @@
         "Pitch": 12.6,
         "Yaw": -39.1
       },
-      "MoveTime": 0.0,
-      "Focus": 0.0
+      "MoveTime": 0.1,
+      "Focus": 10000.0
     }
   },
   {
@@ -1494,7 +1494,7 @@
         "Yaw": -36.3
       },
       "MoveTime": 0.0,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -1588,7 +1588,7 @@
         "Yaw": -108.9
       },
       "MoveTime": 0.5,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -1725,12 +1725,6 @@
         "Key": "NPC_Suyun",
         "Key2": "FirtSuyunMove",
         "Value": 0
-      },
-      {
-        "Type": "PlayAnim",
-        "Key": "NPC_Suyun",
-        "Key2": "Walk",
-        "Value": 1
       }
     ],
     "Choices": [],
@@ -1915,7 +1909,7 @@
         "Yaw": 0.8
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -2237,7 +2231,7 @@
         "Yaw": -257.7
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -2681,7 +2675,7 @@
         "Yaw": -176.0
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -2945,7 +2939,7 @@
         "Yaw": -55.4
       },
       "MoveTime": 0.1,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -3395,7 +3389,7 @@
         "Yaw": -70.0
       },
       "MoveTime": 0.0,
-      "Focus": 0.0
+      "Focus": 10000.0
     }
   },
   {
@@ -3553,12 +3547,6 @@
         "Type": "NpcStartPatrol",
         "Key": "NPC_Doyun",
         "Key2": "DoyunFirstMove",
-        "Value": 0
-      },
-      {
-        "Type": "PlayAnim",
-        "Key": "NPC_Doyun",
-        "Key2": "Walk",
         "Value": 0
       }
     ],
@@ -3972,12 +3960,6 @@
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
-      {
-        "Type": "PlayAnim",
-        "Key": "NPC_Doyun",
-        "Key2": "Walk2",
-        "Value": 1
-      },
       {
         "Type": "NpcStartPatrol",
         "Key": "NPC_Doyun",
@@ -4402,6 +4384,1204 @@
     "AutoAdvanceValue": 0.3,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_01",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "신년. 신학기.",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": ".1",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_01_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_01_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "이맘때가 될 때마다 신물이 날 정도로 겪은 새로운 것들에 대한 막연한 기대와 불안이 공존하는 순간.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_01_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_01_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "이제서는 더 이상 어떤 선득거림조차, 긴장조차 안기지 못할 익숙해질 대로 익숙해져 버린 일상.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_01_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_01_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "방 문을 열고 밖으로 나선다면 나와는 평생토록 엮이지 않았어야 했을 타인의 삶을 살아가게 될 것이다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_01_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_01_004",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "친구들과의 하루하루. 사소했지만, 동시에 소중했던 지난 나날의 추억 그 모두를 헌신짝처럼 내버린 채로.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_01_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_01_005",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "하지만... 해야겠지.",
+    "OnEnterActions": [
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_02",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_02",
+    "SpeakerName": "기숙사 사감",
+    "SpeakerNpcId": "NPC_Sagam",
+    "Text": "이걸로 아침 조회는 끝. 다들 밥 먹으러 가.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_02_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_02_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "조회 자체는 별 것 없었다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_02_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_02_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "인원 점검, 체조, 간단한 운동, 일정 전달.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_02_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_02_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "모여 서 있던 학생들은 삼삼오오 무리를 지은 채 저마다 흩어져 갔다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_02_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_02_004",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "SpawnActor",
+        "Key": "NPC_Doyun",
+        "Key2": "FirstAssembleDoyun",
+        "Value": 0
+      },
+      {
+        "Type": "NpcFacePlayer",
+        "Key": "NPC_Doyun",
+        "Key2": "None",
+        "Value": 0
+      },
+      {
+        "Type": "StartCrowdSpawn",
+        "Key": "CrowdManager",
+        "Key2": "EndAssemble",
+        "Value": 0
+      },
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": 4951.8,
+        "Y": -241.6,
+        "Z": 14.9
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": -118.3
+      },
+      "MoveTime": 0.1,
+      "Focus": 974.0
+    }
+  },
+  {
+    "Name": "D2_03",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "강천율... 이라고 했었지?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_001",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "응?",
+    "OnEnterActions": [
+      {
+        "Type": "NPCFaceNPC",
+        "Key": "Player",
+        "Key2": "NPC_Doyun",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "기억에 있는 얼굴이었다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_003",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "아, 먼저 내 소개를 하는 게 순서려나.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_004",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "김도윤... 맞지?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_005",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "맞아. 알고 있었구나?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_006",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_006",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "어제 들었어.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_007",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_007",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "서윤이가 말해줬나 봐?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_008",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_008",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "응.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_009",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_009",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "어때? 아침 점호 처음 해보니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_010",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_010",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "...평소보다 더 일찍 일어나야 하는 게 좀 버겁긴 하네.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_011",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_011",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "일찍? 아, 맞네. 지금 기숙사에 방이 없구나.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_012",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_012",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "당장은 읍내에서 버스타고 왔다갔다 중인데 괜히 기숙사가 있는게 아니더라. 버스 한 번 놓치면 한 시간씩 기다려야 하던데.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_013",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_013",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "여기가 원래 좀 그래. 시골이기도 하고 있는 사람들이래봤자 공단 사람들이랑 그 가족 정돈데 거긴 셔틀버스 아니면 자차 타고 다니니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_014",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_014",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "차라리 1교시 시간에 맞춰서 오는 걸로 이야기해보지 그랬어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_015",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_015",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "그건 안 된다고 하더라고. 아침 점호는 반드시 참여해야 한다나 뭐라나",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_016",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_016",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "쯧. 안될 것 같긴 해… 별 쓰잘데기 없는 절차며 규칙에 목 메는 학교 특성 생각해 보면…",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_017",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_017",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "아침 먹을거지? 나머지는 먹으면서 이야기하자. 대부분 아침 안 먹고 자러 올라가니까 지금 가면 바로 먹을 수 있을 거야.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_018",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_018",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "그래.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_019",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_019",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      },
+      {
+        "Type": "ChangeLevel",
+        "Key": "Food",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_05",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "Teleport",
+        "Key": "Player",
+        "Key2": "FoodCheon",
+        "Value": 0
+      },
+      {
+        "Type": "SpawnActor",
+        "Key": "NPC_Doyun",
+        "Key2": "WithFood",
+        "Value": 0
+      },
+      {
+        "Type": "Teleport",
+        "Key": "NPC_Doyun",
+        "Key2": "WithFood",
+        "Value": 0
+      },
+      {
+        "Type": "PlayAnim",
+        "Key": "Player",
+        "Key2": "Food",
+        "Value": 1
+      },
+      {
+        "Type": "PlayAnim",
+        "Key": "NPC_Doyun",
+        "Key2": "Food",
+        "Value": 1
+      },
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": 87.0,
+        "Y": -133.0,
+        "Z": 93.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 5.0,
+        "Yaw": 140.6
+      },
+      "MoveTime": 0.1,
+      "Focus": 400.0
+    }
+  },
+  {
+    "Name": "D2_06",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "어제 보니까 서윤이랑 같이 다니고 있던 것 같은데 그 애가 내 이야기도 해줬어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_001",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "간단하게는.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_002",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "그럼 대충 내가 어떤 사람인지 감이 왔겠네.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_003",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "여기 생활은 정말 지루하고 매일매일이 자로 잰 듯 똑같거든. 그렇잖아? 주위를 둘러봤자 있는 거라곤 가게 몇 개 뿐, 제대로 된 문화 생활이란 녀석을 즐기고 싶으면 차를 타고 몇십 분은 나가야 하니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_004",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "난 그런 게 싫어. 정적이고, 반복되고, 지겨운 거. 그래서 네가 전학 온다는 소식을 들었을 때부터 내심 기대하고 있었지. 3년은 짧은 시간이 아니니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_005",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "갑자기 낯선 사람이 나타나는데 그게 후배나 선생님도 아니고 동급생이다? 이건 못 참지.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
     "Camera": {
       "CameraType": "None",
       "Location": {

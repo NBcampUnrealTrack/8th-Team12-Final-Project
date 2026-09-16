@@ -164,6 +164,8 @@ enum class EGameActionType : uint8
 	/** Key(NpcId) 다시 제자리에 세운다 */
 	NpcPauseAI				UMETA(DisplayName = "대화 중 NPC AI 정지"),
 
+	StartCrowdSpawn			UMETA(DisplayName = "군중 소환 개시"),
+	
 	// ---- 애니메이션 ----
 
 	/**
@@ -225,6 +227,8 @@ enum class EGameActionType : uint8
 	FadeIn					UMETA(DisplayName = "페이드 인"),
 	
 	SpawnActor				UMETA(DisplayName = "캐릭터 스폰"),
+	
+	ControlActor			UMETA(DisplayName = "액터 제어"),
 	
 	ShowActor				UMETA(DisplayName = "캐릭터 보임"),
 	
