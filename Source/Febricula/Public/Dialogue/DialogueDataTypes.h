@@ -228,6 +228,8 @@ enum class EGameActionType : uint8
 	
 	SpawnActor				UMETA(DisplayName = "캐릭터 스폰"),
 	
+	ControlActor			UMETA(DisplayName = "액터 제어"),
+	
 	ShowActor				UMETA(DisplayName = "캐릭터 보임"),
 	
 	HideActor				UMETA(DisplayName = "캐릭터 숨김"),	

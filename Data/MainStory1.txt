@@ -356,10 +356,11 @@ AI의 끊임없는 발전.
 @label D2_05
 @Teleport Player FoodCheon
 @SpawnActor NPC_Doyun WithFood
+@Teleport NPC_Doyun WithFood
 @PlayAnim Player Food 1
 @PlayAnim NPC_Doyun Food 1
 @FadeIn 3
-@cam Loc 154.5 -15.2 79.9 Rot 0 0 165.6 .1 160
+@cam Loc 87.0 -133.0 93.0 Rot 0 5.0 135.7 .1 400
 @wait .3
 
 @label D2_06

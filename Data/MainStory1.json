@@ -5377,6 +5377,12 @@
         "Value": 0
       },
       {
+        "Type": "Teleport",
+        "Key": "NPC_Doyun",
+        "Key2": "WithFood",
+        "Value": 0
+      },
+      {
         "Type": "PlayAnim",
         "Key": "Player",
         "Key2": "Food",
@@ -5405,17 +5411,17 @@
     "Camera": {
       "CameraType": "Cinematic",
       "Location": {
-        "X": 154.5,
-        "Y": -15.2,
-        "Z": 79.9
+        "X": 87.0,
+        "Y": -133.0,
+        "Z": 93.0
       },
       "Rotation": {
         "Roll": 0.0,
-        "Pitch": 0.0,
-        "Yaw": 165.6
+        "Pitch": 5.0,
+        "Yaw": 140.6
       },
       "MoveTime": 0.1,
-      "Focus": 160.0
+      "Focus": 400.0
     }
   },
   {
