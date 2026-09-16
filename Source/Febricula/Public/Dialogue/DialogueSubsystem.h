@@ -21,6 +21,19 @@ class ABaseNpcCharacter;
 class UGameProgressSubsystem;
 class UNpcRelationshipSubsystem;
 
+USTRUCT(BlueprintType)
+struct FDialogueLogEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FText Speaker;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FText Body;
+};
+
+
 /** 대사 한 줄이 출력될 때. Speaker가 비어 있으면 나레이션(사물 조사 등) */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueLine, const FText&, Speaker, const FText&, Body);
 
@@ -147,6 +160,14 @@ public:
 	
 	TMap<FName,TWeakObjectPtr<ACharacter>> GetCachedCharacter() const;
 
+	/** 백로그(지난 대사 기록) 전체를 가져온다. UI가 스크롤 목록 바인딩에 사용 */
+	UFUNCTION(BlueprintPure, Category = "Dialogue | Log")
+	const TArray<FDialogueLogEntry>& GetDialogueLog() const { return DialogueLog; }
+
+	/** 백로그 초기화 (새 게임/세이브 로드 필요 시) */
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Log")
+	void ClearDialogueLog() { DialogueLog.Empty(); }
+
 protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
 	void EnterNode(FName NodeId);
@@ -236,5 +257,15 @@ protected:
 	
 	UPROPERTY()
 	TArray<FName> ClearedEvents;
-	
+
+	/** 지난 대사 전체 기록. UI 백로그 창에서 참조 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Log")
+	TArray<FDialogueLogEntry> DialogueLog;
+
+	/** 백로그가 무한정 커지지 않도록 상한 */
+	UPROPERTY(EditDefaultsOnly, Category = "Dialogue | Log")
+	int32 MaxLogEntries = 200;
+
+	/** 대사 한 줄을 로그에 기록 + 델리게이트 브로드캐스트 */
+	void BroadcastDialogueLine(const FText& Speaker, const FText& Body);
 };

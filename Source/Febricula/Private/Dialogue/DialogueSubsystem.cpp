@@ -58,7 +58,7 @@ void UDialogueSubsystem::Tick(float DeltaTime)
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
-			OnDialogueLine.Broadcast(SimpleLineSpeaker, Next);
+			BroadcastDialogueLine(SimpleLineSpeaker, Next);
 		}
 		else
 		{
@@ -326,7 +326,7 @@ bool UDialogueSubsystem::StartSimpleLines(const FText& Speaker, const TArray<FTe
 	
 	const FText First = SimpleLineQueue[0];
 	SimpleLineQueue.RemoveAt(0);
-	OnDialogueLine.Broadcast(SimpleLineSpeaker, First);
+	BroadcastDialogueLine(SimpleLineSpeaker, First);
 	return true;
 }
 
@@ -360,7 +360,7 @@ void UDialogueSubsystem::Advance()
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
-			OnDialogueLine.Broadcast(SimpleLineSpeaker, Next);
+			BroadcastDialogueLine(SimpleLineSpeaker, Next);
 		}
 		else
 		{
@@ -537,7 +537,7 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	HoldingSpeaker = Row->SpeakerName;
 	HoldingDialogue = Row->Text;
 
-	OnDialogueLine.Broadcast(Row->SpeakerName, Row->Text);
+	BroadcastDialogueLine(Row->SpeakerName, Row->Text);
 
 	// 선택지가 있는 노드는 질문 대사와 선택지를 "동시에" 띄운다.
 	// 대사를 먼저 보여주고 한 번 더 클릭해야 선택지가 나오면 클릭이 낭비되고,
@@ -1183,4 +1183,19 @@ ABaseNpcCharacter* UDialogueSubsystem::FindNpcById(FName NpcId) const
 		}
 	}
 	return nullptr;
+}
+
+void UDialogueSubsystem::BroadcastDialogueLine(const FText& Speaker, const FText& Body)
+{
+	FDialogueLogEntry Entry;
+	Entry.Speaker = Speaker;
+	Entry.Body = Body;
+	DialogueLog.Add(Entry);
+
+	if (MaxLogEntries > 0 && DialogueLog.Num() > MaxLogEntries)
+	{
+		DialogueLog.RemoveAt(0, DialogueLog.Num() - MaxLogEntries);
+	}
+
+	OnDialogueLine.Broadcast(Speaker, Body);
 }
