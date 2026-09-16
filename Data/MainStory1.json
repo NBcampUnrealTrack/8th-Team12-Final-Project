@@ -5262,7 +5262,7 @@
     "Name": "D2_03_017",
     "SpeakerName": "김도윤",
     "SpeakerNpcId": "NPC_Doyun",
-    "Text": "아침 먹을거지? 나머지는 먹으면서 이야기하자. 슬슬 줄 좀 줄어들었을 거야.",
+    "Text": "아침 먹을거지? 나머지는 먹으면서 이야기하자. 대부분 아침 안 먹고 자러 올라가니까 지금 가면 바로 먹을 수 있을 거야.",
     "OnEnterActions": [],
     "Choices": [],
     "Branches": [],
@@ -5292,6 +5292,282 @@
     "SpeakerName": "강천율",
     "SpeakerNpcId": "PC_GangChunyul",
     "Text": "그래.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_03_019",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_03_019",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      },
+      {
+        "Type": "ChangeLevel",
+        "Key": "Food",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_05",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "Teleport",
+        "Key": "Player",
+        "Key2": "FoodCheon",
+        "Value": 0
+      },
+      {
+        "Type": "SpawnActor",
+        "Key": "NPC_Doyun",
+        "Key2": "WithFood",
+        "Value": 0
+      },
+      {
+        "Type": "PlayAnim",
+        "Key": "Player",
+        "Key2": "Food",
+        "Value": 1
+      },
+      {
+        "Type": "PlayAnim",
+        "Key": "NPC_Doyun",
+        "Key2": "Food",
+        "Value": 1
+      },
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": 154.5,
+        "Y": -15.2,
+        "Z": 79.9
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 165.6
+      },
+      "MoveTime": 0.1,
+      "Focus": 160.0
+    }
+  },
+  {
+    "Name": "D2_06",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "어제 보니까 서윤이랑 같이 다니고 있던 것 같은데 그 애가 내 이야기도 해줬어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_001",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "간단하게는.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_002",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "그럼 대충 내가 어떤 사람인지 감이 왔겠네.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_003",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "여기 생활은 정말 지루하고 매일매일이 자로 잰 듯 똑같거든. 그렇잖아? 주위를 둘러봤자 있는 거라곤 가게 몇 개 뿐, 제대로 된 문화 생활이란 녀석을 즐기고 싶으면 차를 타고 몇십 분은 나가야 하니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_004",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_004",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "난 그런 게 싫어. 정적이고, 반복되고, 지겨운 거. 그래서 네가 전학 온다는 소식을 들었을 때부터 내심 기대하고 있었지. 3년은 짧은 시간이 아니니까.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "Branches": [],
+    "NextNodeId": "D2_06_005",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    }
+  },
+  {
+    "Name": "D2_06_005",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "갑자기 낯선 사람이 나타나는데 그게 후배나 선생님도 아니고 동급생이다? 이건 못 참지.",
     "OnEnterActions": [],
     "Choices": [],
     "Branches": [],
