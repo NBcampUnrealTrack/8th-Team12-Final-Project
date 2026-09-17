@@ -60,6 +60,30 @@ protected:
 	/** 입구로 쓸 수 있는 경로 중 하나를 고른다 */
 	ANpcCrowdPath* PickEntryPath() const;
 
+	/**
+	 * 게임 시작 시 한 번, 레벨의 모든 경로에 사람을 흩어 놓는다.
+	 *
+	 * 입구 한 곳에서 90명을 뽑아내면 아무리 시차를 줘도 덩어리로 보인다.
+	 * 시작 시점에는 "이미 거리에 사람이 있는" 상태여야 자연스럽다.
+	 * 경로 길이에 비례해 인원을 나누고, 그 안에서 그룹 단위로 균등 배치 + 흔들기.
+	 */
+	void SpreadInitialPopulation();
+
+	/** 다음 보충까지의 시간을 랜덤으로 굴려 타이머를 다시 건다 */
+	void RearmSpawnTimer();
+
+	/**
+	 * 초기 충원을 끝냈는가.
+	 *
+	 * 시작 직후 한 번만 경로 전체에 흩어 놓고, 그 뒤의 보충은 입구에서만 등장시킨다.
+	 * 목표 인원을 다 채운 시점에 켜진다.
+	 */
+	UPROPERTY(Transient)
+	bool bInitialFillDone = false;
+
+	/** 플레이어 폰 위치 (없으면 false) */
+	bool GetViewerLocation(FVector& OutLocation) const;
+
 	/** 스폰할 인원(단독/그룹)을 굴린다 */
 	int32 RollGroupSize() const;
 
@@ -78,13 +102,53 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner", meta = (ClampMin = "0"))
 	int32 BaseTargetCount = 30;
 
-	/** 인원 점검 주기 (초) */
+	/** 인원 점검 주기 (초). 아래 Jitter만큼 매번 흔들린다 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner", meta = (ClampMin = "0.1"))
 	float SpawnInterval = 1.f;
+
+	/**
+	 * 보충 주기의 흔들림 비율 (0~1).
+	 *
+	 * 정확히 같은 간격으로 내보내면 사람들이 등간격으로 줄지어 걷는 게 눈에 보인다.
+	 * 0.5면 실제 간격이 SpawnInterval의 50%~150% 사이에서 매번 달라진다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner",
+		meta = (ClampMin = "0.0", ClampMax = "0.9"))
+	float SpawnIntervalJitter = 0.5f;
+
+	/**
+	 * 한 주기에 내보낼 최대 그룹 수.
+	 *
+	 * 1이면 한 번에 한 무리씩만 등장한다. 이게 가장 자연스럽다.
+	 * 인원이 크게 모자랄 때만 이 값까지 올려서 따라잡는다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner", meta = (ClampMin = "1"))
+	int32 MaxGroupsPerTick = 1;
+
+	/**
+	 * 시작 시 레벨 전체에 미리 흩어 놓을지.
+	 *
+	 * 끄면 전원이 입구에서 걸어 들어온다. 사람이 다 찰 때까지 한참 걸리고,
+	 * 그동안 입구 쪽만 붐빈다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner")
+	bool bSpreadInitialPopulation = true;
 
 	/** 한 번에 최대 몇 명까지 등장시킬지. 크면 한꺼번에 우르르 나타나 티가 난다 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner", meta = (ClampMin = "1"))
 	int32 MaxSpawnPerTick = 2;
+
+	/**
+	 * 플레이어와 이 거리(cm) 안에서는 등장시키지 않는다.
+	 *
+	 * 입구 구간이 화면 안에 있으면 보충이 일어날 때마다 눈앞에서 사람이 튀어나온다.
+	 * 후보 지점을 몇 번 다시 굴려보고 끝내 못 찾으면 그 주기는 건너뛴다.
+	 * 0이면 이 검사를 끈다 (예전 동작).
+	 *
+	 * 입구가 벽 뒤나 골목처럼 원래 안 보이는 곳이면 낮춰도 된다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner", meta = (ClampMin = "0.0"))
+	float MinSpawnDistanceFromViewer = 2500.f;
 
 	/** 아키타입 테이블 (FSubNpcArchetypeRow) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner")
