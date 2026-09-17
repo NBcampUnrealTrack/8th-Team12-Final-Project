@@ -13,12 +13,6 @@ AHingedActor::AHingedActor()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 }
 
-void AHingedActor::Interact_Implementation(AActor* Interactor)
-{
-	StartMove(Interactor);
-	//Super::Interact_Implementation(Interactor);
-}
-
 // Called when the game starts or when spawned
 void AHingedActor::BeginPlay()
 {

@@ -26,10 +26,22 @@ void UPlayerHUDWidget::NativeConstruct()
 	if (Dialogue)
 	{
 		FText Speaker, Body;
-		if (Dialogue->GetCurrentLine(Speaker, Body))
+		TArray<FDialogueChoiceView> ChoiceViews;
+		if (Dialogue->GetCurrentLine(Speaker, Body, ChoiceViews))
 		{
 			HandleDialogueLine(Speaker, Body);
+			UE_LOG(LogTemp, Warning, TEXT("Holding Choice: %d"), ChoiceViews.Num());
+			for (FDialogueChoiceView View: ChoiceViews)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s"), *View.Text.ToString());
+			}
+
+			if (ChoiceViews.Num() > 0)
+			{
+				HandleDialogueChoices(ChoiceViews);
+			}
 		}
+		
 	}
 }
 
@@ -77,6 +89,7 @@ void UPlayerHUDWidget::HideInteractionPrompt()
 
 void UPlayerHUDWidget::HandleDialogueLine(const FText& Speaker, const FText& Body)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::HandleDialogueLine"));
 	// 대화가 시작되면 프롬프트는 감춘다.
 	BP_HideInteractionPrompt();
 
@@ -87,6 +100,7 @@ void UPlayerHUDWidget::HandleDialogueLine(const FText& Speaker, const FText& Bod
 
 void UPlayerHUDWidget::HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::HandleDialogueChoices"));
 	BP_ShowChoices(Choices);
 }
 

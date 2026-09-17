@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "GameplayTagContainer.h"
+#include "Dialogue/DialogueDataTypes.h"
 #include "ActivityDefinition.generated.h"
 
 USTRUCT(BlueprintType)
@@ -22,4 +23,8 @@ struct FActivityDefinition : public FTableRowBase
 	TArray<FActivityLocation> ActivityLocations;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
 	int32 ActionPointCost = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
+	TObjectPtr<UDataTable> ConnectedEvent;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
+	FName NodeId;
 };

@@ -42,7 +42,7 @@ public:
 
 	
 protected:
-	void PlayEvent();
+	bool PlayEvent();
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UDataTable> AutoEventTable;

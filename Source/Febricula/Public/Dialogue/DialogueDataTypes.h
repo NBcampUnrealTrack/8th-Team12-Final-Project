@@ -234,7 +234,11 @@ enum class EGameActionType : uint8
 	
 	HideActor				UMETA(DisplayName = "캐릭터 숨김"),	
 	
-	Teleport				UMETA(DisplayName = "특정 위치로 순간이동")
+	Teleport				UMETA(DisplayName = "특정 위치로 순간이동"),
+
+	Interact				UMETA(DisplayName = "상호작용 후 상태로 설정"),
+	
+	UnInteract				UMETA(DisplayName = "상호작용 전 상태로 설정")
 };
 
 /**
@@ -355,6 +359,18 @@ struct FDialogueChoice
 	/** 다음 노드. None이면 대화 종료 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
 	FName NextNodeId;
+	
+	FDialogueChoice() = default;
+	
+	FDialogueChoice(const FText& Text, const TArray<FGameCondition>& Conditions, const TArray<FGameAction>& Actions,
+		const FName& NextNodeId)
+		: Text(Text),
+		  Conditions(Conditions),
+		  Actions(Actions),
+		  NextNodeId(NextNodeId)
+	{
+	}
+	
 };
 
 /**
