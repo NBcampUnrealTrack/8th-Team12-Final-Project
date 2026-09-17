@@ -17,6 +17,7 @@
 #include "Interaction/InteractableProp.h"
 #include "Interaction/InteractionComponent.h"
 #include "Public/Level/DoorMapActor.h"
+#include "Dialogue/DialogueSubsystem.h"
 
 void AFebriculaCharacter::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -43,7 +44,7 @@ AFebriculaCharacter::AFebriculaCharacter()
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
+
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -64,8 +65,8 @@ AFebriculaCharacter::AFebriculaCharacter()
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 
-	
-	
+
+
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -76,16 +77,16 @@ AFebriculaCharacter::AFebriculaCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
-	
+
 	InteractComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractComponent"));
 	CharacterAnimationComponent = CreateDefaultSubobject<UCharacterAnimationComponent>(TEXT("CharacterAnimationComponent"));
-	
+
 }
 
 void AFebriculaCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 }
 
 void AFebriculaCharacter::FaceTowards(const AActor* TargetActor)
@@ -109,7 +110,7 @@ void AFebriculaCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
+
 		// Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -120,12 +121,17 @@ void AFebriculaCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AFebriculaCharacter::StartSprint);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &AFebriculaCharacter::EndSprint);
-		
+
+		// Dialogue Fast Forward (Ctrl 홀드로 대사 빠르게 넘기기)
+		EnhancedInputComponent->BindAction(FastForwardAction, ETriggerEvent::Started, this, &AFebriculaCharacter::StartFastForward);
+		EnhancedInputComponent->BindAction(FastForwardAction, ETriggerEvent::Completed, this, &AFebriculaCharacter::EndFastForward);
+		EnhancedInputComponent->BindAction(FastForwardAction, ETriggerEvent::Canceled, this, &AFebriculaCharacter::EndFastForward);
+
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AFebriculaCharacter::Look);
-		
-	//	EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this , &AFebriculaCharacter::Interact);
-		
+
+		//	EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this , &AFebriculaCharacter::Interact);
+
 	}
 	else
 	{
@@ -159,6 +165,28 @@ void AFebriculaCharacter::StartSprint(const FInputActionValue& Value)
 void AFebriculaCharacter::EndSprint(const FInputActionValue& Value)
 {
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+}
+
+void AFebriculaCharacter::StartFastForward(const FInputActionValue& Value)
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>())
+		{
+			Dialogue->SetFastForward(true);
+		}
+	}
+}
+
+void AFebriculaCharacter::EndFastForward(const FInputActionValue& Value)
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>())
+		{
+			Dialogue->SetFastForward(false);
+		}
+	}
 }
 
 void AFebriculaCharacter::DoMove(float Right, float Forward)
