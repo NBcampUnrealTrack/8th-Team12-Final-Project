@@ -629,7 +629,7 @@ class Parser:
             self.p_cam = ("Cinematic", loc, rot, blend, focus)
             return
  
-        loc, rot, blend, focus, seen = None, None, 0.0, 0.0, None
+        loc, rot, blend, focus, seen = None, None, 0.0, 10000.0, None
         buffer = []
  
         def flush():
@@ -644,8 +644,8 @@ class Parser:
             else:
                 rot = tuple(buffer)
             return True
- 
-        for token in args:
+        check_blend = False
+        for i, token in enumerate(args):
             low = token.lower()
             if low in ("loc", "rot"):
                 if not flush():
@@ -664,13 +664,14 @@ class Parser:
             if len(buffer) < 3:
                 buffer.append(number)
             else:
-                if(blend == 0.0 and number > 0.0):
-                    blend = number     # 3개를 넘겨서 온 마지막 숫자는 전환 시간
-                else:
+                if i == 8:
+                    blend = number
+                    check_blend = True
+                elif i == 9:
                     focus = number
         if not flush():
             return
- 
+
         if loc is None or rot is None:
             self.error(line_no, "@cam에 Loc과 Rot이 모두 필요함 "
                                 "(예: @cam Loc 1240 -330 180 Rot 0 -12 0 0.8)")
@@ -816,7 +817,7 @@ def process(path, action_types, condition_types, outdir, check_only):
  
 def main():
     ap = argparse.ArgumentParser(description="Febricula dialogue script parser")
-    ap.add_argument("inputs", nargs="*", default=["MainStory1.txt"], help="스크립트 파일 (와일드카드 가능)")
+    ap.add_argument("inputs", nargs="*", default=["FixedDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
     ap.add_argument("--outdir", help="JSON 출력 폴더 (기본: 입력 파일과 같은 위치)")
     ap.add_argument("--enum-header", nargs="*", default=["D:\\febricula\\Febricula\\Source\\Febricula\\Public\\Dialogue\\DialogueDataTypes.h"],
                     help="EGameActionType / EGameConditionType이 정의된 .h 경로 (여러 개 가능)")

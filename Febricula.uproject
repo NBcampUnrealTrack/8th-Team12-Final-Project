@@ -67,14 +67,6 @@
 			]
 		},
 		{
-			"Name": "MetaHumanCoreTech",
-			"Enabled": true
-		},
-		{
-			"Name": "MetaHumanCharacter",
-			"Enabled": true
-		},
-		{
 			"Name": "MotionWarping",
 			"Enabled": true
 		},
@@ -102,6 +94,14 @@
 		{
 			"Name": "AlembicHairImporter",
 			"Enabled": true
+		},
+		{
+			"Name": "Bridge",
+			"Enabled": false
+		},
+		{
+			"Name": "MetaHumanSDK",
+			"Enabled": false
 		}
 	]
 }

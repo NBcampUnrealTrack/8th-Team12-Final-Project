@@ -25,6 +25,9 @@ public:
 	void FindRunnableActivities();
 
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
+	void PrintFixedActivities();
+	
+	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void RunActivity(FGameplayTag ActivityTag);
 
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
@@ -32,6 +35,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void GoHome();
+	
+	int32 GetRunnableLength();
+	
+	TArray<FGameplayTag> GetRunnableActivityTag() const;
+
 	
 	FGameplayTag GetNowScheduleTag() const;
 
@@ -50,6 +58,7 @@ protected:
 	void OnChangeSchedule(FGameplayTag ChangedSchedule);
 
 	void OnLevelLoaded(UWorld* LoadedWorld);
+	
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
@@ -63,6 +72,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activity | FixedEventAsset")
 	TObjectPtr<UDataTable> FixedEvents;
+	
+	UPROPERTY(EditdefaultsOnly, BlueprintReadOnly, Category = "Activity | FixedEventAsset")
+	TObjectPtr<UDataTable> FixedDialogues;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
 	int32 CurrentAP;
