@@ -3,6 +3,7 @@ Build/
 DerivedDataCache/
 Intermediate/
 Saved/
+.revvy/
 
 *.sln
 *.suo
@@ -31,3 +32,5 @@ Saved/
 
 Content/MaleLocomotionSet
 Content/TalkAnimPack
+
+
