@@ -2,6 +2,8 @@
 
 #include "Activity/ActivitySubsystem.h"
 #include "Activity/ActivitySetting.h"
+#include "Dialogue/DialogueDataTypes.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -12,7 +14,8 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	const auto* S = GetDefault<UActivitySetting>();
 
 	FixedEvents = S->FixedEventAsset.LoadSynchronous();
-
+	FixedDialogues = S->FixedDialogueAsset.LoadSynchronous();
+	
 	TArray<FActivityDefinition*> Rows;
 	FixedEvents->GetAllRows(TEXT("Fixed Event"), Rows);
 
@@ -79,8 +82,35 @@ void UActivitySubsystem::FindRunnableActivities()
 	}
 }
 
-FGameplayTag UActivitySubsystem::GetNowScheduleTag() const
+void UActivitySubsystem::PrintFixedActivities()
 {
+	TArray<FDialogueChoice> DialogueChoices;
+	for (TPair<FGameplayTag, FActivityDefinition> Activity : RunnableActivities)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Activity Tag: %s"), *FText::FromName(Activity.Key.GetTagName()).ToString());
+		UE_LOG(LogTemp, Warning, TEXT("Next Node Id: %s"), *Activity.Value.NodeId.ToString());
+
+		DialogueChoices.Add(FDialogueChoice(FText::FromName(Activity.Key.GetTagName()), TArray<FGameCondition>(), TArray<FGameAction>(), Activity.Value.NodeId));
+	}
+	
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		//DialogueSubsystem->TryStartEventForNpc(FName(""), nullptr);
+		FDialogueNodeRow Row = FDialogueNodeRow();
+		Row.Choices = DialogueChoices;
+		Row.Text = NSLOCTEXT("Dialogue", "Dialogue", "어떻게 할까...");
+		for (FDialogueChoice Choice : DialogueChoices)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Choice Name: %s"), *Choice.Text.ToString());
+		}
+		DialogueSubsystem->SetDataTables(FixedEvents, FixedDialogues);
+		DialogueSubsystem->ActivityDialoguePrint(Row);
+	}
+	
+}
+
+FGameplayTag UActivitySubsystem::GetNowScheduleTag() const
+{  
 	return NowSchedule;
 }
 
@@ -106,6 +136,18 @@ void UActivitySubsystem::OnChangeSchedule(FGameplayTag ChangedSchedule)
 void UActivitySubsystem::OnLevelLoaded(UWorld* LoadedWorld)
 {
 	FindRunnableActivities();
+}
+
+int32 UActivitySubsystem::GetRunnableLength()
+{
+	return RunnableActivities.Num();
+}
+
+TArray<FGameplayTag> UActivitySubsystem::GetRunnableActivityTag() const
+{
+	TArray<FGameplayTag> Tags;
+	RunnableActivities.GenerateKeyArray(Tags);
+	return Tags;
 }
 
 bool UActivitySubsystem::TryConsumeAP(int32 Cost)

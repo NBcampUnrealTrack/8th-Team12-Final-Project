@@ -1,0 +1,27 @@
+@label StudyLibrary1
+@FadeOut Black 3
+@wait .3
+
+@label StudyLibrary2
+@Interact Chair
+@cam Loc -835.8 565.5 101.4 Rot 0 -9.700671 -153.0 .1 180
+@Teleport Player CheonStudy 
+@PlayAnim Player SitMale 1
+@wait .3
+
+@label StudyLibrary3
+@FadeIn 1
+@wait 1
+
+@label StudyLibrary4
+자리에 앉아 열심히 자습했다.
+
+@FadeOut Black 3
+@wait .6
+@cam reset
+@label StudyLibrary5
+@StopAnim Player
+@FadeIn 3
+@wait .3
+
+@end

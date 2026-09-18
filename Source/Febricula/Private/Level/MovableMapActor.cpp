@@ -46,7 +46,11 @@ void AMovableMapActor::StartMove(AActor* Interactor)
 // Called every frame
 
 
-
+void AMovableMapActor::Interact_Implementation(AActor* Interactor)
+{
+	StartMove(Interactor);
+	//Super::Interact_Implementation(Interactor);
+}
 
 // Called when the game starts or when spawned
 void AMovableMapActor::BeginPlay()

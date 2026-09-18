@@ -123,13 +123,15 @@ public:
 	 
 	//지연 생성된 위젯을 위한 함수
 	UFUNCTION(BlueprintCallable, Category= "Dialogue | Dialogue Holder")
-	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine);
-	
+	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine, TArray<FDialogueChoiceView>& OutChoiceViews);
+
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void AddCharacterByName(FName Name, ACharacter* Character);
 	
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void RemoveCharacterByName(FName Name, ACharacter* Character);
+	
+	void ActivityDialoguePrint(const FDialogueNodeRow& Row);
 	
 	// ---- HUD가 구독할 델리게이트 ----
 
@@ -226,7 +228,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
 	FText HoldingDialogue;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
-	TArray<FDialogueChoice> HoldingChoices;
+	TArray<FDialogueChoiceView> HoldingChoices;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	bool bBlockPlayerInput;

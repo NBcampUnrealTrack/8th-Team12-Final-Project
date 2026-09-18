@@ -3,6 +3,7 @@ Build/
 DerivedDataCache/
 Intermediate/
 Saved/
+Plugins/Revvy
 .revvy/
 
 *.sln
@@ -33,4 +34,6 @@ Saved/
 Content/MaleLocomotionSet
 Content/TalkAnimPack
 
-
+# Python cache
+__pycache__/
+*.pyc

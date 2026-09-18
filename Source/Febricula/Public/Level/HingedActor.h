@@ -23,8 +23,6 @@ protected:
 	virtual void OpenActor(AActor* Interactor) override;
 	virtual void CloseActor(AActor* Interactor) override;
 	
-	virtual void Interact_Implementation(AActor* Interactor) override;
-	
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")
 	// bool bCanChangeLevel;
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor", meta = (AllowedClasses="/Script/Engine.World"))

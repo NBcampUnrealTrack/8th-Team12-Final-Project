@@ -18,12 +18,14 @@ class FEBRICULA_API AMovableMapActor : public AInteractableProp
 public:
 	// Sets default values for this actor's properties
 	AMovableMapActor();
+	virtual void StartMove(AActor* Interactor);
+
 
 protected:
-	
-	virtual void StartMove(AActor* Interactor);
 	virtual void OpenActor(AActor* Interactor){};
 	virtual void CloseActor(AActor* Interactor){};
+	
+	virtual void Interact_Implementation(AActor* Interactor) override;
 	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -50,7 +52,7 @@ protected:
 	TArray<USceneComponent*> Hinges;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	bool bNowMove;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	EMoveState NowState;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	float CurrentMove;

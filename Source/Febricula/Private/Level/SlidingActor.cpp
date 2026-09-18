@@ -25,28 +25,28 @@ void ASlidingActor::BeginPlay()
 void ASlidingActor::StartMove(AActor* Interactor)
 {
 	Super::StartMove(Interactor);
-	bNowMove = true;
-	GetWorldTimerManager().ClearTimer(MoveTimer);
-	if (NowState == EMoveState::OPENING)
-	{
-		CurrentMove = 0.f;
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &ASlidingActor::OpenActor, Interactor);
-
-		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
-		NowState = EMoveState::CLOSING;
-	}
-	else if (NowState == EMoveState::CLOSING)
-	{
-		if (CurrentMove == 0)
-		{
-			CurrentMove = MaxMovement;
-		}
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &ASlidingActor::CloseActor, Interactor);
-
-		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
-		NowState = EMoveState::OPENING;
-	}
-	bNowMove = true;
+	// bNowMove = true;
+	// GetWorldTimerManager().ClearTimer(MoveTimer);
+	// if (NowState == EMoveState::OPENING)
+	// {
+	// 	CurrentMove = 0.f;
+	// 	FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &ASlidingActor::OpenActor, Interactor);
+	//
+	// 	GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
+	// 	NowState = EMoveState::CLOSING;
+	// }
+	// else if (NowState == EMoveState::CLOSING)
+	// {
+	// 	if (CurrentMove == 0)
+	// 	{
+	// 		CurrentMove = MaxMovement;
+	// 	}
+	// 	FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &ASlidingActor::CloseActor, Interactor);
+	//
+	// 	GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
+	// 	NowState = EMoveState::OPENING;
+	// }
+	// bNowMove = true;
 
 }
 
@@ -57,10 +57,11 @@ void ASlidingActor::OpenActor(AActor* Interactor)
 
 	if (MaxMovement > CurrentMove)
 	{ 
+		UE_LOG(LogTemp, Warning, TEXT("Current Move: %f"), CurrentMove);
 		CurrentMove = FMath::Min(CurrentMove + MoveSpeed, MaxMovement);
 		for (int i = 0; i < Hinges.Num(); i++)
 		{
-			Hinges[i]->SetRelativeLocation(Hinges[i]->GetRelativeLocation() + Axis * CurrentMove);
+			Hinges[i]->SetRelativeLocation(MinMovement[i].GetLocation() + Axis * CurrentMove);
 			//Hinges[i]->AddRelativeRotation(FRotator(0, MoveSpeed, 0));
 		}
 	}
@@ -80,7 +81,7 @@ void ASlidingActor::CloseActor(AActor* Interactor)
 	CurrentMove = FMath::Max(CurrentMove - MoveSpeed, 0);
 	for (int i = 0; i < MinMovement.Num(); i++)
 	{
-		if (CurrentMove > 0)
+		if (CurrentMove >= 0)
 		{
 			Hinges[i]->SetRelativeLocation(MinMovement[i].GetLocation() + Axis * CurrentMove);
 			bEnd = false;
