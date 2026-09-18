@@ -172,6 +172,30 @@ public:
 	float SpawnIntervalJitter = 5.f;
 
 	/**
+	 *	레벨이 열리고 **첫 워크인**까지의 지연(초). `0` 이면 즉시 (예전 동작).
+	 *
+	 *	## 왜 생겼나 — `BeginPlay` 가 `TrySpawn()` 을 **바로** 불렀다
+	 *
+	 *	프리필로 앉아 있는 손님은 「원래 있던 사람」이라 자연스러운데, 워크인은
+	 *	**문이 열리는 순간 이미 걸어 들어오고 있었다.** 가게를 켜자마자 손님이
+	 *	들이닥치는 그림이 된다.
+	 *
+	 *	⚠ `SpawnInterval` 과 같게 두면 「첫 손님도 남들과 같은 리듬」이 된다.
+	 *	  개발 중에는 짧게 두는 편이 확인이 빠르다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (Units = "s", ClampMin = "0.0"))
+	float FirstSpawnDelay = 0.f;
+
+	/**
+	 *	위 지연을 `±` 만큼 흔든다 (초). `0` 이면 안 흔든다.
+	 *
+	 *	⚠ 지연보다 크게 주지 말 것 — 최소 0.05초로 잘린다 (`SpawnIntervalJitter`
+	 *	  와 같은 규칙).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn", meta = (Units = "s", ClampMin = "0.0"))
+	float FirstSpawnDelayJitter = 0.f;
+
+	/**
 	 *	한 번에 몇 명을 내보낼지 — **인원별 가중치**.
 	 *
 	 *	    [0] = 1명일 확률   [1] = 2명   [2] = 3명   ...

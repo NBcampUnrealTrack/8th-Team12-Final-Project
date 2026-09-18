@@ -3,11 +3,11 @@
 #include "BurgerHouseTags.h"
 #include "CustomerCharacter.h"
 #include "SlotPoint.h"
+#include "EngineUtils.h"
 #include "Components/StateTreeComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -55,13 +55,32 @@ namespace
 		return nullptr;
 	}
 
-	/** 한 명에게만 민다. 트리가 없으면 조용히 넘어간다 — 디버그 주문은 주인이 없다. */
+	/**
+	 *	한 명에게만 민다. 트리가 없으면 넘어간다 — 디버그 주문은 주인이 없다.
+	 *
+	 *	## ⚠⚠ **보낸 태그를 반드시 찍는다**
+	 *
+	 *	여기가 조용하면 진단이 막힌다. 실제로 한 번 당했다 — 트리의
+	 *	`RequiredEventTag` 가 개명 전 이름(`Burgeria.*`)으로 남아 있어서
+	 *	`BurgerHouse.Order.Ready` 를 아무리 보내도 **아무도 안 받았다.**
+	 *
+	 *	**전송 자체는 성공한다.** 에러도 경고도 없다. 증상은 「손님이 줄에서 안
+	 *	나간다」 하나뿐이라, 이 줄이 없으면 어느 태그가 오갔는지 알 길이 없다.
+	 *
+	 *	⚠ `Verbose` 다. 보려면 `Log LogBurgerHouse Verbose`.
+	 */
 	void PushEvent(AActor* To, const FGameplayTag& Tag)
 	{
-		if (UStateTreeComponent* Tree = FindTree(To))
+		UStateTreeComponent* Tree = FindTree(To);
+		if (!Tree)
 		{
-			Tree->SendStateTreeEvent(Tag);
+			UE_LOG(LogBurgerHouse, Verbose, TEXT("이벤트 %s — %s 에 트리가 없다"),
+				*Tag.ToString(), *GetNameSafe(To));
+			return;
 		}
+		UE_LOG(LogBurgerHouse, Verbose, TEXT("이벤트 %s -> %s"),
+			*Tag.ToString(), *GetNameSafe(To));
+		Tree->SendStateTreeEvent(Tag);
 	}
 }
 
@@ -345,13 +364,61 @@ int32 UStoreSubsystem::ResolvePartyTable(int32 PartyId, const TArray<ASlotPoint*
 		return P->TableId;			// 먼저 앉은 사람이 이미 정했다
 	}
 
+	// ## ⚠⚠ **남이 앉은 테이블은 후보에서 뺀다**
+	//
+	// 빈 자리만 세면 「프리필 손님이 이미 앉아 있는 테이블」이 자리가 남았다는
+	// 이유로 후보가 된다. 그러면 걸어 들어온 손님이 **모르는 사람 옆에 합석**한다.
+	//
+	// ⚠ 프리필은 `ClaimNearestSlot` 으로 자리를 잡아서 `ResolvePartyTable` 을
+	//   거치지 않는다. 그래서 여기서 걸러 주지 않으면 겹치는 것을 막을 곳이 없다.
+	//
+	// ⚠ 판정은 **좌석의 `ClaimedBy`** 로 한다. 빈 자리 목록만 봐서는 「비어
+	//   있다」만 알 뿐 「누가 옆에 앉아 있나」를 알 수 없다.
+	TSet<int32> TablesTakenByOthers;
+	for (TActorIterator<ASlotPoint> It(GetWorld()); It; ++It)
+	{
+		const ASlotPoint* S = *It;
+		if (!S || S->Kind != BurgerHouseSlot::Seat || S->GroupId < 0)
+		{
+			continue;
+		}
+		const AActor* By = S->ClaimedBy.Get();
+		if (!By)
+		{
+			continue;
+		}
+		// 같은 일행이면 괜찮다 — 오히려 그 테이블로 가야 한다.
+		const ACustomerCharacter* C = Cast<ACustomerCharacter>(By);
+		if (C && C->PartyId == PartyId)
+		{
+			continue;
+		}
+		TablesTakenByOthers.Add(S->GroupId);
+	}
+
 	// 테이블별로 빈 자리를 센다.
 	TMap<int32, int32> FreePerTable;
 	for (const ASlotPoint* S : FreeSeats)
 	{
-		if (S->GroupId >= 0)
+		if (S->GroupId >= 0 && !TablesTakenByOthers.Contains(S->GroupId))
 		{
 			++FreePerTable.FindOrAdd(S->GroupId);
+		}
+	}
+
+	// ⚠ 남이 다 차지해서 후보가 없으면 **겹치는 것을 허용한다.** 아예 못 앉는
+	//   것보다는 낫다 — 좌석 37개에 정원 8명이라 평소에는 안 걸린다.
+	if (FreePerTable.Num() == 0 && TablesTakenByOthers.Num() > 0)
+	{
+		UE_LOG(LogBurgerHouse, Log,
+			TEXT("일행 %d — 빈 테이블이 없다. 합석을 허용한다 (점유 테이블 %d개)"),
+			PartyId, TablesTakenByOthers.Num());
+		for (const ASlotPoint* S : FreeSeats)
+		{
+			if (S->GroupId >= 0)
+			{
+				++FreePerTable.FindOrAdd(S->GroupId);
+			}
 		}
 	}
 	if (FreePerTable.Num() == 0)

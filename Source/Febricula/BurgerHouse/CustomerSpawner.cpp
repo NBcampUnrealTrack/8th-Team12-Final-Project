@@ -32,7 +32,29 @@ void ACustomerSpawner::BeginPlay()
 		Prefill();
 	}
 
-	// 첫 회는 바로 돌리고, 이후는 `TrySpawn` 이 스스로 다음 주기를 흔들어 다시 건다.
+	// ⚠ 예전에는 여기서 `TrySpawn()` 을 **바로** 불렀다. 그러면 문이 열리는 순간
+	//    이미 워크인이 걸어 들어오고 있다. 프리필은 「원래 있던 사람」이라 즉시가
+	//    맞지만 워크인은 아니다 (`FirstSpawnDelay` 주석).
+	if (FirstSpawnDelay > 0.f)
+	{
+		float First = FirstSpawnDelay;
+		if (FirstSpawnDelayJitter > 0.f)
+		{
+			First += FMath::FRandRange(-FirstSpawnDelayJitter, FirstSpawnDelayJitter);
+		}
+		// ⚠ `ScheduleNext` 와 같은 하한. 0 이하면 타이머가 매 프레임 돈다.
+		First = FMath::Max(First, 0.05f);
+
+		if (UWorld* World = GetWorld())
+		{
+			UE_LOG(LogTemp, Log, TEXT("%s: 첫 워크인까지 %.1f초 기다린다"), *GetName(), First);
+			World->GetTimerManager().SetTimer(
+				SpawnTimer, this, &ACustomerSpawner::TrySpawn, First, /*bLoop=*/false);
+			return;
+		}
+	}
+
+	// 지연이 0 이면 예전처럼 바로. 이후는 `TrySpawn` 이 스스로 다음 주기를 흔들어 건다.
 	TrySpawn();
 }
 
