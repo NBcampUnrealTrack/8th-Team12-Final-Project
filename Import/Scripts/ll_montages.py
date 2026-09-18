@@ -33,8 +33,17 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-ANIM_DIR = '/Game/BurgerHouse/Anims/Mixamo/Anims'
-MTG_DIR = '/Game/BurgerHouse/Anims/Montages'
+# ⚠⚠ 2026-09-16: 손님이 **마네퀸**으로 바뀌면서 여기를 옮겼다 (§9-19).
+#
+# 예전 값은 Mixamo 였다 —
+#     ANIM_DIR = '/Game/BurgerHouse/Anims/Mixamo/Anims'
+#     MTG_DIR  = '/Game/BurgerHouse/Anims/Montages'
+#
+# ⚠ 몽타주는 **스켈레톤에 묶인다.** 메시를 바꾸면 몽타주를 그 스켈레톤 위에서
+#   **다시 만들어야** 한다 — 일괄 리타겟이 만들어 준 몽타주는 스켈레톤만 바뀌고
+#   **안에 물린 시퀀스는 옛것 그대로**였다 (실측). 그래서 여기서 다시 만든다.
+ANIM_DIR = '/Game/BurgerHouse/Anims/Manny'
+MTG_DIR = '/Game/BurgerHouse/Anims/Manny/Montages'
 BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
 
 # 액션 이름 -> [(애님, 가중치, 자를 길이(초). None 이면 원본 그대로)]
@@ -63,6 +72,14 @@ DEFAULT = 'DefaultSlot'
 UPPER = 'UpperBody'   # 지금은 안 쓴다. 서서 하는 몸짓을 앉은 손님에게 얹을
                       # 일이 생기면 그때 쓸 것 (AnimBP 의 상체 레이어 필요).
 
+# 로코모션 전용 슬롯 — `ll_loco_slot.py` 가 AnimGraph 에 끼워 넣은 것.
+#
+#     [Locomotion SM] → Slot 'LocoSlot' → LocoCache → … → Slot 'DefaultSlot' → Output
+#
+# ⚠ `DefaultSlot` 보다 **앞**이라 행동 몽타주(먹기 등)가 로코모션을 덮는다.
+#   그 순서가 뒤집히면 걷기가 먹는 동작을 지운다.
+LOCO = 'LocoSlot'
+
 ACTIONS = {
     # 서 있는 손님 — 문 앞·줄에서
     #
@@ -82,37 +99,85 @@ ACTIONS = {
     # ⚠ 긴 둘(`Talking_On_A_Cell_Phone` 37.2s · `Texting_While_Standing` 23.6s)은
     #   **뺐다.** 에셋은 남아 있으니 몽타주 구간을 5~8초로 자르면 되살릴 것.
     #
+    # ⚠ `Telling_A_Secret` 은 **뺐다** — 몸을 옆으로 기울여 귓속말하는 동작이라
+    #   줄에 선 손님이 엉뚱한 데를 보는 것처럼 보였다. 에셋도 지웠다.
+    #
     # ⚠ `Idle` 은 첫·끝 프레임 차이가 **0.0** 인 진짜 순환 동작이라 줄에서
     #   루프로 돌 때 이음매가 없다. 그래서 가장 큰 가중치를 준다.
+    #
+    # ## 서서 폰 보기를 **반반**으로
+    #
+    # `Texting_While_Standing` 을 나머지 **전부와 같은 가중치**로 준다 —
+    # 1.0 + 0.3 = 1.3 이므로 1.3 을 주면 정확히 50% 다.
+    #
+    # ⚠ 한때 이것을 **뺐던** 이유는 23.6초라 손님이 문 앞에 오래 서 있어서였다.
+    #   그때는 `Idle_Look` 이 `Enter` 에서도 돌았다. 지금은 `Wait` 에서만 돌고,
+    #   그 상태는 `Order.Ready` **이벤트가 빼내므로** 길이가 체류 시간을 안 정한다.
+    #
+    # ⚠ `Idle_Look` 을 쓰는 곳은 `W_Idle`·`PW_Idle` 둘뿐이다 (둘 다 주문 뒤 대기).
+    #   `DecorationActions` 의 `Ordering`/`Waiting` 도 이 이름을 쓰지만 지금
+    #   `PrefillPlacements` 는 전부 `Eating` 이라 안 돈다.
     'Idle_Look': [
         ('Idle', 1.0, 'AM_Idle', DEFAULT),                          # 8.33s
-        ('Telling_A_Secret', 0.6, 'AM_Telling_A_Secret', DEFAULT),  # 10.90s
         ('Texting', 0.3, 'AM_Texting', DEFAULT),                    # 18.53s
+        ('Texting_While_Standing', 1.3,
+         'AM_Texting_While_Standing', DEFAULT),                     # 23.6s · 여기서 50%
+        # ⚠ 이 변형이 돌 때만 손에 폰이 보인다 (`PHONE_MONTAGES`).
+        ('Talking_On_A_Cell_Phone', 0.8,
+         'AM_Talking_On_A_Cell_Phone', DEFAULT),                    # 37.2s
     ],
     'Interact_Reach': [
         ('Reaching_Out', 1.0, 'AM_Reaching_Out', DEFAULT),
     ],
 
-    # 앉은 **장식 손님**이 끝없이 돌릴 몸짓 — 먹는 것 4종.
+    # 앉은 **장식 손님**(= 프리필)이 끝없이 돌릴 몸짓 — **버거집 손님답게.**
     #
-    # ## ⚠ 한 사람은 **하나만** 돌린다
+    # ## 어떤 그림을 노리나
     #
-    # 여기 넷을 넣어 두지만 손님 하나는 그중 **한 가지만** 평생 반복한다
-    # (`ACustomerCharacter::bDecorationSingleAction`). 앉아서 밥 먹는 사람이
-    # 「버거 → 폰 → 감자튀김」으로 계속 바꾸지는 않는다. 다양성은 한 사람
-    # 안에서가 아니라 **손님들 사이에서** 나와야 한다.
+    # 버거집에 앉아 있는 사람들이다. 대다수는 **먹고 있어야** 하고, 일부는
+    # 일행과 얘기하고, 한둘은 그냥 앉아 있다. 가중치 합 4.9 중 먹는 것이
+    # 3.6 (73%) 이라 홀을 보면 「밥 먹는 가게」로 읽힌다.
     #
-    # 어느 것을 받을지는 **좌석 번호**에서 결정적으로 뽑는다 — 같은 의자는
-    # 늘 같은 몸짓, 옆자리는 다른 몸짓 (`DecorationSeed` 주석).
+    # ⚠ 한 사람은 **하나만** 평생 반복한다 (`bDecorationSingleAction`). 다양성은
+    #   한 사람 안이 아니라 **손님들 사이에서** 나온다 — 어느 것을 받을지는
+    #   좌석 번호 해시로 결정적으로 뽑으므로 같은 의자는 늘 같은 몸짓이고
+    #   옆자리와는 겹치지 않는다 (`DecorationSeed` 로 다시 섞는다).
     #
-    # ⚠ 폰 만지는 몸짓(`AM_Sit_Texting`·`AM_Sit_Talking_On_A_Cell_Phone`)은
-    #   여기서 뺐다. 그 둘은 **서 있는 동작**이라 전신으로 틀면 앉은 손님이
-    #   일어선다. 에셋은 남겨 둔다 — 되살리려면 AnimBP 의 상체 레이어가 필요하다.
+    # ## ⚠⚠ 후보를 고르는 기준은 **골반 높이**다 — 이름이 아니다
+    #
+    # 이름에 `Sitting` 이 들어가도 실제로는 서 있는 동작인 것이 섞여 있다.
+    # `ll_sit_candidates.py` 로 전부 재서 골랐다 (기준: 먹는 애님 57.4~57.6).
+    #
+    # | 후보 | 골반 Z | 판정 |
+    # |---|---|---|
+    # | `Eating_*` 4종 | 57.4~57.6 | 기준 |
+    # | `Sitting_Talking` | 57.5 | **쓴다** — 앉아서 대화, 44s 라 변화가 풍부 |
+    # | `SitIdle_Male` | 57.9 | **쓴다** — 조용히 앉아 있음 |
+    # | `Sitting_Thumbs_Up` | 76.2 | 뺐다 — 19cm. 앉은 동작이 아니다 |
+    # | `Sitting_Yell` | 61.7 | 뺐다 — 4cm 뜨고 동작도 과하다 |
+    # | `Sitting`·`Texting`·`Idle` | 101~103 | **서 있는 동작** |
+    #
+    # ⚠⚠ 「섬」인 것을 전신으로 틀면 **앉은 손님이 일어선다** (§7). 되살리려면
+    #   AnimBP 의 상체 레이어가 필요하다 — 슬롯만 바꿔서는 안 된다.
+    #
+    # ⚠ 높이가 ±2cm 를 넘으면 의자에 뜨거나 파묻힌다. `ll_sit_verify.py` 가
+    #   이 풀 전체를 재서 벗어나면 실패로 잡는다.
+    #
+    # ⚠⚠ **이 항목은 프리필 전용이다.** `ST_Customer` 는 `Sit_Idle` 을 쓰지
+    #   않는다 (트리가 쓰는 것은 `Sit_Eat` · `Sit-Eat`) — `ll_st_dump.py` 로
+    #   확인했다. 걸어 들어온 손님 쪽은 아래 `Sit_Eat` 이 그대로 맡는다.
     'Sit_Idle': [
-        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', DEFAULT),
-        ('Eating_Fries', 1.0, 'AM_Eating_Fries', DEFAULT),
-        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', DEFAULT),
-        ('Eating_Frantically', 0.6, 'AM_Eating_Frantically', DEFAULT),
+        # 먹는 중 — 가게의 본체
+        ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', DEFAULT),        # 7.83s
+        ('Eating_Fries', 1.0, 'AM_Eating_Fries', DEFAULT),              # 9.20s
+        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', DEFAULT),  # 8.03s
+        # ⚠ 과장된 동작이라 낮게. 흔해지면 홀이 소란스러워 보인다.
+        ('Eating_Frantically', 0.6, 'AM_Eating_Frantically', DEFAULT),  # 6.87s
+
+        # 일행과 대화 — `PrefillPlacements` 가 3인석·2인석 두 테이블이라 말이 된다
+        ('Sitting_Talking', 0.8, 'AM_Sitting_Talking', DEFAULT),        # 44.07s
+        # 그냥 앉아 있음 — 다 먹고 쉬는 사람
+        ('SitIdle_Male', 0.5, 'AM_SitIdle_Male', DEFAULT),              # 2.70s
     ],
 
     # 걸어 들어온 손님이 앉아서 먹는 것 — 트리의 `Sit_Eat` 이 쓴다.
@@ -145,6 +210,65 @@ ACTIONS['Sit-Eat'] = ACTIONS['Sit_Eat']
 ACTIONS['Interaction_Reach'] = ACTIONS['Interact_Reach']
 
 
+# ---- 로코모션 (2단계) ----
+#
+# 상태 기계가 재생하던 세 시퀀스를 **같은 에셋 그대로** 몽타주로 감싼 것이다.
+# 슬롯이 `LocoSlot` 이라 행동 몽타주와 싸우지 않는다.
+#
+# ## ⚠⚠ 무한 루프는 **에셋이 아니라 런타임**에서 건다
+#
+# 몽타주는 기본이 1회 재생이다. 처음에는 세그먼트의 반복 횟수를 0 으로 두려
+# 했는데 — `FAnimSegment` 의 그 값은 `looping_count` 라는 이름으로 노출돼 있고
+# (`loop_count` 가 아니다), **0 은 무한이 아니라 길이 0** 이다. 그대로 두면
+# 몽타주 길이가 0 이 되어 아무것도 안 나온다.
+#
+# → 재생할 때 `Montage_SetNextSection(섹션, 같은 섹션)` 으로 자기 자신을 가리키게
+#   한다. 끊김 없이 영원히 돈다. 에셋은 손댈 것이 없고, 장식 루프처럼 타이머로
+#   다시 걸 필요도 없다 (걷기가 1.067초라 분당 83회를 다시 걸어야 했을 것이다).
+#
+# ⚠ 섹션 이름은 팩토리가 만드는 기본값이다. 3단계 C++ 가 `GetSectionName(0)` 으로
+#   읽어 쓴다 — 이름을 박아 넣지 말 것.
+# ## 손에 소품을 들리는 몽타주
+#
+# `FCustomerActionVariant::bShowPhone` 을 켠다. **몽타주가 도는 동안만** 보인다 —
+# 행동이 끝났는지로 판단하면 대기 상태에서 폰이 빈손에 떠 있게 된다.
+#
+# ⚠ 실측: `Talking_On_A_Cell_Phone` 에서 귀로 가는 것은 **오른손**이다
+#   (`hand_r` 가 머리까지 26.5cm · `hand_l` 은 40.5cm).
+PHONE_MONTAGES = {'AM_Talking_On_A_Cell_Phone'}
+
+ACTIONS['Loco_Idle'] = [('Idle', 1.0, 'AM_Loco_Idle', LOCO)]            # 8.33s
+ACTIONS['Loco_Walk'] = [('Walk_Fwd_Manny', 1.0, 'AM_Loco_Walk', LOCO)]  # 1.067s
+# ⚠⚠ 2026-09-17: `Sitting__1_` 을 지우면서 **먹는 애님**으로 옮겼다 (§9-35).
+#
+# ## 왜 먹는 애님인가 — 골반 높이가 **맞아야** 한다
+#
+# `Loco_Sit` 은 `LocoSlot` 에 깔리는 **기준 자세**다. 그 위에 `DefaultSlot` 의
+# 행동 몽타주(먹기)가 얹힌다. 먹기가 끝나 슬롯이 비면 이 자세가 드러난다.
+#
+# 골반 높이를 재 보면 —
+#
+# ```
+# Eating_a_Burger    골반 53.3 · 발 5.7      <- 행동 몽타주들
+# Eating_Fries       골반 52.8 · 발 5.6
+# Eating_a_Drumstick 골반 52.8 · 발 5.7
+# Eating_Frantically 골반 52.8 · 발 5.7
+# SitIdle_Male       골반 52.8 · 발 2.2      골반은 맞고 발이 3.5cm 낮다
+# Sitting__1_        골반 58.5 · 발 12.6     <- **5.7cm 높다** (지운 것)
+# ```
+#
+# ⚠⚠ `Sitting__1_` 은 먹는 애님보다 골반이 5.7cm 높았다. 즉 **한 입이 끝날
+#   때마다 손님이 5.7cm 튀어 올랐다.** 기준 자세를 행동과 같은 계열로 두면
+#   그 문제가 통째로 사라진다.
+#
+# ⚠ `Sitting` 은 이름과 달리 골반이 57.5~94.5 로 **앉았다 일어나는** 동작이다.
+#   이름으로 고르면 안 된다.
+ACTIONS['Loco_Sit'] = [('Eating_a_Burger', 1.0, 'AM_Loco_Sit', LOCO)]  # 7.83s
+
+ACTIONS['Loco_CarryWalk'] = [('Carrying', 1.0, 'AM_Loco_CarryWalk', LOCO)]  # 10.0s
+ACTIONS['Loco_CarryIdle'] = [('Idle', 1.0, 'AM_Loco_CarryIdle', LOCO)]      # 8.33s
+
+
 def set_slot(m, slot):
     """몽타주 슬롯을 바꾼다.
 
@@ -173,13 +297,28 @@ def set_slot(m, slot):
 # ⚠ 너무 길면 두 자세가 오래 섞여 흐물거린다. 0.25~0.4 안에서 조정할 것.
 BLEND = 0.35
 
+# ⚠⚠ **로코모션은 0.35 가 아니라 0.20 이다.**
+#
+# 0.35 는 장식 몸짓의 **루프 이음매를 덮는** 값이다. 로코모션은 목적이 다르다 —
+# 상태 기계가 쓰던 **전이 블렌드 0.200s** 를 그대로 재현해야 한다
+# (`ll_abp_structure.py` 실측: Idle↔Walk·Idle↔Sit 전부 0.200).
+#
+# 여기가 어긋나면 걷다 서는 순간의 느낌이 지금과 달라진다 — 숫자로는 안 잡히고
+# 눈으로만 보인다.
+BLEND_BY_SLOT = {
+    'DefaultSlot': BLEND,
+    'UpperBody': BLEND,
+    'LocoSlot': 0.20,
+}
 
-def set_blend(m):
+
+def set_blend(m, slot=None):
     """블렌드 시간을 맞춘다. ⚠ 배열이 아니라 구조체라 되넣을 필요는 없지만,
     `get_editor_property` 가 **복사본**을 주므로 고친 뒤 다시 넣어야 한다."""
+    t = BLEND_BY_SLOT.get(slot, BLEND)
     for prop in ('blend_in', 'blend_out'):
         b = m.get_editor_property(prop)
-        b.set_editor_property('blend_time', BLEND)
+        b.set_editor_property('blend_time', t)
         m.set_editor_property(prop, b)
 
 
@@ -191,6 +330,26 @@ def make_montage(seq_name, mtg_name, slot):
         return None
 
     path = '%s/%s' % (MTG_DIR, mtg_name)
+
+    # ## ⚠⚠ 소스 시퀀스가 **바뀌었으면 다시 만든다**
+    #
+    # 예전에는 「있으면 그대로 두고 슬롯·블렌드만 맞춘다」였다. 그래서 위
+    # `ACTIONS` 의 시퀀스를 바꿔도 몽타주는 **옛 시퀀스를 그대로 물고** 있었고,
+    # 로그에는 옛 길이가 찍혔다 — `Loco_Sit` 을 `Sitting__1_`(5.93s) 에서
+    # `SitIdle_Male`(2.70s) 로 옮길 때 실제로 그랬다.
+    #
+    # ⚠ 길이로 비교하면 안 된다 (다른 시퀀스가 같은 길이일 수 있다). **의존성**에
+    #   그 시퀀스가 들어 있는지로 본다.
+    if EAL.does_asset_exist(path):
+        AR = unreal.AssetRegistryHelpers.get_asset_registry()
+        deps = AR.get_dependencies(
+            unreal.Name(path),
+            unreal.AssetRegistryDependencyOptions(include_hard_package_references=True)) or []
+        want = '%s/%s' % (ANIM_DIR, seq_name)
+        if want not in [str(d) for d in deps]:
+            L('  %s — 소스가 바뀌었다. 다시 만든다 (-> %s)' % (mtg_name, seq_name))
+            EAL.delete_asset(path)
+
     if EAL.does_asset_exist(path):
         m = EAL.load_asset(path)
     else:
@@ -204,7 +363,28 @@ def make_montage(seq_name, mtg_name, slot):
             return None
 
     set_slot(m, slot)
-    set_blend(m)
+    set_blend(m, slot)
+
+    # ## ⚠⚠ 정말 그 시퀀스를 물었는지 **되읽어** 확인한다
+    #
+    # 같은 프로세스에서 `delete_asset` 은 **이미 로드된 에셋을 못 지운다** —
+    # `True` 를 돌려주고도 `does_asset_exist` 가 계속 참이라, 위에서 옛 몽타주를
+    # 그대로 다시 불러온다. 로그에는 옛 길이가 찍히는데 아무도 안 본다.
+    #
+    # → 그때는 **에디터를 껐다 켜고(= 새 프로세스로) 다시 돌려야** 한다.
+    AR = unreal.AssetRegistryHelpers.get_asset_registry()
+    deps = [str(d) for d in (AR.get_dependencies(
+        unreal.Name(path),
+        unreal.AssetRegistryDependencyOptions(include_hard_package_references=True)) or [])]
+    want = '%s/%s' % (ANIM_DIR, seq_name)
+    # ⚠ 방금 만든 에셋은 **의존성 색인이 아직 비어 있다.** 비었으면 길이로 본다.
+    if deps and want not in deps:
+        E('  ⚠⚠ %s 가 %s 를 안 물었다 — 물고 있는 것: %s'
+          % (mtg_name, seq_name, [d.split('/')[-1] for d in deps if '/Anims/' in d]))
+        E('     같은 프로세스에서는 못 고친다. **새 프로세스로 다시 돌릴 것.**')
+    elif abs(m.get_play_length() - seq.get_play_length()) > 0.05:
+        E('  ⚠⚠ %s 길이 %.2fs 가 %s(%.2fs) 와 다르다 — 옛 소스를 물고 있다'
+          % (mtg_name, m.get_play_length(), seq_name, seq.get_play_length()))
     return m
 
 
@@ -244,6 +424,12 @@ def main():
             v = unreal.CustomerActionVariant()
             v.set_editor_property('montage', m)
             v.set_editor_property('weight', w)
+            # ⚠ 이름으로 켠다 — 몽타주 에셋 자체는 소품을 모른다.
+            # ⚠⚠ 파이썬은 bool `UPROPERTY` 의 앞 `b` 를 **뗀다** — `bShowPhone`
+            #    은 `show_phone` 이다. `b_show_phone` 으로 쓰면 예외가 난다.
+            #    `try/except` 로 감싸면 그 예외가 **조용히 삼켜져** 플래그가
+            #    영원히 꺼진 채로 남는다 — 실제로 한 번 그랬다. 감싸지 말 것.
+            v.set_editor_property('show_phone', m.get_name() in PHONE_MONTAGES)
             variants.append(v)
         ca = unreal.CustomerAction()
         ca.set_editor_property('variants', variants)
@@ -251,9 +437,35 @@ def main():
 
     cdo.set_editor_property('actions', actions)
 
+    # ---- 저장 ----
+    #
+    # ## ⚠⚠ **`compile_blueprint` 뒤에는 저장이 안 된다** — 컴파일보다 먼저 쓴다
+    #
+    # 예전에는 `compile_blueprint()` 다음에 `save_asset()` 을 불렀다. 그런데
+    # 컴파일을 거치면 **모든 저장 경로가 `False` 를 돌려주고 파일이 안 써진다.**
+    #
+    #     compile 뒤:  save_asset False · save_packages False · save_loaded_asset False
+    #     compile 없이: 전부 True (실측)
+    #
+    # ⚠⚠ 그런데 **같은 프로세스의 되읽기는 통과한다.** 메모리의 CDO 는 제대로
+    #   바뀌어 있기 때문이다. 그래서 로그만 보면 완전히 성공한 것처럼 보인다.
+    #   실제로 한 번 당했다 — 몽타주 6개는 새로 써졌는데 `BP_Customer.uasset`
+    #   만 13분 전 실행 그대로였고, 파일 수정 시각을 보고서야 알았다.
+    #
+    # `Actions` 는 CDO 의 기본값이라 **컴파일 없이 저장해도 반영된다.** 컴파일은
+    # 그 뒤에 해서 에디터에 올라와 있는 인스턴스만 갱신한다.
     bp = EAL.load_asset(BP_PATH)
+    pkg = bp.get_outermost()
+
+    ok = unreal.EditorLoadingAndSavingUtils.save_packages([pkg], only_dirty=False)
+    L('')
+    L('  저장(컴파일 전) save_packages -> %s' % ok)
+    if not ok:
+        E('  ⚠⚠ BP_Customer 가 **디스크에 안 써졌다.** 아래 되읽기는 메모리를')
+        E('     보는 것이라 통과해도 소용없다 — 새 프로세스로 검산할 것.')
+
+    # ⚠ 컴파일은 **저장 뒤에.** 여기서 실패해도 디스크에는 이미 값이 들어갔다.
     unreal.BlueprintEditorLibrary.compile_blueprint(bp)
-    EAL.save_asset(BP_PATH, only_if_is_dirty=False)
 
     # ---- 되읽기 ----
     L('')

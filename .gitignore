@@ -35,3 +35,8 @@ Content/TalkAnimPack
 # Python cache
 __pycache__/
 *.pyc
+
+# 임포트 원본 바이너리 — 재임포트용 소스, 팀 LFS 에 올리지 않는다
+# (임포트 절차와 파라미터는 Import/Scripts, Import/*.json 에 기록돼 있다)
+Import/FBX/
+Import/Textures/

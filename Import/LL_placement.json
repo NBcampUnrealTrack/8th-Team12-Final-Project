@@ -9,10 +9,10 @@
   "front_axis": "확정 (2026-08-28) — 블렌더 −Y = UE +Y. UE 위치 (x, −y, z)×100 / 회전 Roll +rx, Pitch −ry, Yaw −rz. 변환은 ll_place.py 의 AXIS 한 곳에서만 한다"
  },
  "summary": {
-  "objects": 623,
+  "objects": 627,
   "instanced_objects": 467,
   "shared_meshes": 24,
-  "single_objects": 156
+  "single_objects": 160
  },
  "assets": {
   "Base_Unit": {
@@ -33,11 +33,10 @@
    "count": 30
   },
   "Burger": {
-   "verts": 20,
-   "polys": 15,
+   "verts": 2000,
+   "polys": 4000,
    "slots": [
-    "M_BurgerWrap",
-    "M_Acrylic_Red"
+    "M_BurgerBox"
    ],
    "count": 20
   },
@@ -13690,14 +13689,14 @@
   {
    "name": "Fire_Body",
    "loc": [
-    0.0,
-    0.0,
+    1.28748,
+    12.59178,
     0.0
    ],
    "rot_deg": [
     0.0,
-    0.0,
-    0.0
+    -0.0,
+    180.0
    ],
    "scale": [
     1.0,
@@ -13716,14 +13715,14 @@
   {
    "name": "Fire_Case",
    "loc": [
-    0.0,
-    0.0,
+    1.28748,
+    12.59178,
     0.0
    ],
    "rot_deg": [
     0.0,
-    0.0,
-    0.0
+    -0.0,
+    180.0
    ],
    "scale": [
     1.0,
@@ -13742,14 +13741,14 @@
   {
    "name": "Fire_Glass",
    "loc": [
-    0.0,
-    0.0,
+    1.28748,
+    12.59178,
     0.0
    ],
    "rot_deg": [
     0.0,
-    0.0,
-    0.0
+    -0.0,
+    180.0
    ],
    "scale": [
     1.0,
@@ -13768,14 +13767,14 @@
   {
    "name": "Fire_Grip",
    "loc": [
-    0.0,
-    0.0,
+    1.28748,
+    12.59178,
     0.0
    ],
    "rot_deg": [
     0.0,
-    0.0,
-    0.0
+    -0.0,
+    180.0
    ],
    "scale": [
     1.0,
@@ -13794,14 +13793,14 @@
   {
    "name": "Fire_Hose",
    "loc": [
-    0.0,
-    0.0,
+    1.28748,
+    12.59178,
     0.0
    ],
    "rot_deg": [
     0.0,
-    0.0,
-    0.0
+    -0.0,
+    180.0
    ],
    "scale": [
     1.0,
@@ -13820,14 +13819,14 @@
   {
    "name": "Fire_Pin",
    "loc": [
-    0.0,
-    0.0,
+    1.28748,
+    12.59178,
     0.0
    ],
    "rot_deg": [
     0.0,
-    0.0,
-    0.0
+    -0.0,
+    180.0
    ],
    "scale": [
     1.0,
@@ -13867,6 +13866,110 @@
    ],
    "collections": [
     "Scene Collection"
+   ]
+  },
+  {
+   "name": "Food_Coke",
+   "loc": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot_deg": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "mesh": "Food_Coke",
+   "verts": 234,
+   "slots": [
+    "M_Fries"
+   ],
+   "collections": [
+    "TABLE"
+   ]
+  },
+  {
+   "name": "Food_Fries",
+   "loc": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot_deg": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "mesh": "Food_Fries",
+   "verts": 2214,
+   "slots": [
+    "M_Fries"
+   ],
+   "collections": [
+    "TABLE"
+   ]
+  },
+  {
+   "name": "Food_FriesLoose",
+   "loc": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot_deg": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "mesh": "Food_FriesLoose",
+   "verts": 212,
+   "slots": [
+    "M_Fries"
+   ],
+   "collections": [
+    "TABLE"
+   ]
+  },
+  {
+   "name": "Food_Ketchup",
+   "loc": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rot_deg": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "mesh": "Food_Ketchup",
+   "verts": 162,
+   "slots": [
+    "M_Fries"
+   ],
+   "collections": [
+    "TABLE"
    ]
   },
   {
