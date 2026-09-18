@@ -9,6 +9,7 @@
 #include "EngineUtils.h"
 #include "FebriculaCharacter.h"
 #include "Activity/ActivitySetting.h"
+#include "Activity/ActivitySubsystem.h"
 #include "Animation/CharacterAnimationComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Dialogue/NpcCrowdManager.h"
@@ -29,6 +30,28 @@
 TStatId UDialogueSubsystem::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UDialogueSubsystem, STATGROUP_Tickables);
+}
+
+void UDialogueSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		return;
+	}
+
+	UGameInstance* GI = World->GetGameInstance();
+	if (!GI)
+	{
+		return;
+	}
+
+	if (UActivitySubsystem* ActivitySubsystem = GI->GetSubsystem<UActivitySubsystem>())
+	{
+		ActivitySubsystem->BindDialogue();
+	}
 }
 
 void UDialogueSubsystem::Tick(float DeltaTime)
@@ -589,6 +612,7 @@ void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices
 		// 조건 미달이면 목록엔 보이되 못 고르게 한다 (매력/담력 부족 선택지 노출용)
 		View.bEnabled = Progress ? Progress->EvaluateConditions(Choice.Conditions) : true;
 		UE_LOG(LogTemp, Warning, TEXT("View Name: %s"), *View.Text.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("View: %s, Enabled=%d"), *View.Text.ToString(), View.bEnabled);
 		Views.Add(View);
 	}
 	for (FDialogueChoiceView Choice : Views)
@@ -815,7 +839,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		if (Progress) { Progress->GrantTopic(Action.Key); }
 		break;
 
-	// ---- 시간 진행 ----
+		// ---- 시간 진행 ----
 
 	case EGameActionType::TimeAdvanceDay:
 	case EGameActionType::TimeAdvanceSchedule:
@@ -853,7 +877,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		}
 		break;
 		
-	// ---- AI 연동 ----
+		// ---- AI 연동 ----
 
 	case EGameActionType::NpcSetAIState:
 		if (const ABaseNpcCharacter* Npc = FindNpcById(Action.Key))
@@ -958,7 +982,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		}
 		break;
 		
-	// ---- 애니메이션 ----
+		// ---- 애니메이션 ----
 
 	case EGameActionType::PlayAnim:
 		{
@@ -1175,8 +1199,25 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 					}
 				}
 			}
+			break;
 		}
-	case EGameActionType::Interact:	
+	case EGameActionType::Interact:
+		{
+			TArray<AActor*> Founds;
+			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
+			if (Founds.IsEmpty()) break;
+			if (AMovableMapActor* MapActor = Cast<AMovableMapActor>(Founds[0]))
+			{
+				if (!Action.Key2.IsNone())
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Interact Instant: %s : %d"), *Action.Key2.ToString(), Action.Key2.ToString().ToBool())
+					MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, Action.Key2.ToString().ToBool());
+					break;
+				}
+				MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, false);
+			}
+			break;
+		}
 	case EGameActionType::UnInteract:
 		{
 			TArray<AActor*> Founds;
@@ -1184,9 +1225,14 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			if (Founds.IsEmpty()) break;
 			if (AMovableMapActor* MapActor = Cast<AMovableMapActor>(Founds[0]))
 			{
-				MapActor->StartMove(Founds[0]);
+				if (!Action.Key2.IsNone())
+				{
+					MapActor->StartMove(Founds[0], Action.Key2.ToString().ToBool());
+					break;
+				}
+				MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, false);
 			}
-			
+			break;
 		}
 	default:
 		break;

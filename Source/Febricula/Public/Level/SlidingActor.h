@@ -14,14 +14,13 @@ class FEBRICULA_API ASlidingActor : public AMovableMapActor
 public:
 	// Sets default values for this actor's properties
 	ASlidingActor();	
-	virtual void StartMove(AActor* Interactor) override;
 
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	
-	virtual void OpenActor(AActor* Interactor) override;
-	virtual void CloseActor(AActor* Interactor) override;
+	virtual void OpenActor(AActor* Interactor, bool bInstant) override;
+	virtual void CloseActor(AActor* Interactor, bool bInstant) override;
 public:
 };

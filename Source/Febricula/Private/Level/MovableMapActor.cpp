@@ -16,14 +16,15 @@ AMovableMapActor::AMovableMapActor()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 }
 
-void AMovableMapActor::StartMove(AActor* Interactor)
+void AMovableMapActor::StartMove(AActor* Interactor, bool bInstant)
 {
+	UE_LOG(LogTemp, Warning, TEXT("AMovableMapActor::StartMove() %d"), bInstant);
 	bNowMove = true;
 	GetWorldTimerManager().ClearTimer(MoveTimer);
 	if (NowState == EMoveState::OPENING)
 	{
 		CurrentMove = 0.f;
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::OpenActor, Interactor);
+		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::OpenActor, Interactor, bInstant);
 
 		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
 		NowState = EMoveState::CLOSING;
@@ -34,7 +35,7 @@ void AMovableMapActor::StartMove(AActor* Interactor)
 		{
 			CurrentMove = MaxMovement;
 		}
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::CloseActor, Interactor);
+		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::CloseActor, Interactor, bInstant);
 
 		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
 		NowState = EMoveState::OPENING;
@@ -43,11 +44,28 @@ void AMovableMapActor::StartMove(AActor* Interactor)
 
 }
 
+void AMovableMapActor::OpenActor(AActor* Interactor, bool bInstant)
+{
+	bInteracted = true;
+}
+
+void AMovableMapActor::CloseActor(AActor* Interactor, bool bInstant)
+{
+	bInteracted = false;
+}
+
+void AMovableMapActor::StartMoveWrapper(AActor* Interactor, EMoveState MoveState, bool bInstant)
+{
+	NowState = MoveState;
+	StartMove(Interactor, bInstant);
+}
+
 // Called every frame
 
 
 void AMovableMapActor::Interact_Implementation(AActor* Interactor)
 {
+	Super::Interact_Implementation(Interactor);
 	StartMove(Interactor);
 	//Super::Interact_Implementation(Interactor);
 }

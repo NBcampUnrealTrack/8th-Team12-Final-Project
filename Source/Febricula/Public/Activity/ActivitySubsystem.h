@@ -21,6 +21,11 @@ class FEBRICULA_API UActivitySubsystem : public UGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
+	UFUNCTION()
+	void HandleDialogueFinished();
+	
+	virtual void BindDialogue();
+	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void FindRunnableActivities();
 

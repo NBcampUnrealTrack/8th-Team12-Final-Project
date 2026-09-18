@@ -44,7 +44,7 @@
       {
         "Type": "Interact",
         "Key": "Chair",
-        "Key2": "None",
+        "Key2": "true",
         "Value": 0
       },
       {

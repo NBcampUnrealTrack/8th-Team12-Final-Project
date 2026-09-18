@@ -42,6 +42,21 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	MaxAP = 6;
 }
 
+void UActivitySubsystem::HandleDialogueFinished()
+{
+	GetWorld()->GetTimerManager().SetTimerForNextTick(
+	this, &UActivitySubsystem::PrintFixedActivities);
+
+}
+
+void UActivitySubsystem::BindDialogue()
+{
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		DialogueSubsystem->OnDialogueFinished.AddDynamic(this, &UActivitySubsystem::HandleDialogueFinished);
+	}
+}
+ 
 void UActivitySubsystem::FindRunnableActivities()
 {
 	const UWorld* World = GetWorld();

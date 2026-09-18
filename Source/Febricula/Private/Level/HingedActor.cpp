@@ -23,14 +23,20 @@ void AHingedActor::BeginPlay()
 	}
 }
 
-void AHingedActor::OpenActor(AActor* Interactor)
+void AHingedActor::OpenActor(AActor* Interactor, bool bInstant)
 {
-	//Super::OpenActor(Interactor);
+	Super::OpenActor(Interactor);
 	const FVector Axis = AxisComponent->GetRelativeRotation().Vector().GetSafeNormal();	
-
 	if (MaxMovement > CurrentMove)
 	{ 
-		CurrentMove = FMath::Min(CurrentMove + MoveSpeed, MaxMovement);
+		if (!bInstant)
+		{
+			CurrentMove = FMath::Min(CurrentMove + MoveSpeed, MaxMovement);
+		}
+		else
+		{
+			CurrentMove = MaxMovement;
+		}
 		const FQuat Delta(Axis, FMath::DegreesToRadians(CurrentMove));
 		for (int i = 0; i < Hinges.Num(); i++)
 		{
@@ -42,19 +48,28 @@ void AHingedActor::OpenActor(AActor* Interactor)
 	{
 		bNowMove = false;
 		GetWorldTimerManager().ClearTimer(MoveTimer);
+		ExecuteActionsWrapper();
+
 		//Super::Interact_Implementation(Interactor);
 	}
 }
 
-void AHingedActor::CloseActor(AActor* Interactor)
+void AHingedActor::CloseActor(AActor* Interactor, bool bInstant)
 {
-	//Super::CloseActor(Interactor);
+	Super::CloseActor(Interactor);
 	bool bEnd = true;
-	const FVector Axis = AxisComponent->GetRelativeRotation().Vector().GetSafeNormal();	
-	CurrentMove = FMath::Max(CurrentMove - MoveSpeed, 0);
-	for (int i = 0; i < MinMovement.Num(); i++)
+	if (CurrentMove >= 0)
 	{
-		if (CurrentMove >= 0)
+		const FVector Axis = AxisComponent->GetRelativeRotation().Vector().GetSafeNormal();
+		if (!bInstant)
+		{
+			CurrentMove = FMath::Max(CurrentMove - MoveSpeed, 0);
+		}
+		else
+		{
+			CurrentMove = 0;
+		}
+		for (int i = 0; i < MinMovement.Num(); i++)
 		{
 			const FQuat Delta(Axis, FMath::DegreesToRadians(CurrentMove));
 
@@ -62,10 +77,12 @@ void AHingedActor::CloseActor(AActor* Interactor)
 			bEnd = false;
 		}
 	}
+	
 	if (bEnd)
 	{
 		bNowMove = false;
 		GetWorldTimerManager().ClearTimer(MoveTimer);
+		ExecuteActionsWrapper();
 
 	}
 }

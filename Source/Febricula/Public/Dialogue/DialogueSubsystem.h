@@ -42,6 +42,8 @@ class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
 	GENERATED_BODY()
 
 public:
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	
 	//~ Begin FTickableGameObject
 	// 자동 진행(AutoAdvance) 조건을 매 틱 검사해야 해서 Tickable 서브시스템으로 둔다.
 	virtual void Tick(float DeltaTime) override;

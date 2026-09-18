@@ -8,7 +8,7 @@
 void UPlayerHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::NativeConstruct"));
 	UDialogueSubsystem* Dialogue = GetDialogueSubsystem();
 	
 	if (Dialogue)
@@ -54,7 +54,7 @@ void UPlayerHUDWidget::NativeDestruct()
 		Dialogue->OnDialogueFinished.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueFinished);
 		Dialogue->OnDialogueBoxHidden.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueBoxHidden);
 	}
-
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::NativeDestruct"));
 	Super::NativeDestruct();
 }
 
@@ -101,6 +101,13 @@ void UPlayerHUDWidget::HandleDialogueLine(const FText& Speaker, const FText& Bod
 void UPlayerHUDWidget::HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices)
 {
 	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::HandleDialogueChoices"));
+	UE_LOG(LogTemp, Error, TEXT("InViewport=%d, Visible=%d"),
+	IsInViewport(), GetVisibility() == ESlateVisibility::Visible);
+
+	for (FDialogueChoiceView Choice : Choices)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Choice: %s"), *Choice.Text.ToString());
+	}
 	BP_ShowChoices(Choices);
 }
 

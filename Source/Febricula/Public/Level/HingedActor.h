@@ -20,8 +20,8 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	virtual void OpenActor(AActor* Interactor) override;
-	virtual void CloseActor(AActor* Interactor) override;
+	virtual void OpenActor(AActor* Interactor, bool bInstant) override;
+	virtual void CloseActor(AActor* Interactor, bool bInstant) override;
 	
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor")
 	// bool bCanChangeLevel;
