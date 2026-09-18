@@ -8,7 +8,7 @@
 void UPlayerHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::NativeConstruct"));
 	UDialogueSubsystem* Dialogue = GetDialogueSubsystem();
 	
 	if (Dialogue)
@@ -26,10 +26,22 @@ void UPlayerHUDWidget::NativeConstruct()
 	if (Dialogue)
 	{
 		FText Speaker, Body;
-		if (Dialogue->GetCurrentLine(Speaker, Body))
+		TArray<FDialogueChoiceView> ChoiceViews;
+		if (Dialogue->GetCurrentLine(Speaker, Body, ChoiceViews))
 		{
 			HandleDialogueLine(Speaker, Body);
+			UE_LOG(LogTemp, Warning, TEXT("Holding Choice: %d"), ChoiceViews.Num());
+			for (FDialogueChoiceView View: ChoiceViews)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s"), *View.Text.ToString());
+			}
+
+			if (ChoiceViews.Num() > 0)
+			{
+				HandleDialogueChoices(ChoiceViews);
+			}
 		}
+		
 	}
 }
 
@@ -42,7 +54,7 @@ void UPlayerHUDWidget::NativeDestruct()
 		Dialogue->OnDialogueFinished.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueFinished);
 		Dialogue->OnDialogueBoxHidden.RemoveDynamic(this, &UPlayerHUDWidget::HandleDialogueBoxHidden);
 	}
-
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::NativeDestruct"));
 	Super::NativeDestruct();
 }
 
@@ -77,6 +89,7 @@ void UPlayerHUDWidget::HideInteractionPrompt()
 
 void UPlayerHUDWidget::HandleDialogueLine(const FText& Speaker, const FText& Body)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::HandleDialogueLine"));
 	// 대화가 시작되면 프롬프트는 감춘다.
 	BP_HideInteractionPrompt();
 
@@ -87,6 +100,14 @@ void UPlayerHUDWidget::HandleDialogueLine(const FText& Speaker, const FText& Bod
 
 void UPlayerHUDWidget::HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices)
 {
+	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::HandleDialogueChoices"));
+	UE_LOG(LogTemp, Error, TEXT("InViewport=%d, Visible=%d"),
+	IsInViewport(), GetVisibility() == ESlateVisibility::Visible);
+
+	for (FDialogueChoiceView Choice : Choices)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Choice: %s"), *Choice.Text.ToString());
+	}
 	BP_ShowChoices(Choices);
 }
 

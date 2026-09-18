@@ -3,6 +3,8 @@ Build/
 DerivedDataCache/
 Intermediate/
 Saved/
+Plugins/Revvy
+.revvy/
 
 *.sln
 *.suo

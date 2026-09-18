@@ -255,6 +255,28 @@ struct FSubNpcArchetypeRow : public FTableRowBase
 	/** 화면에 표시할 이름. 비우면 "행인" */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Bark")
 	FText DisplayName;
+
+	// ---- 부딪힘 반응: 방향별 애니메이션 -------------------------------------
+	//
+	// 오른쪽에서 부딪히면 왼쪽으로 밀리고, 왼쪽에서 부딪히면 오른쪽으로 밀린다.
+	// 걷는 중이면 "비켜서는" 동작이, 서 있었으면 "밀리는" 동작이 자연스럽다.
+	// 비워두면 위의 DodgeAnimId로 대체된다 (하나만 만들어도 동작한다).
+
+	/** 걷는 중 왼쪽으로 비킬 때 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
+	FName DodgeLeftAnimId;
+
+	/** 걷는 중 오른쪽으로 비킬 때 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
+	FName DodgeRightAnimId;
+
+	/** 서 있다가 왼쪽으로 밀릴 때 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
+	FName ShoveLeftAnimId;
+
+	/** 서 있다가 오른쪽으로 밀릴 때 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
+	FName ShoveRightAnimId;
 };
 
 /** 가중 랜덤 선택 헬퍼. 어디서나 같은 규칙을 쓰기 위해 한 곳에 모아둔다 */

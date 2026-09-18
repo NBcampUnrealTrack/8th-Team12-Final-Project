@@ -17,10 +17,10 @@
 #include "Engine/World.h"
 #include "Interaction/InteractableProp.h"
 #include "Interaction/InteractionComponent.h"
-#include "Public/Level/DoorMapActor.h"
+#include "Public/Level/HingedActor.h"
 
 void AFebriculaCharacter::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                                  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	UE_LOG(LogTemp, Warning, TEXT("%s Interact Start Overlap!"), *OtherActor->GetName());
 	if (AInteractableProp* InteractableActor = Cast<AInteractableProp>(OtherActor))

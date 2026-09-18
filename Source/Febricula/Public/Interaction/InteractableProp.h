@@ -47,6 +47,10 @@ protected:
 	 * 플레이어 쪽에 부착된 로직이 완료되는 것을 기다릴지 / 즉시 실행할지
 	 * 문 개폐 로직과 같은 것을 처리하기 위해 추가
 	 */
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
+	bool bInteractable;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop")
 	bool bWaitForSequence;
 	
