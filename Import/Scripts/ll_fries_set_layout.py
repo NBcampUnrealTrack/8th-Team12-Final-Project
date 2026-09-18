@@ -119,7 +119,7 @@ def solve(mesh_path, scale, rot, xc, yc, lift):
 
 L('R === 트레이 배치 ===')
 spans = []
-for bp_path in ('/Game/BurgerHouse/AI/BP_Customer', '/Game/BurgerHouse/AI/BP_CounterTray'):
+for bp_path in ('/Game/BurgerHouse/BP/BP_Customer', '/Game/BurgerHouse/BP/BP_CounterTray'):
     bp = EAL.load_asset(bp_path)
     cdo = unreal.get_default_object(bp.generated_class())
     L('R   --- %s' % bp_path.split('/')[-1])

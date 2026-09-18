@@ -71,7 +71,7 @@ for p in CANDIDATES:
 
 L('')
 L('=== ② BP_Customer > Actions ===')
-bp = EAL.load_asset('/Game/BurgerHouse/AI/BP_Customer')
+bp = EAL.load_asset('/Game/BurgerHouse/BP/BP_Customer')
 cdo = unreal.get_default_object(bp.generated_class())
 actions = cdo.get_editor_property('actions')
 for key in actions.keys():

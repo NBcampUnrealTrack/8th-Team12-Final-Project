@@ -32,7 +32,7 @@ MEL = unreal.MaterialEditingLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 MAP = '/Game/BurgerHouse/Maps/L_BurgerHouse'
 DL = 'C:/Users/jesse/Downloads'
 TEX_DIR = '/Game/BurgerHouse/Props/Food/Textures'
@@ -122,8 +122,8 @@ else:
     L('  생성 — 살짝 누런 흰색 · 러프 0.85')
 
 # 손님 · 카운터 트레이 양쪽의 영수증에 물린다
-for bp_path, cls_suffix in (('/Game/BurgerHouse/AI/BP_Customer', 'BP_Customer_C'),
-                            ('/Game/BurgerHouse/AI/BP_CounterTray', 'BP_CounterTray_C')):
+for bp_path, cls_suffix in (('/Game/BurgerHouse/BP/BP_Customer', 'BP_Customer_C'),
+                            ('/Game/BurgerHouse/BP/BP_CounterTray', 'BP_CounterTray_C')):
     bp = EAL.load_asset(bp_path)
     if not bp:
         continue
@@ -140,7 +140,7 @@ L('')
 L('=== ② 카운터 트레이 — 가로 1개 ===')
 unreal.EditorLoadingAndSavingUtils.load_map(MAP)
 world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-cls = unreal.load_object(None, '/Game/BurgerHouse/AI/BP_CounterTray.BP_CounterTray_C')
+cls = unreal.load_object(None, '/Game/BurgerHouse/BP/BP_CounterTray.BP_CounterTray_C')
 old = unreal.GameplayStatics.get_all_actors_of_class(world, cls) if cls else []
 for a in old:
     L('  기존 %s 제거' % a.get_actor_label())

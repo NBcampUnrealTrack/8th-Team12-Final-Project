@@ -40,7 +40,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 MAP = '/Game/BurgerHouse/Maps/L_BurgerHouse'
 
 FIRST_DELAY, FIRST_JITTER = 60.0, 30.0

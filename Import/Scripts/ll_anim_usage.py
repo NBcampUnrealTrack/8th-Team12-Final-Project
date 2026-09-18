@@ -89,7 +89,7 @@ L('    어느 방향으로 움직이든 전진 애님만 나온다 (§9).')
 L('')
 L('=== 손님이 몽타주로 재생하는 것 (PlayAction / 장식 루프) ===')
 cdo = unreal.get_default_object(
-    unreal.load_object(None, '/Game/BurgerHouse/AI/BP_Customer.BP_Customer_C'))
+    unreal.load_object(None, '/Game/BurgerHouse/BP/BP_Customer.BP_Customer_C'))
 actions = cdo.get_editor_property('actions')
 seen = set()
 for k in actions.keys():

@@ -36,9 +36,9 @@ EAL = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 MAP = '/Game/BurgerHouse/Maps/L_BurgerHouse'
-BP_DIR = '/Game/BurgerHouse/AI'
+BP_DIR = '/Game/BurgerHouse/BP'
 BP_PATH = '%s/BP_TableTray' % BP_DIR
 
 # ⚠⚠ 트레이는 **접시**다 — 얹히는 면은 테두리(2.2)가 아니라 **안쪽 바닥(0.2)** 이다.
@@ -95,7 +95,7 @@ cdo.set_editor_property('two_person_set', True)
 cdo.set_editor_property('bind_to_store', False)
 
 # 메시·머티리얼은 카운터 트레이와 같은 것을 쓴다
-src = unreal.get_default_object(EAL.load_asset('/Game/BurgerHouse/AI/BP_CounterTray').generated_class())
+src = unreal.get_default_object(EAL.load_asset('/Game/BurgerHouse/BP/BP_CounterTray').generated_class())
 
 # 2인용 배치 — 트레이 X 30 × Y 40 안에서 버거박스 둘이 **가로로 나란히**
 #
@@ -230,7 +230,7 @@ if not spawner:
     raise SystemExit
 
 cust_cdo = unreal.get_default_object(
-    EAL.load_asset('/Game/BurgerHouse/AI/BP_Customer').generated_class())
+    EAL.load_asset('/Game/BurgerHouse/BP/BP_Customer').generated_class())
 offset = cust_cdo.get_editor_property('tray_table_offset')
 L('T   TrayTableOffset %s' % offset)
 

@@ -14,7 +14,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 fails = []
 
 
@@ -59,7 +59,7 @@ for p in ('/Game/BurgerHouse/Anims/Montages/AM_Telling_A_Secret',
           '/Game/BurgerHouse/Anims/Mixamo/Anims/Telling_A_Secret'):
     check('에셋 %s' % p.split('/')[-1], EAL.does_asset_exist(p), False)
 
-cdo = unreal.get_default_object(EAL.load_asset('/Game/BurgerHouse/AI/BP_Customer').generated_class())
+cdo = unreal.get_default_object(EAL.load_asset('/Game/BurgerHouse/BP/BP_Customer').generated_class())
 names = []
 for k, v in cdo.get_editor_property('actions').items():
     for var in v.get_editor_property('variants'):
@@ -74,7 +74,7 @@ check('Idle_Look 변형', sorted(
 L('')
 L('=== 3) 음식 크기 — 바닥이 상판(2.25)에 계속 붙어 있나 ===')
 WANT = {'burger_box': 7.5, 'fries': 0.6, 'receipt': 0.04}
-for bp in ('/Game/BurgerHouse/AI/BP_Customer', '/Game/BurgerHouse/AI/BP_CounterTray'):
+for bp in ('/Game/BurgerHouse/BP/BP_Customer', '/Game/BurgerHouse/BP/BP_CounterTray'):
     c0 = unreal.get_default_object(EAL.load_asset(bp).generated_class())
     L('  --- %s' % bp.split('/')[-1])
     for prop, want_scale in WANT.items():
@@ -106,7 +106,7 @@ L('=== 2)4) 레벨 ===')
 unreal.EditorLoadingAndSavingUtils.load_map('/Game/BurgerHouse/Maps/L_BurgerHouse')
 world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
 
-cls = unreal.load_object(None, '/Game/BurgerHouse/AI/BP_CounterTray.BP_CounterTray_C')
+cls = unreal.load_object(None, '/Game/BurgerHouse/BP/BP_CounterTray.BP_CounterTray_C')
 trays = unreal.GameplayStatics.get_all_actors_of_class(world, cls)
 check('CounterTray 개수', len(trays), 1)
 for a in trays:

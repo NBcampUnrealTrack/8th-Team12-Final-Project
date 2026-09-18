@@ -39,7 +39,7 @@ import unreal
 L = unreal.log_warning
 E = unreal.log_error
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 STATE = 'Root/Enter'
 TASK = 'BurgerHouseActionTask'
 S = unreal.StateTreeService

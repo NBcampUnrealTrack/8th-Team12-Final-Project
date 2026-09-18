@@ -16,7 +16,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
 ABP = '/Game/BurgerHouse/Anims/Mixamo/ABP_Customer'
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 NEW = '/Game/BurgerHouse/Anims/Mixamo/Anims/Walk_Fwd_Manny'
 OLD = '/Game/BurgerHouse/Anims/Mixamo/Anims/Walking'
 

@@ -34,7 +34,7 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 NEW_MESH = '/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple'
 NEW_ABP = '/Game/BurgerHouse/Anims/Manny/ABP_Customer'
 NEW_ANIMDIR = '/Game/BurgerHouse/Anims/Manny'
@@ -127,7 +127,7 @@ L('W   save(컴파일 후) -> %s'
 L('W === 레벨에 놓인 손님 ===')
 unreal.EditorLoadingAndSavingUtils.load_map('/Game/BurgerHouse/Maps/L_BurgerHouse')
 world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-cls = unreal.load_object(None, '/Game/BurgerHouse/AI/BP_Customer.BP_Customer_C')
+cls = unreal.load_object(None, '/Game/BurgerHouse/BP/BP_Customer.BP_Customer_C')
 placed = unreal.GameplayStatics.get_all_actors_of_class(world, cls) if cls else []
 L('W   %d명 (0 이면 전부 스포너가 만든다 — CDO 만 고치면 된다)' % len(placed))
 for a in placed:

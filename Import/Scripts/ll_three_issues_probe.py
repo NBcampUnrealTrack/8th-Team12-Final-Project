@@ -11,8 +11,8 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 
 
 def task_props(path, task):

@@ -42,7 +42,7 @@ AL = unreal.AnimationLibrary
 
 ANIM = '/Game/BurgerHouse/Anims/Manny/Talking_On_A_Cell_Phone'
 MESH = '/Game/BurgerHouse/Props/Phone/Prop_Phone'
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 HAND = 'hand_r'
 
 PHONE_LEN = 15.0        # 실물 길이(cm)

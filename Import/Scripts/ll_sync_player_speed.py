@@ -31,7 +31,7 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 PLAYER = '/Game/MetaHumans/MHC_Character_Adam/Cheon/BP_CHeon'
 ANIM_SPEED = 183.0
 

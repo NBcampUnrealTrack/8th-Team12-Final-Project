@@ -54,7 +54,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 MAP = '/Game/BurgerHouse/Maps/L_BurgerHouse'
 TRAY_TOP = 2.2
 fails = []
@@ -105,7 +105,7 @@ def place(mesh_path, scale, xc, yc):
 
 
 spans = []
-for bp_path in ('/Game/BurgerHouse/AI/BP_Customer', '/Game/BurgerHouse/AI/BP_CounterTray'):
+for bp_path in ('/Game/BurgerHouse/BP/BP_Customer', '/Game/BurgerHouse/BP/BP_CounterTray'):
     bp = EAL.load_asset(bp_path)
     cdo = unreal.get_default_object(bp.generated_class())
     L('  --- %s' % bp_path.split('/')[-1])
@@ -152,7 +152,7 @@ L('=== 카운터 트레이 — 에디터에서 옮긴 자리 확인 ===')
 #    스크립트가 다시 계산해 덮으면 그 손질이 매번 날아간다. 읽어서 찍기만 한다.
 unreal.EditorLoadingAndSavingUtils.load_map(MAP)
 world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-cls = unreal.load_object(None, '/Game/BurgerHouse/AI/BP_CounterTray.BP_CounterTray_C')
+cls = unreal.load_object(None, '/Game/BurgerHouse/BP/BP_CounterTray.BP_CounterTray_C')
 for a in unreal.GameplayStatics.get_all_actors_of_class(world, cls):
     l = a.get_actor_location()
     r = a.get_actor_rotation()

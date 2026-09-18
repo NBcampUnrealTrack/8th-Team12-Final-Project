@@ -37,7 +37,7 @@ import unreal
 L = unreal.log_warning
 E = unreal.log_error
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 
 # ⚠⚠ **상태는 전체 경로**여야 한다. `K_Order` 만 주면 `add_task` 가 조용히
 #    `False` 를 돌려준다 (예외도 로그도 없다).

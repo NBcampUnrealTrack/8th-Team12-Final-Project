@@ -84,7 +84,7 @@ L('     (런타임 값은 PIE 없이는 못 본다)')
 L('')
 L('=== ③ 참고: BP_Customer 의 이동 값 ===')
 bc = unreal.get_default_object(
-    unreal.load_object(None, '/Game/BurgerHouse/AI/BP_Customer.BP_Customer_C'))
+    unreal.load_object(None, '/Game/BurgerHouse/BP/BP_Customer.BP_Customer_C'))
 mv = bc.get_editor_property('character_movement')
 for p in ('max_walk_speed', 'max_acceleration'):
     L('  %-24s %s' % (p, mv.get_editor_property(p)))

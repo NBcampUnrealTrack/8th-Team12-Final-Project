@@ -20,8 +20,8 @@ import unreal
 L = unreal.log_warning
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
-ST = '/Game/BurgerHouse/AI/ST_Customer'
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 
 # ───────────────────────── chime 통일
 L('A === chime 0.02 로 통일 ===')

@@ -16,7 +16,7 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
+BP_PATH = '/Game/BurgerHouse/BP/BP_Customer'
 MTG = '/Game/BurgerHouse/Anims/Montages/AM_SitIdle_Male'
 
 cdo = unreal.get_default_object(unreal.load_object(None, '%s.BP_Customer_C' % BP_PATH))

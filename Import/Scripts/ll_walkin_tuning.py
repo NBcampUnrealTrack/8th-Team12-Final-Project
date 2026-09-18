@@ -30,8 +30,8 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-BP = '/Game/BurgerHouse/AI/BP_Customer'
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 K_ACT = 'Root/Kiosk/K_Act'
 ACTION_TASK = 'BurgerHouseActionTask'
 

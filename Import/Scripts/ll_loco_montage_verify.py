@@ -15,7 +15,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
 MTG_DIR = '/Game/BurgerHouse/Anims/Montages'
-BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
+BP_PATH = '/Game/BurgerHouse/BP/BP_Customer'
 
 LOCO = {'AM_Loco_Idle': ('Idle', 8.333), 'AM_Loco_Walk': ('Walk_Fwd_Manny', 1.067),
         'AM_Loco_Sit': ('SitIdle_Male', 2.700)}

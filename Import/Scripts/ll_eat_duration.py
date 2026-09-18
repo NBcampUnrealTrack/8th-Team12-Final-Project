@@ -53,7 +53,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 
 PLAYS = 9
 REPEATS = 5
@@ -82,7 +82,7 @@ for st, who in STATES:
 # ───────────────────────── 계산 결과를 **몽타주 실측 길이로** 되짚는다
 L('R')
 L('R === 되짚기 ===')
-cdo = unreal.get_default_object(EAL.load_asset('/Game/BurgerHouse/AI/BP_Customer').generated_class())
+cdo = unreal.get_default_object(EAL.load_asset('/Game/BurgerHouse/BP/BP_Customer').generated_class())
 for key, who in (('Sit-Eat', '워크인'), ('Sit_Eat', '프리필')):
     act = cdo.get_editor_property('actions').get(key)
     if not act:

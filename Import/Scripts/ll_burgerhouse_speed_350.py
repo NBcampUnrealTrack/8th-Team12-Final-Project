@@ -23,7 +23,7 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-CUST = '/Game/BurgerHouse/AI/BP_Customer'
+CUST = '/Game/BurgerHouse/BP/BP_Customer'
 PLAYER = '/Game/MetaHumans/MHC_Character_Adam/Cheon/BP_CHeon'
 LEVEL = 'L_BurgerHouse'
 TARGET = 350.0

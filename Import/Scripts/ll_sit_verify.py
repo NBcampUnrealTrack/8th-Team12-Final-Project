@@ -22,7 +22,7 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
+BP_PATH = '/Game/BurgerHouse/BP/BP_Customer'
 
 # 기준 — 화면에서 확인된 먹는 애님의 골반 높이
 SIT_BASE = 57.5

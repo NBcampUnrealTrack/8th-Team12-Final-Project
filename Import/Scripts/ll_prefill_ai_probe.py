@@ -24,7 +24,7 @@ L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 cdo = unreal.get_default_object(unreal.load_object(None, '%s.BP_Customer_C' % BP))
 
 L('=== ① BP_Customer 의 AI 설정 ===')

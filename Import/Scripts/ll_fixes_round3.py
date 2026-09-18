@@ -53,7 +53,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 MAP = '/Game/BurgerHouse/Maps/L_BurgerHouse'
 TRAY_TOP = 2.2
 
@@ -115,7 +115,7 @@ def place(mesh_path, scale, xc, yc):
                          TRAY_TOP + 0.05 + (e.z - o.z) * scale.z)
 
 
-for bp_path in ('/Game/BurgerHouse/AI/BP_Customer', '/Game/BurgerHouse/AI/BP_CounterTray'):
+for bp_path in ('/Game/BurgerHouse/BP/BP_Customer', '/Game/BurgerHouse/BP/BP_CounterTray'):
     bp = EAL.load_asset(bp_path)
     cdo = unreal.get_default_object(bp.generated_class())
     L('  --- %s' % bp_path.split('/')[-1])
@@ -176,7 +176,7 @@ L('=== 2)4) 레벨 ===')
 unreal.EditorLoadingAndSavingUtils.load_map(MAP)
 world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
 
-cls = unreal.load_object(None, '/Game/BurgerHouse/AI/BP_CounterTray.BP_CounterTray_C')
+cls = unreal.load_object(None, '/Game/BurgerHouse/BP/BP_CounterTray.BP_CounterTray_C')
 for a in unreal.GameplayStatics.get_all_actors_of_class(world, cls):
     l = a.get_actor_location()
     # 카운터는 −Y 쪽이다 (픽업 슬롯 y −1040, 카운터 조명 y −1142)

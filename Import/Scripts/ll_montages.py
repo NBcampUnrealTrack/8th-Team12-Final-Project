@@ -44,7 +44,7 @@ EAL = unreal.EditorAssetLibrary
 #   **안에 물린 시퀀스는 옛것 그대로**였다 (실측). 그래서 여기서 다시 만든다.
 ANIM_DIR = '/Game/BurgerHouse/Anims/Manny'
 MTG_DIR = '/Game/BurgerHouse/Anims/Manny/Montages'
-BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
+BP_PATH = '/Game/BurgerHouse/BP/BP_Customer'
 
 # 액션 이름 -> [(애님, 가중치, 자를 길이(초). None 이면 원본 그대로)]
 #
@@ -135,8 +135,11 @@ ACTIONS = {
     # ## 어떤 그림을 노리나
     #
     # 버거집에 앉아 있는 사람들이다. 대다수는 **먹고 있어야** 하고, 일부는
-    # 일행과 얘기하고, 한둘은 그냥 앉아 있다. 가중치 합 4.9 중 먹는 것이
-    # 3.6 (73%) 이라 홀을 보면 「밥 먹는 가게」로 읽힌다.
+    # 일행과 얘기하고, 한둘은 그냥 앉아 있다. 가중치 합 3.3 중 먹는 것이
+    # 2.0 (61%) 이라 홀을 보면 「밥 먹는 가게」로 읽힌다.
+    #
+    # ⚠ 먹는 애님을 4종 -> 2종으로 줄이면서 73% 에서 내려왔다 (2026-09-18).
+    #   더 올리려면 남은 둘의 가중치를 키운다.
     #
     # ⚠ 한 사람은 **하나만** 평생 반복한다 (`bDecorationSingleAction`). 다양성은
     #   한 사람 안이 아니라 **손님들 사이에서** 나온다 — 어느 것을 받을지는
@@ -170,9 +173,9 @@ ACTIONS = {
         # 먹는 중 — 가게의 본체
         ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', DEFAULT),        # 7.83s
         ('Eating_Fries', 1.0, 'AM_Eating_Fries', DEFAULT),              # 9.20s
-        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', DEFAULT),  # 8.03s
-        # ⚠ 과장된 동작이라 낮게. 흔해지면 홀이 소란스러워 보인다.
-        ('Eating_Frantically', 0.6, 'AM_Eating_Frantically', DEFAULT),  # 6.87s
+        # ⚠ `Eating_a_Drumstick`(1.0) · `Eating_Frantically`(0.6) 을 **뺐다**
+        #   (2026-09-18). 먹는 모션은 버거·감자 둘로 한정한다. 몽타주와 원본
+        #   애님 4개도 지웠으니, 되살리려면 FBX 부터 다시 리타겟해야 한다.
 
         # 일행과 대화 — `PrefillPlacements` 가 3인석·2인석 두 테이블이라 말이 된다
         ('Sitting_Talking', 0.8, 'AM_Sitting_Talking', DEFAULT),        # 44.07s
@@ -183,10 +186,10 @@ ACTIONS = {
     # 걸어 들어온 손님이 앉아서 먹는 것 — 트리의 `Sit_Eat` 이 쓴다.
     # ⚠ 위와 **같은 몽타주 에셋**이다. 슬롯이 하나가 되면서 두 벌 만들 이유가
     #   없어졌다 (예전에는 서 있는 손님용/앉은 손님용으로 갈라져 있었다).
+    # ⚠ 예전에는 4종(버거·닭다리·허겁지겁·감자)이 각 1.0 이었다. 둘로 줄였다
+    #   (2026-09-18) — 위 `Sit_Idle` 의 주석과 같은 이유다.
     'Sit_Eat': [
         ('Eating_a_Burger', 1.0, 'AM_Eating_a_Burger', DEFAULT),
-        ('Eating_a_Drumstick', 1.0, 'AM_Eating_a_Drumstick', DEFAULT),
-        ('Eating_Frantically', 1.0, 'AM_Eating_Frantically', DEFAULT),
         ('Eating_Fries', 1.0, 'AM_Eating_Fries', DEFAULT),
     ],
 }

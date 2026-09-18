@@ -91,7 +91,7 @@ except Exception as ex:
 # ---- BP_Customer 이동 값 ----
 L('')
 L('=== BP_Customer 이동 값 ===')
-bp = EAL.load_asset('/Game/BurgerHouse/AI/BP_Customer')
+bp = EAL.load_asset('/Game/BurgerHouse/BP/BP_Customer')
 if bp:
     try:
         cdo = unreal.get_default_object(bp.generated_class())

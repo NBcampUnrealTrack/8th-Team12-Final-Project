@@ -34,7 +34,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 TRAY_TOP = 2.2
 fails = []
 
@@ -63,7 +63,7 @@ def place(mesh_path, scale, xc, yc):
 
 
 spans = []
-for bp_path in ('/Game/BurgerHouse/AI/BP_Customer', '/Game/BurgerHouse/AI/BP_CounterTray'):
+for bp_path in ('/Game/BurgerHouse/BP/BP_Customer', '/Game/BurgerHouse/BP/BP_CounterTray'):
     bp = EAL.load_asset(bp_path)
     cdo = unreal.get_default_object(bp.generated_class())
     L('R   --- %s' % bp_path.split('/')[-1])

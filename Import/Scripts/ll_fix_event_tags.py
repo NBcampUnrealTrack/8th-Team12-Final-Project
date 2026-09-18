@@ -37,7 +37,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 S = unreal.StateTreeService
 
-ST = '/Game/BurgerHouse/AI/ST_Customer'
+ST = '/Game/BurgerHouse/BP/ST_Customer'
 OLD, NEW = 'Burgeria.', 'BurgerHouse.'
 
 info = S.get_state_tree_info(ST)

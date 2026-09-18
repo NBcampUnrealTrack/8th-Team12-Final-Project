@@ -15,7 +15,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 
-BP_PATH = '/Game/BurgerHouse/AI'
+BP_PATH = '/Game/BurgerHouse/BP'
 BP_NAME = 'BP_CounterTray'
 FULL = '%s/%s' % (BP_PATH, BP_NAME)
 MAP = '/Game/BurgerHouse/Maps/L_BurgerHouse'

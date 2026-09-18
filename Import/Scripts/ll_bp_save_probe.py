@@ -8,7 +8,7 @@ import unreal
 L = unreal.log_warning
 E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
-BP_PATH = '/Game/BurgerHouse/AI/BP_Customer'
+BP_PATH = '/Game/BurgerHouse/BP/BP_Customer'
 
 bp = EAL.load_asset(BP_PATH)
 pkg = bp.get_outermost()

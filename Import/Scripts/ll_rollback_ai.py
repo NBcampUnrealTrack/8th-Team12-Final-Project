@@ -33,7 +33,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
 
-AI = '/Game/BurgerHouse/AI'
+AI = '/Game/BurgerHouse/BP'
 BP = '/Game/BurgerHouse/BP'
 NAMES = ['BP_Customer', 'BP_CustomerAI', 'BP_CounterTray', 'BP_TableTray', 'ST_Customer']
 

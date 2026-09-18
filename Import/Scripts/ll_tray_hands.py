@@ -35,7 +35,7 @@ E = unreal.log_error
 EAL = unreal.EditorAssetLibrary
 
 ANIM = '/Game/BurgerHouse/Anims/Manny/Carrying'
-BP = '/Game/BurgerHouse/AI/BP_Customer'
+BP = '/Game/BurgerHouse/BP/BP_Customer'
 MESH = '/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple'
 
 # 어디에 붙일까 — 몸통이 손보다 안정적이다 (손은 애님마다 움직인다)
