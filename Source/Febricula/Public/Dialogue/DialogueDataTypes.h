@@ -238,7 +238,9 @@ enum class EGameActionType : uint8
 
 	Interact				UMETA(DisplayName = "상호작용 후 상태로 설정"),
 	
-	UnInteract				UMETA(DisplayName = "상호작용 전 상태로 설정")
+	UnInteract				UMETA(DisplayName = "상호작용 전 상태로 설정"),
+	
+	ConsumeAP				UMETA(DisplayName = "AP 소모")
 };
 
 /**
@@ -316,6 +318,10 @@ struct FGameAction
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action")
 	int32 Value = 0;
+	
+	FGameAction() = default;
+	
+	FGameAction(EGameActionType Type, FName Key, FName Key2, int32 Value) : Type(Type), Key(Key), Key2(Key2), Value(Value) {}
 };
 
 USTRUCT(BlueprintType)

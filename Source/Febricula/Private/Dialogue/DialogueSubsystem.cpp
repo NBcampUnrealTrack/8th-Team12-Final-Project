@@ -1234,6 +1234,13 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			}
 			break;
 		}
+		
+	case EGameActionType::ConsumeAP:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			ActivitySubsystem->TryConsumeAP(Action.Value);
+		}
+		break;
 	default:
 		break;
 	}
