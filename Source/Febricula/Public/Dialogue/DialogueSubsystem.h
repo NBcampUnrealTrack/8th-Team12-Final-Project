@@ -241,4 +241,5 @@ protected:
 	UPROPERTY()
 	TArray<FName> ClearedEvents;
 	
+	
 };

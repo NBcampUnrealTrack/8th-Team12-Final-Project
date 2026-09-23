@@ -6,6 +6,7 @@
 #include "SNegativeActionButton.h"
 #include "SWarningOrErrorBox.h"
 #include "Activity/ActivitySubsystem.h"
+#include "Cache/ActorCacheSubsystem.h"
 #include "GameFramework/Character.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/TimeSubsystem.h"
@@ -110,6 +111,14 @@ void UFebriculaCheatManager::GetAllActivities()
 			}
 			UE_LOG(LogTemp, Warning, TEXT("\n"));
 		}
+	}
+}
+
+void UFebriculaCheatManager::GetAllCachedTargetPoints()
+{
+	if (UActorCacheSubsystem* ActorCacheSubsystem = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
+	{
+		ActorCacheSubsystem->PrintAllCachedTarget();
 	}
 }
 

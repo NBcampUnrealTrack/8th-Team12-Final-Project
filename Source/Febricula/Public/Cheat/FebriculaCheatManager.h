@@ -34,4 +34,7 @@ public:
 	
 	UFUNCTION(Exec)
 	void GetAllActivities();
+	
+	UFUNCTION(Exec)
+	void GetAllCachedTargetPoints();
 };

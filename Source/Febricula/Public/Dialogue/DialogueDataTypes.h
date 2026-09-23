@@ -18,6 +18,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Engine/DataTable.h"
+#include "Engine/TargetPoint.h"
 #include "DialogueDataTypes.generated.h"
 
 /**
@@ -240,7 +241,17 @@ enum class EGameActionType : uint8
 	
 	UnInteract				UMETA(DisplayName = "상호작용 전 상태로 설정"),
 	
-	ConsumeAP				UMETA(DisplayName = "AP 소모")
+	ConsumeAP				UMETA(DisplayName = "AP 소모"),
+	
+	PlayBGM					UMETA(DisplayName = "BGM 재생"),
+	
+	StopBGM					UMETA(DisplayName = "BGM 정지"),
+	
+	PlaySE					UMETA(DisplayName = "SE 재생"),
+	
+	StopSE					UMETA(DisplayName = "SE 정지"),
+	
+	SetSEVolume				UMETA(DisplayName = "SE 볼륨")
 };
 
 /**
@@ -339,6 +350,21 @@ struct FGameCamera
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
 	float Focus = -1000.f;
 
+};
+
+USTRUCT(BlueprintType)
+struct FSoundLocation
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	FName SoundChannel;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	FName SoundName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	FName Target;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	float Blend;
+	
 };
 
 /**
@@ -444,6 +470,8 @@ struct FDialogueNodeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue | Camera")
 	FGameCamera Camera;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue | SoundLoc")
+	FSoundLocation SoundLocation;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	FName NextNodeId;

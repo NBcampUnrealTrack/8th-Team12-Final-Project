@@ -21,7 +21,7 @@ void ANpcCrowdManager::BeginPlay()
 	Super::BeginPlay();
 }
 
-void ANpcCrowdManager::Play(FName Tag)
+void ANpcCrowdManager:: Play(FName Tag)
 {
 	UWorld* World = GetWorld();
 	if (!World) return;

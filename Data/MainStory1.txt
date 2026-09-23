@@ -8,25 +8,36 @@
 판사: 주문. 피고인 강천율에게 징역 1년을 선고한다. 다만 그 집행을 2년간 유예한다.
 @cam player 0.5
 천율: .......
+
 판사: 피고인에게 프로그래밍 교육 제3학년 과정 이수를 명한다.
+@PlaySE First crowd_buzz
 고개를 들었다.
 주변을 살폈다.
 살풍경한 모습. 판사는 자리에서 꿈쩍하지 않은 채 나를 내려다보고 있다.
 옆을 바라봤다.
 변호사는 예상했다는 듯 표정 하나 구겨지지 않은 채 노트북을 정리한다.
 판사: 피고인은 위 유예기간 내에 프로그래밍 면허를 취득하여야 한다.
+@StopSE First 1.0
+@wait 3.0
+@hide
 
 @label D1_020
+@PlaySE First cardoor_open 
 주차되어 있던 차의 조수석 문을 열었다.
 숨이 턱 막히는 것만 같은 텁텁한 공기가 차 안에 가득하다.
+@PlaySE Second cardoor_close
 ???: 축하해.
 천율: .......
 ???: 내가 말한대로 됐지?
 천율: .......
 기사: 출발하겠습니다, 도련님.
+@PlaySE First car_leave
+@wait 6.5
+@StopSE First .5
 
 마치 호수 속으로 잠기어 가듯 풍경은 물빛으로 물들며 천천히 가라앉아 간다.
-....... ...하아....
+@PlaySE First sigh
+천율: (하아...)
 @HideActor
 @cam Loc -195.7 -74.6 157.7 Rot 0.0 90.0 -90 .01 160
 나는 눈을 떴다.
@@ -37,12 +48,12 @@
 얼굴이 기억나지 않고, 체격 또한 잊었으나.
 이상하리만치 정숙했던 공간.
 나를 쏘아보는 차가운 시선.
+@PlaySE blanket_rustle
 @Teleport Player BedTarget
 @PlayAnim Player SitMale 1
 @cam Loc 43.8 24.8 102.0 Rot 0 0 -130 2.0 160
 @wait 2.0
 @ShowActor Player
-
 @hide
 
 
@@ -64,6 +75,7 @@
 @FadeIn 3
 @cam reset
 @CompleteEvent MainStory1
+@PlaySE sigh
 가볍게 한숨을 내뱉고 자리를 털고 일어났다.
 @end
 
@@ -124,7 +136,7 @@ AI의 끊임없는 발전.
 서윤: 알겠습니다.
 
 @cam reset
-@NpcStartGuide NPC_Suyun FirtSuyunMove
+@NpcStartPatrol NPC_Suyun FirtSuyunMove
 @wait_arrive 100 NPC_Suyun
 @hide
 
@@ -318,6 +330,7 @@ AI의 끊임없는 발전.
 조회 자체는 별 것 없었다.
 인원 점검, 체조, 간단한 운동, 일정 전달.
 모여 서 있던 학생들은 삼삼오오 무리를 지은 채 저마다 흩어져 갔다.
+@TimeAdvanceSchedule 1
 @SpawnActor NPC_Doyun FirstAssembleDoyun
 @NpcFacePlayer NPC_Doyun
 @StartCrowdSpawn CrowdManager EndAssemble
@@ -347,10 +360,11 @@ AI의 끊임없는 발전.
 도윤: 쯧. 안될 것 같긴 해… 별 쓰잘데기 없는 절차며 규칙에 목 메는 학교 특성 생각해 보면…
 도윤: 아침 먹을거지? 나머지는 먹으면서 이야기하자. 대부분 아침 안 먹고 자러 올라가니까 지금 가면 바로 먹을 수 있을 거야.
 천율: 그래.
-
+@TimeAdvanceSchedule 1
 @FadeOut Black 3
 @wait .3
 @ChangeLevel Food
+@PlaySE Looping crowd_buzz
 @end
 
 @label D2_05

@@ -11,12 +11,15 @@
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Animation/CharacterAnimationComponent.h"
+#include "Cache/ActorCacheSubsystem.h"
 #include "Components/CapsuleComponent.h"
 #include "Dialogue/NpcCrowdManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/FebriculaGameMode.h"
 #include "GameMode/LevelAutoEventSetting.h"
+#include "GameMode/SoundSubsystem.h"
+#include "GameMode/TargetTypeRole.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Level/MovableMapActor.h"
@@ -540,6 +543,18 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 		CameraToCinematicCam(Row->Camera.Location, Row->Camera.Rotation, Row->Camera.MoveTime, Row->Camera.Focus);
 		break;
 	}
+	
+	if (Row->SoundLocation.SoundChannel != NAME_None && Row->SoundLocation.SoundName != NAME_None)
+	{
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			if (UActorCacheSubsystem* ActorCache = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
+			{
+				SoundSubsystem->PlaySE3d(Row->SoundLocation.SoundChannel, SoundSubsystem->FoundSoundBase(Row->SoundLocation.SoundName),  ActorCache->GetTargetLocation(Row->SoundLocation.Target, ETargetTypeRole::Sound), Row->SoundLocation.Blend);
+			}
+		}
+	}
+		
 	ExecuteActions(Row->OnEnterActions);
 	
 	// 선택지가 있는 노드는 반드시 골라야 하므로 자동 진행을 걸지 않는다.
@@ -1241,6 +1256,48 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			ActivitySubsystem->TryConsumeAP(Action.Value);
 		}
 		break;
+		
+	case EGameActionType::PlayBGM:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			if (USoundBase* Sound = SoundSubsystem->FoundSoundBase(Action.Key))
+			{
+				SoundSubsystem->PlayBGM(Sound, FCString::Atof(*Action.Key2.ToString()));
+			}
+		}
+		break;
+		
+	case EGameActionType::StopBGM:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			SoundSubsystem->StopBGM(FCString::Atof(*Action.Key.ToString()));
+		}
+		break;
+		
+	case EGameActionType::PlaySE:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			if (USoundBase* Sound = SoundSubsystem->FoundSoundBase(Action.Key2))
+			{
+				SoundSubsystem->PlaySE(Action.Key, Sound, Action.Value);
+			}
+		}
+		break;
+	
+	case EGameActionType::SetSEVolume:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			SoundSubsystem->SetSEVolume(Action.Key, FCString::Atoi(*Action.Key2.ToString()));
+		}
+
+		break;
+		
+	case EGameActionType::StopSE:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			SoundSubsystem->StopSE(Action.Key, FCString::Atoi(*Action.Key2.ToString()));
+		}
+		
 	default:
 		break;
 	}
