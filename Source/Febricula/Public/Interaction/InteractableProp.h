@@ -17,6 +17,7 @@
 
 class UBoxComponent;
 class UStaticMeshComponent;
+class UUserWidget;
 
 UCLASS()
 class FEBRICULA_API AInteractableProp : public AActor, public IInteractable
@@ -95,6 +96,10 @@ protected:
 	/** 한 번만 조사 가능하게 할지 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prop")
 	bool bSingleUse = false;
+
+	/** 상호작용 시 함께 띄울 위젯 클래스. 비워두면 아무것도 열지 않는다 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prop")
+	TSubclassOf<UUserWidget> InspectWidgetClass;
 
 
 	/**

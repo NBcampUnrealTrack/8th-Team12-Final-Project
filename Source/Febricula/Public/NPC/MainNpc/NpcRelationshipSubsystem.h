@@ -11,6 +11,8 @@
 #include "NPC/NpcTypes.h"
 #include "NpcRelationshipSubsystem.generated.h"
 
+class UFebriculaSaveGame;
+
 UCLASS(BlueprintType)
 class FEBRICULA_API UNpcRelationshipSubsystem : public UGameInstanceSubsystem
 {
@@ -35,6 +37,15 @@ public:
 	/** 이벤트 트리 전제 조건 "관계가 O 이상" 을 그대로 검사하는 헬퍼 */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "NPC|Relationship")
 	bool IsRelationshipAtLeast(FName NpcId, ENpcRelationshipLevel MinimumLevel) const;
+
+	// ---- SaveGame 연동 ----
+	// 나중에 SaveGame 로드/세이브 로직은 이 클래스 안에서 처리하도록 확장하면 된다.
+
+	/** SaveGame 객체에 호감도 데이터를 담는다 */
+	void PackIntoSave(UFebriculaSaveGame* SaveData) const;
+
+	/** SaveGame 객체에서 호감도 데이터를 복원한다 */
+	void RestoreFromSave(const UFebriculaSaveGame* SaveData);
 
 protected:
 	/** NpcId -> 원시 호감도 수치. 프로젝트가 커지면 SaveGame 슬롯으로 옮겨 담는다 */

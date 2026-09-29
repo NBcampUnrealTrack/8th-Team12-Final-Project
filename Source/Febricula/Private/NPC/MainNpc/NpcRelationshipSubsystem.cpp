@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "SaveGame/FebriculaSaveGame.h"
 
 float UNpcRelationshipSubsystem::GetAffinityValue(FName NpcId) const
 {
@@ -50,4 +51,22 @@ bool UNpcRelationshipSubsystem::IsRelationshipAtLeast(FName NpcId, ENpcRelations
 {
 	// enum 정의 순서가 서열이므로 정수 비교로 "이상" 조건을 그대로 검사한다.
 	return static_cast<uint8>(GetRelationshipLevel(NpcId)) >= static_cast<uint8>(MinimumLevel);
+}
+
+void UNpcRelationshipSubsystem::PackIntoSave(UFebriculaSaveGame* SaveData) const
+{
+	if (!SaveData)
+	{
+		return;
+	}
+	SaveData->AffinityByNpcId = AffinityByNpcId;
+}
+
+void UNpcRelationshipSubsystem::RestoreFromSave(const UFebriculaSaveGame* SaveData)
+{
+	if (!SaveData)
+	{
+		return;
+	}
+	AffinityByNpcId = SaveData->AffinityByNpcId;
 }

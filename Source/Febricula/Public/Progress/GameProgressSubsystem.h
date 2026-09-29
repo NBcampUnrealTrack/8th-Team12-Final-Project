@@ -14,6 +14,7 @@
 #include "GameProgressSubsystem.generated.h"
 
 class UTimeSubsystem;
+class UFebriculaSaveGame;
 
 UCLASS(BlueprintType)
 class FEBRICULA_API UGameProgressSubsystem : public UGameInstanceSubsystem
@@ -105,6 +106,15 @@ public:
 	//디버그용
 	UFUNCTION(BlueprintCallable, Category = "Progress|Debug")
 	const TSet<FName>& GetClearedEvents() const { return CompletedEvents; }
+
+	// ---- SaveGame 연동 ----
+	// 지금은 런타임 메모리 스텁이고, 이 두 함수로 SaveGame과 데이터를 주고받는다.
+
+	/** SaveGame 객체에 진행 상태 데이터를 담는다 */
+	void PackIntoSave(UFebriculaSaveGame* SaveData) const;
+
+	/** SaveGame 객체에서 진행 상태 데이터를 복원한다 */
+	void RestoreFromSave(const UFebriculaSaveGame* SaveData);
 
 protected:
 	/** 시간 조건 판정에 쓰는 UTimeSubsystem 접근자. 없으면 nullptr */

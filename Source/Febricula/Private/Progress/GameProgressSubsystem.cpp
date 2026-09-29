@@ -3,6 +3,7 @@
 #include "Progress/GameProgressSubsystem.h"
 
 #include "Engine/GameInstance.h"
+#include "SaveGame/FebriculaSaveGame.h"
 #include "GameMode/TimeSubsystem.h"
 #include "GameplayTagContainer.h"
 #include "Activity/ActivitySetting.h"
@@ -222,6 +223,32 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	default:
 		return true;
 	}
+}
+
+void UGameProgressSubsystem::PackIntoSave(UFebriculaSaveGame* SaveData) const
+{
+	if (!SaveData)
+	{
+		return;
+	}
+	SaveData->Tags            = Tags;
+	SaveData->Topics          = Topics;
+	SaveData->CompletedEvents = CompletedEvents;
+	SaveData->Counters        = Counters;
+	SaveData->Stats           = Stats;
+}
+
+void UGameProgressSubsystem::RestoreFromSave(const UFebriculaSaveGame* SaveData)
+{
+	if (!SaveData)
+	{
+		return;
+	}
+	Tags            = SaveData->Tags;
+	Topics          = SaveData->Topics;
+	CompletedEvents = SaveData->CompletedEvents;
+	Counters        = SaveData->Counters;
+	Stats           = SaveData->Stats;
 }
 
 bool UGameProgressSubsystem::EvaluateConditions(const TArray<FGameCondition>& Conditions) const
