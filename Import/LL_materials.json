@@ -388,16 +388,16 @@
    "blend_method": "DITHERED",
    "kind": "opaque"
   },
-  "M_BurgerWrap": {
-   "name": "M_BurgerWrap",
+  "M_BurgerBox": {
+   "name": "M_BurgerBox",
    "procedural": false,
    "object_coord": false,
    "base_color": [
-    0.86,
-    0.83,
-    0.76
+    1.0,
+    1.0,
+    1.0
    ],
-   "roughness": 0.62,
+   "roughness": 0.55,
    "metallic": 0.0,
    "specular": 0.5,
    "ior": 1.5,
@@ -410,6 +410,21 @@
    "transmission": 0.0,
    "alpha": 1.0,
    "coat": 0.0,
+   "textures": {
+    "color": {
+     "image": "T_BurgerBox_Color.png",
+     "colorspace": "sRGB",
+     "scale": null,
+     "direct": true
+    },
+    "normal": {
+     "image": "T_BurgerBox_Normal.png",
+     "colorspace": "Non-Color",
+     "scale": null,
+     "direct": false
+    }
+   },
+   "normal_strength": 1.0,
    "vertex_color": false,
    "blend_method": "DITHERED",
    "kind": "opaque"
@@ -1189,6 +1204,53 @@
    "transmission": 0.0,
    "alpha": 1.0,
    "coat": 0.0,
+   "vertex_color": false,
+   "blend_method": "DITHERED",
+   "kind": "opaque"
+  },
+  "M_Fries": {
+   "name": "M_Fries",
+   "procedural": false,
+   "object_coord": false,
+   "base_color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "roughness": 0.55,
+   "metallic": 0.0,
+   "specular": 0.5,
+   "ior": 1.5,
+   "emissive_color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "emissive_strength": 0.0,
+   "transmission": 0.0,
+   "alpha": 1.0,
+   "coat": 0.0,
+   "textures": {
+    "color": {
+     "image": "T_Fries_Color.png",
+     "colorspace": "sRGB",
+     "scale": null,
+     "direct": true
+    },
+    "rough": {
+     "image": "T_Fries_Rough.png",
+     "colorspace": "Non-Color",
+     "scale": null,
+     "direct": true
+    },
+    "normal": {
+     "image": "T_Fries_Normal.png",
+     "colorspace": "Non-Color",
+     "scale": null,
+     "direct": false
+    }
+   },
+   "normal_strength": 1.0,
    "vertex_color": false,
    "blend_method": "DITHERED",
    "kind": "opaque"
@@ -3368,84 +3430,64 @@
    "M_WaterLabel"
   ],
   "Burger_1": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_10": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_11": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_12": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_13": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_14": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_15": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_16": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_17": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_18": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_19": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_2": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_20": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_3": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_4": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_5": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_6": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_7": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_8": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Burger_9": [
-   "M_BurgerWrap",
-   "M_Acrylic_Red"
+   "M_BurgerBox"
   ],
   "Cam_L_Body": [
    "M_Plastic"
@@ -3916,6 +3958,18 @@
   ],
   "Floor_Patch": [
    "M_FloorTileFlat"
+  ],
+  "Food_Coke": [
+   "M_Fries"
+  ],
+  "Food_Fries": [
+   "M_Fries"
+  ],
+  "Food_FriesLoose": [
+   "M_Fries"
+  ],
+  "Food_Ketchup": [
+   "M_Fries"
   ],
   "Front_Door_L": [
    "M_Alu",

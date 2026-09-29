@@ -114,6 +114,16 @@ protected:
 	 */
 	void UpdateAvoidance();
 
+#if !UE_BUILD_SHIPPING
+	/**
+	 * crowd.Debug 1 일 때 활성 개체 위에 표식을 그린다.
+	 *
+	 * 메시가 숨겨져 있어도 액터 위치에 그리므로, 사람이 안 보이는 원인이
+	 * 렌더링인지(표식은 남음) 회수인지(표식도 사라짐) 눈으로 구분할 수 있다.
+	 */
+	void DrawDebugMarkers() const;
+#endif
+
 	/** 경로 끝에 닿아 회수를 예약한 개체들을 안전한 시점에 처리한다 */
 	void ProcessPendingRecycles();
 

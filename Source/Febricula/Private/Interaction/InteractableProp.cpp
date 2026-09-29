@@ -47,7 +47,7 @@ bool AInteractableProp::CanInteract_Implementation(AActor* Interactor) const
 		}
 	}
 
-	return InspectLines.Num() > 0 || !DialogueNodeId.IsNone();
+	return InspectLines.Num() > 0 || !DialogueNodeId.IsNone() || bInteractable;
 }
 
 void AInteractableProp::Interact_Implementation(AActor* Interactor)

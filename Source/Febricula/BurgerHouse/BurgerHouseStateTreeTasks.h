@@ -449,9 +449,76 @@ struct FBurgerHouseActionInstanceData
 	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "0"))
 	int32 RandomExtraRepeats = 0;
 
+	/**
+	 *	**몇 번 재생할까.** 1 이면 한 번. `RandomExtraRepeats` 는 여기에 더해진다.
+	 *
+	 *	⚠ `RandomExtraRepeats` 와 다르다 — 그쪽은 **무작위**라 횟수를 못 정한다.
+	 *	  「정확히 3번」이 필요하면 이 값을 쓸 것.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "1"))
+	int32 Plays = 1;
+
+	/**
+	 *	재생 속도. 2 면 두 배 빠르다.
+	 *
+	 *	⚠ 머무는 시간도 그만큼 짧아진다 — `PlayAction` 이 **속도를 나눈** 시간을
+	 *	  돌려주기 때문이다. 짧게 여러 번 보이고 싶으면 `Plays` 와 같이 쓴다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "0.01"))
+	float PlayRate = 1.f;
+
 	/** 끝나면 다시 시작한다 — `Idle_Look` 루프용 (§9.5 "Idle_Look 루프") */
 	UPROPERTY(EditAnywhere, Category = "Parameter")
 	bool bLoop = false;
+
+	/**
+	 *	재생 **전에** 이 종류의 슬롯이 정한 방향으로 돌려 놓는다. 비우면 안 돌린다.
+	 *
+	 *	## ⚠⚠ 왜 필요한가 — 도착하면 **아무도 방향을 안 잡아 준다**
+	 *
+	 *	`bOrientRotationToMovement = true` 라 손님은 **마지막 진행 방향 그대로**
+	 *	선다. `ClaimSlot` 이 `UseRotation` 을 내놓지만 트리가 그것을 쓰지 않는다 —
+	 *	그래서 **키오스크에 도착한 손님이 키오스크를 등질 수 있다.** §9 가
+	 *	「남은 부작용」으로 적어 둔 바로 그것이다.
+	 *
+	 *	⚠ 손님이 **그 슬롯을 이미 잡고 있어야** 찾는다 (`ASlotPoint::ClaimedBy`).
+	 *	  못 찾으면 경고만 찍고 **그냥 재생한다** — 연출 때문에 손님 루프가
+	 *	  깨지면 안 된다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter")
+	FName FaceSlotKind = NAME_None;
+
+	/**
+	 *	위 방향에서 **더** 돌릴 각도(도). **양수가 시계 방향**이다.
+	 *
+	 *	⚠ UE 는 X 정면 · Y 오른쪽이라 `+Yaw` 가 정면을 오른쪽으로 돌린다 —
+	 *	  위에서 내려다보면 시계 방향이다.
+	 *
+	 *	⚠ `FaceSlotKind` 가 비어 있으면 **무시된다.** 기준 각도가 없으면
+	 *	  「15도만 돌리기」가 뜻을 잃는다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (Units = "deg"))
+	float FaceYawOffset = 0.f;
+
+	/**
+	 *	슬롯이 **없는** 자리에서 바라볼 월드 yaw(도). `FaceSlotKind` 가 비었을
+	 *	때만 쓴다.
+	 *
+	 *	## ⚠⚠ 대기열은 슬롯이 아니다
+	 *
+	 *	줄 자리는 `Get Queue Spot` 이 `QueueStart + QueueStep*index` 로 **계산**한다.
+	 *	`ASlotPoint` 가 아니라서 `FaceSlotKind` 로는 방향을 못 잡고, 그 결과
+	 *	손님이 **마지막 진행 방향 그대로** 선다 — 줄에 선 손님이 카운터가 아니라
+	 *	출입문을 보고 있던 원인이다.
+	 *
+	 *	⚠ `QueueStep` 이 +Y(문 쪽)라 줄은 문을 향해 뻗는다. 손님이 봐야 하는 쪽은
+	 *	  그 **반대**다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter")
+	bool bFaceWorldYaw = false;
+
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (Units = "deg", EditCondition = "bFaceWorldYaw"))
+	float FaceWorldYaw = 0.f;
 
 	/** 남은 시간 */
 	UPROPERTY()
@@ -516,6 +583,27 @@ struct FBurgerHouseSitInstanceData
 	/** `Claim Slot` 의 `UseRotation` 을 묶는다 */
 	UPROPERTY(EditAnywhere, Category = "Parameter")
 	FRotator SeatRotation = FRotator::ZeroRotator;
+
+	/**
+	 *	이 거리(cm) 안에 들어오면 앉는다. 밖이면 **먼저 걸어간다.**
+	 *
+	 *	⚠ 좌석 지점은 의자 위(내비 밖)라 여기까지 딱 못 온다. 남는 거리는
+	 *	  `ACustomerCharacter::SeatBlendTime` 이 미끄러져 메운다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "1.0"))
+	float ApproachRadius = 60.f;
+
+	/** 걸어가기가 이 시간(초)을 넘기면 포기하고 그 자리에서 앉는다 — 영영 안 앉는 것보다 낫다 */
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "0.0"))
+	float ApproachTimeout = 8.f;
+
+	/** 걸어가는 중인가 */
+	UPROPERTY()
+	bool bApproaching = false;
+
+	/** 걸어간 시간 */
+	UPROPERTY()
+	float Elapsed = 0.f;
 };
 
 /**
@@ -535,7 +623,9 @@ struct FBurgerHouseSitTask : public FStateTreeTaskCommonBase
 
 	FBurgerHouseSitTask()
 	{
-		bShouldCallTick = false;
+		// ⚠ **틱이 필요하다.** 좌석까지 걸어가는 동안 도착을 봐야 한다
+		//   (`ApproachRadius`). 예전에는 그 자리에서 스냅해서 틱이 필요 없었다.
+		bShouldCallTick = true;
 		bShouldStateChangeOnReselect = false;
 	}
 
@@ -543,6 +633,7 @@ struct FBurgerHouseSitTask : public FStateTreeTaskCommonBase
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
 	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 
 #if WITH_EDITOR
@@ -678,6 +769,28 @@ struct FBurgerHouseDespawnInstanceData
 	 */
 	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (Units = "s", ClampMin = "0.0"))
 	float Delay = 0.2f;
+
+	/**
+	 *	사라지기 전에 **출구까지 걸어갈** 시간 상한(초). 0 이면 안 걷고 바로 사라진다.
+	 *
+	 *	## ⚠⚠ 왜 여기서 걷나 — `L_Move` 가 죽어 있다
+	 *
+	 *	`Root/Leave/L_Move` 의 `Move To` 는 진입한 프레임에 그대로 끝난다 (`S_Move`
+	 *	와 같은 증상, §9-14 원인 B). 그래서 손님이 **자리에서 그대로 증발**했다.
+	 *
+	 *	`Sit At Seat` 이 좌석까지 직접 걸어가는 것과 같은 수를 쓴다 — 출구 지점은
+	 *	서브시스템에 물어보면 되므로 **바인딩이 필요 없다.**
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (Units = "s", ClampMin = "0.0"))
+	float WalkOutTimeout = 12.f;
+
+	/** 출구까지 걸어가는 중인가 */
+	UPROPERTY()
+	bool bWalkingOut = false;
+
+	/** 걸어간 시간 */
+	UPROPERTY()
+	float Elapsed = 0.f;
 };
 
 /**
@@ -698,7 +811,8 @@ struct FBurgerHouseDespawnTask : public FStateTreeTaskCommonBase
 
 	FBurgerHouseDespawnTask()
 	{
-		bShouldCallTick = false;
+		// ⚠ 출구까지 걸어가는 동안 도착을 봐야 한다 (`WalkOutTimeout`).
+		bShouldCallTick = true;
 		bShouldStateChangeOnReselect = false;
 	}
 
@@ -706,6 +820,7 @@ struct FBurgerHouseDespawnTask : public FStateTreeTaskCommonBase
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
 
 #if WITH_EDITOR
 	virtual FText GetDescription(const FGuid& ID, FStateTreeDataView InstanceDataView, const IStateTreeBindingLookup& BindingLookup, EStateTreeNodeFormatting Formatting = EStateTreeNodeFormatting::Text) const override;
@@ -866,6 +981,82 @@ struct FBurgerHouseOrderReadyCondition : public FStateTreeConditionCommonBase
 	FBurgerHouseOrderReadyCondition() = default;
 
 	virtual bool TestCondition(FStateTreeExecutionContext& Context) const override;
+
+#if WITH_EDITOR
+	virtual FText GetDescription(const FGuid& ID, FStateTreeDataView InstanceDataView, const IStateTreeBindingLookup& BindingLookup, EStateTreeNodeFormatting Formatting = EStateTreeNodeFormatting::Text) const override;
+#endif
+};
+
+////////////////////////////////////////////////////////////////////
+// 레벨의 소리 액터 울리기
+
+USTRUCT()
+struct FBurgerHousePlaySoundInstanceData
+{
+	GENERATED_BODY()
+
+	/**
+	 *	울릴 액터의 **태그**. 보통 레벨에 놓은 `AAmbientSound` 다.
+	 *
+	 *	## ⚠⚠ 왜 액터 참조가 아니라 태그인가
+	 *
+	 *	`ST_Customer` 는 **에셋**이고 `AmbientSound` 는 **레벨 액터**다. 에셋은
+	 *	레벨 액터를 직접 못 가리킨다 — 에디터에서 꽂아도 저장되지 않는다.
+	 *	그래서 이름표(태그)로 런타임에 찾는다.
+	 *
+	 *	⚠ 태그는 **액터 태그**다 (`Actor > Tags`). 컴포넌트 태그가 아니다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter")
+	FName ActorTag = TEXT("OrderChime");
+
+	/**
+	 *	비워 두면 액터의 `AudioComponent` 를 그냥 `Play()` 한다 (`AAmbientSound`).
+	 *	채우면 그 액터 **위치에서** 이 소리를 한 번 낸다.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Parameter")
+	TObjectPtr<USoundBase> Sound;
+
+	UPROPERTY(EditAnywhere, Category = "Parameter", meta = (ClampMin = "0.0"))
+	float VolumeMultiplier = 1.f;
+};
+
+/**
+ *	태그로 찾은 액터에서 소리를 낸다. 상태에 **들어갈 때 한 번**.
+ *
+ *	## ⚠⚠ 소리가 없어도 **절대 실패하지 않는다**
+ *
+ *	이 태스크는 연출이다. `Failed` 를 돌려주면 그 상태가 실패하고 전이가
+ *	`OnStateFailed` 로 새서 **손님이 주문을 못 하고 문으로 되돌아간다.**
+ *	소리 하나 때문에 손님 루프가 깨지는 것은 말이 안 된다.
+ *
+ *	→ 태그를 못 찾아도·소리가 안 붙어 있어도 **경고만 찍고 `Succeeded`**.
+ *
+ *	⚠ 그래서 「소리가 안 난다」의 원인은 화면이 아니라 **로그**에 있다.
+ *	  `LogBurgerHouseST` 를 볼 것.
+ *
+ *	## 쓰는 법
+ *
+ *	1. 레벨의 `AmbientSound` 에 `Sound` 를 붙이고 **`Auto Activate` 를 끈다**
+ *	   (켜 두면 레벨이 열리자마자 계속 운다)
+ *	2. 그 액터의 `Tags` 에 `OrderChime` 을 넣는다
+ *	3. 이 태스크를 원하는 상태에 얹는다 — `K_Order` 에 얹으면 워크인 손님이
+ *	   키오스크 `Play Action` 을 **끝낸 직후** 울린다
+ */
+USTRUCT(meta = (DisplayName = "Play Sound At Tagged Actor", Category = "BurgerHouse"))
+struct FBurgerHousePlaySoundTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	FBurgerHousePlaySoundTask()
+	{
+		bShouldCallTick = false;
+		bShouldStateChangeOnReselect = false;
+	}
+
+	using FInstanceDataType = FBurgerHousePlaySoundInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 
 #if WITH_EDITOR
 	virtual FText GetDescription(const FGuid& ID, FStateTreeDataView InstanceDataView, const IStateTreeBindingLookup& BindingLookup, EStateTreeNodeFormatting Formatting = EStateTreeNodeFormatting::Text) const override;

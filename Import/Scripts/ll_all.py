@@ -1,4 +1,4 @@
-"""전체 재적용 — 임포트 → 머티리얼 → 배치 → Nanite 를 **순서대로** 한 번에
+﻿"""전체 재적용 — 임포트 → 머티리얼 → 배치 → Nanite 를 **순서대로** 한 번에
 
 ⚠ **에디터가 열려 있으면 반드시 에디터 안에서 돌릴 것.**
   `Window > Output Log` 의 콘솔을 `Python` 으로 바꾸고:
@@ -37,7 +37,7 @@ BASE = r'C:/Project/Unreal/Import/Scripts'
 # ⚠ Febricula 쪽 Props 는 2026-09-08 판(51종)이라 Burgeria(63종)와 어긋난다.
 #   처음 맞출 때는 **빈 문자열로 에셋 전부** 다시 넣는다.
 # 다시 넣을 FBX (쉼표 구분). 빈 문자열이면 전부.
-ONLY = ''
+ONLY = 'LL_Shell,LL_Shell_Trans'
 # ⚠ **새 에셋을 추가했으면 여기에 이름을 넣고 한 번 돌릴 것.** 에셋 FBX 는
 #   `Import/FBX/Assets/` 에서 읽는다 (셸만 `Import/FBX/` 바로 아래다).
 #   거기에 안 넣으면 `ll_place` 가 「에셋 없음 — 건너뜀」 을 뱉는다.
