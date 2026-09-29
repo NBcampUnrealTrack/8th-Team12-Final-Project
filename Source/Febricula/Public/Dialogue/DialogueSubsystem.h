@@ -19,7 +19,7 @@
 
 class ABaseNpcCharacter;
 class UGameProgressSubsystem;
-class UNpcRelationshipSubsystem;
+class UNpcAffinitySubsystem;
 
 /** 대사 한 줄이 출력될 때. Speaker가 비어 있으면 나레이션(사물 조사 등) */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueLine, const FText&, Speaker, const FText&, Body);
@@ -35,6 +35,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
  * OnDialogueFinished와 달리 대화가 끝난 게 아니므로, HUD는 창만 숨기고 상태는 유지해야 한다.
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueBoxHidden);
+
 
 UCLASS()
 class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
@@ -162,7 +163,7 @@ protected:
 	void PresentChoices(const TArray<FDialogueChoice>& InChoices);
 
 	UGameProgressSubsystem* GetProgress() const;
-	UNpcRelationshipSubsystem* GetRelationship() const;
+	UNpcAffinitySubsystem* GetRelationship() const;
 
 	/** 월드에서 NpcId가 일치하는 NPC 액터를 찾는다 (AI 액션 실행용) */
 	ABaseNpcCharacter* FindNpcById(FName NpcId) const;

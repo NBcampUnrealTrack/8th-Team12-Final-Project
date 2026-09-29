@@ -17,6 +17,8 @@ public:
 	// Sets default values for this component's properties
 	UCharacterAnimationComponent();
 	
+	virtual void BeginPlay() override;
+	
 	UFUNCTION(BlueprintCallable, Category = "Animation Component")
 	bool PlayAnim(FName AnimId, bool bLoop = false);
 	

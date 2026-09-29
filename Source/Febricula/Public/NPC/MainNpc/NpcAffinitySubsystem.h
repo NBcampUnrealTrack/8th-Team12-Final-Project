@@ -3,16 +3,18 @@
 // 메인 NPC 호감도(친밀도) 수치/단계의 "단일 소유자".
 // AMainNpcCharacter는 절대 호감도 값을 직접 들고 있지 않고, 이 서브시스템을 통해서만 읽고/쓴다.
 // 나중에 SaveGame 로드/세이브 로직은 이 클래스 안에서 처리하도록 확장하면 된다 (지금은 런타임 메모리 스텁).
-
+// 이지민 수정
+// 해당 Subsystem이 플레이어 스탯까지 총괄하도록 변경
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/PlayerStat.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "NPC/NpcTypes.h"
-#include "NpcRelationshipSubsystem.generated.h"
+#include "NpcAffinitySubsystem.generated.h"
 
 UCLASS(BlueprintType)
-class FEBRICULA_API UNpcRelationshipSubsystem : public UGameInstanceSubsystem
+class FEBRICULA_API UNpcAffinitySubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
@@ -40,7 +42,7 @@ protected:
 	/** NpcId -> 원시 호감도 수치. 프로젝트가 커지면 SaveGame 슬롯으로 옮겨 담는다 */
 	UPROPERTY()
 	TMap<FName, float> AffinityByNpcId;
-
+	
 	// 단계 컷오프는 우선 디자이너가 즉시 튜닝할 수 있도록 EditDefaultsOnly로 노출.
 	// 나중에 데이터테이블/커브 에셋으로 옮겨도 인터페이스(GetRelationshipLevel)는 그대로 유지된다.
 	UPROPERTY(EditDefaultsOnly, Category = "NPC|Relationship|Threshold")

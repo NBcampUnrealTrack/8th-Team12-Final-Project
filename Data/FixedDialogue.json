@@ -33,6 +33,12 @@
       },
       "MoveTime": 0.0,
       "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
     }
   },
   {
@@ -81,6 +87,12 @@
       },
       "MoveTime": 0.1,
       "Focus": 180.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
     }
   },
   {
@@ -117,6 +129,12 @@
       },
       "MoveTime": 0.0,
       "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
     }
   },
   {
@@ -146,6 +164,12 @@
       },
       "MoveTime": 0.0,
       "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
     }
   },
   {
@@ -165,11 +189,11 @@
     "Branches": [],
     "NextNodeId": "StudyLibrary5",
     "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.6,
+    "AutoAdvanceValue": 3.0,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": true,
     "Camera": {
-      "CameraType": "Player",
+      "CameraType": "None",
       "Location": {
         "X": 0.0,
         "Y": 0.0,
@@ -182,6 +206,12 @@
       },
       "MoveTime": 0.0,
       "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
     }
   },
   {
@@ -201,6 +231,12 @@
         "Key": "None",
         "Key2": "None",
         "Value": 3
+      },
+      {
+        "Type": "Teleport",
+        "Key": "Player",
+        "Key2": "PlayerStart",
+        "Value": 0
       }
     ],
     "Choices": [],
@@ -211,7 +247,7 @@
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": false,
     "Camera": {
-      "CameraType": "None",
+      "CameraType": "Player",
       "Location": {
         "X": 0.0,
         "Y": 0.0,
@@ -224,6 +260,12 @@
       },
       "MoveTime": 0.0,
       "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
     }
   }
 ]

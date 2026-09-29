@@ -4,8 +4,10 @@
 #include "Activity/ActivitySetting.h"
 #include "Dialogue/DialogueDataTypes.h"
 #include "Dialogue/DialogueSubsystem.h"
+#include "EntitySystem/MovieSceneEntitySystemRunner.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Kismet/GameplayStatics.h"
+
 
 void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -44,8 +46,6 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UActivitySubsystem::HandleDialogueFinished()
 {
-	GetWorld()->GetTimerManager().SetTimerForNextTick(
-	this, &UActivitySubsystem::PrintFixedActivities);
 
 }
 
@@ -86,7 +86,7 @@ void UActivitySubsystem::FindRunnableActivities()
 			}
 		}
 	}
-
+	SortRunnableActivity();
 	if (GEngine)
 	{
 		for (const auto& Pair : RunnableActivities)
@@ -100,35 +100,69 @@ void UActivitySubsystem::FindRunnableActivities()
 void UActivitySubsystem::PrintFixedActivities()
 {
 	TArray<FDialogueChoice> DialogueChoices;
-	TArray<int32> NeedAp;
+	
 	for (TPair<FGameplayTag, FActivityDefinition> Activity : RunnableActivities)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Activity Tag: %s"), *FText::FromName(Activity.Key.GetTagName()).ToString());
 		UE_LOG(LogTemp, Warning, TEXT("Next Node Id: %s"), *Activity.Value.NodeId.ToString());
 
-		if (CurrentAP < Activity.Value.ActionPointCost) break;
-		DialogueChoices.Add(FDialogueChoice(FText::FromName(Activity.Key.GetTagName()), TArray<FGameCondition>(), TArray<FGameAction>(), Activity.Value.NodeId));
-		NeedAp.Add(Activity.Value.ActionPointCost);
-
+		TArray<FGameCondition> Condition;
+		Condition.Add(FGameCondition(EGameConditionType::APAtLeat, NAME_None, Activity.Value.ActionPointCost));
+		DialogueChoices.Add(FDialogueChoice(FText::FromName(Activity.Key.GetTagName()), Condition, TArray<FGameAction>(), Activity.Value.NodeId));
 	}
+	DialogueChoices.Add(FDialogueChoice(INVTEXT("자유행동"), TArray<FGameCondition>(), TArray<FGameAction>(), NAME_None));
+	
 	
 	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
 		//DialogueSubsystem->TryStartEventForNpc(FName(""), nullptr);
 		FDialogueNodeRow Row = FDialogueNodeRow();
-		for (int i = 0; i < DialogueChoices.Num(); i++)
+		for (int i = 0; i < DialogueChoices.Num() - 1; i++)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Choice Name: %s"), *DialogueChoices[i].Text.ToString());
-			DialogueChoices[i].Actions.Add(FGameAction(EGameActionType::ConsumeAP, NAME_None, NAME_None, NeedAp[i]));
 		}
+		DialogueChoices[DialogueChoices.Num() - 1].bFreeActivity = true;
 		if (DialogueChoices.Num() == 0) return;
 		Row.Choices = DialogueChoices;
 		Row.Text = NSLOCTEXT("Dialogue", "Dialogue", "어떻게 할까...");
 
 		DialogueSubsystem->SetDataTables(FixedEvents, FixedDialogues);
 		DialogueSubsystem->ActivityDialoguePrint(Row);
+		bWaitActivityChoice = true;
+		bFreeActivity = false;
 	}
 	
+}
+
+void UActivitySubsystem::RunActivityByIndex(int32 Index)
+{
+	TArray<FActivityDefinition> RunnableActivityValues;
+	TArray<FGameplayTag> RunnableActivitiesTags;
+	RunnableActivities.GenerateValueArray(RunnableActivityValues);
+	RunnableActivities.GenerateKeyArray(RunnableActivitiesTags);
+	
+	if (Index < 0 || Index >= RunnableActivityValues.Num()) return;
+	if (!TryConsumeAP(RunnableActivityValues[Index].ActionPointCost)) return;
+	NowPlayedActivity = RunnableActivitiesTags[Index];
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
+
+	OnActivityRequested.Broadcast(RunnableActivityValues[Index]);
+	
+	// 	const FActivityDefinition* Definition = RunnableActivities.Find(ActivityTag);
+	// 	if (!Definition)
+	// 	{
+	// 		UE_LOG(LogTemp, Warning, TEXT("RunActivity: Activity not runnable - %s"), *ActivityTag.ToString());
+	// 		return;
+	// 	}
+	//
+	// 	if (!TryConsumeAP(Definition->ActionPointCost))
+	// 	{
+	// 		return;
+	// 	}
+	//
+	// 	OnActivityRequested.Broadcast(ActivityTag, *Definition);
+	// 	GoHome();
+
 }
 
 FGameplayTag UActivitySubsystem::GetNowScheduleTag() const
@@ -166,6 +200,14 @@ void UActivitySubsystem::OnLevelLoaded(UWorld* LoadedWorld)
 	FindRunnableActivities();
 }
 
+void UActivitySubsystem::SortRunnableActivity()
+{
+	RunnableActivities.KeySort([](const FGameplayTag& A, const FGameplayTag& B)
+	{
+		return A.GetTagName().LexicalLess(B.GetTagName());
+	});
+}
+
 int32 UActivitySubsystem::GetRunnableLength()
 {
 	return RunnableActivities.Num();
@@ -201,21 +243,30 @@ void UActivitySubsystem::GoHome()
 	}
 }
 
-void UActivitySubsystem::RunActivity(FGameplayTag ActivityTag)
+void UActivitySubsystem::ActivityFinished(FName ActivityName)
 {
-	const FActivityDefinition* Definition = RunnableActivities.Find(ActivityTag);
-	if (!Definition)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RunActivity: Activity not runnable - %s"), *ActivityTag.ToString());
-		return;
-	}
-
-	if (!TryConsumeAP(Definition->ActionPointCost))
-	{
-		return;
-	}
-
-	OnActivityRequested.Broadcast(ActivityTag, *Definition);
-	GoHome();
-
+	FString LevelName = UGameplayStatics::GetCurrentLevelName(this);
+	ActivityName = FName(LevelName + "." + ActivityName.ToString());
+	FGameplayTag ActivityTag = FGameplayTag::RequestGameplayTag(ActivityName);
+	if (NowPlayedActivity != ActivityTag) return;
+	OnActivityFinished.Broadcast(ActivityTag);
 }
+
+// void UActivitySubsystem::RunActivity(FGameplayTag ActivityTag)
+// {
+// 	const FActivityDefinition* Definition = RunnableActivities.Find(ActivityTag);
+// 	if (!Definition)
+// 	{
+// 		UE_LOG(LogTemp, Warning, TEXT("RunActivity: Activity not runnable - %s"), *ActivityTag.ToString());
+// 		return;
+// 	}
+//
+// 	if (!TryConsumeAP(Definition->ActionPointCost))
+// 	{
+// 		return;
+// 	}
+//
+// 	OnActivityRequested.Broadcast(ActivityTag, *Definition);
+// 	GoHome();
+//
+// }

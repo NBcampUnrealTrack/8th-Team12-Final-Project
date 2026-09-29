@@ -27,7 +27,7 @@
 #include "NPC/BaseNpcCharacter.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
 #include "NPC/MainNpc/MainNpcCharacter.h"
-#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcAffinitySubsystem.h"
 #include "WorldPartition/HLOD/HLODActor.h"
 
 TStatId UDialogueSubsystem::GetStatId() const
@@ -198,9 +198,15 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator)
 	for (const TPair<FName, uint8*>& Pair : EventTable->GetRowMap())
 	{
 		const FNpcEventRow* Row = reinterpret_cast<const FNpcEventRow*>(Pair.Value);
-		if (!Row || Row->NpcId != NpcId && !Row->NpcId.IsNone())
+		if (Row)
 		{
-			continue;
+			if (Row->NpcId != NpcId)
+			{
+				if (!Row->NpcId.IsNone())
+				{
+					continue;		
+				}
+			}
 		}
 
 		// 반복 불가 이벤트인데 이미 완료했으면 후보에서 제외
@@ -418,6 +424,15 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 	{
 		return;
 	}
+	
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	{
+		if (ActivitySubsystem->bWaitActivityChoice)
+		{	
+			ActivitySubsystem->bWaitActivityChoice = false;
+			ActivitySubsystem->RunActivityByIndex(ChoiceIndex);
+		}
+	}
 
 	const FDialogueChoice Chosen = PendingChoices[ChoiceIndex];
 	
@@ -432,9 +447,16 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 	bWaitingForChoice = false;
 
 	ExecuteActions(Chosen.Actions);
-
+	
 	if (Chosen.NextNodeId.IsNone())
 	{
+		if (Chosen.bFreeActivity)
+		{
+			if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+			{
+				ActivitySubsystem->bFreeActivity = true;
+			}
+		}
 		FinishDialogue();
 	}
 	else
@@ -597,17 +619,21 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 
 void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
 {
-	BlockPlayerInput(true);
-	bHasHoldingLine = true;
-	HoldingSpeaker = Row.SpeakerName;
-	HoldingDialogue = Row.Text;
-	bDialogueActive = true;
-	OnDialogueLine.Broadcast(Row.SpeakerName, Row.Text);
-	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
-
-	if (Row.Choices.Num() > 0)
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
-		PresentChoices(Row.Choices);
+		if (ActivitySubsystem->bFreeActivity) return;
+		BlockPlayerInput(true);
+		bHasHoldingLine = true;
+		HoldingSpeaker = Row.SpeakerName;
+		HoldingDialogue = Row.Text;
+		bDialogueActive = true;
+		OnDialogueLine.Broadcast(Row.SpeakerName, Row.Text);
+		UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
+
+		if (Row.Choices.Num() > 0)
+		{
+			PresentChoices(Row.Choices);
+		}
 	}
 }
 
@@ -828,7 +854,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		break;
 
 	case EGameActionType::AddAffinity:
-		if (UNpcRelationshipSubsystem* Relationship = GetRelationship())
+		if (UNpcAffinitySubsystem* Relationship = GetRelationship())
 		{
 			Relationship->AddAffinity(Action.Key, static_cast<float>(Action.Value));
 		}
@@ -1298,6 +1324,12 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			SoundSubsystem->StopSE(Action.Key, FCString::Atoi(*Action.Key2.ToString()));
 		}
 		
+	case EGameActionType::FinishActivity:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			ActivitySubsystem->ActivityFinished(Action.Key);
+		}
+		
 	default:
 		break;
 	}
@@ -1340,13 +1372,13 @@ UGameProgressSubsystem* UDialogueSubsystem::GetProgress() const
 	return nullptr;
 }
 
-UNpcRelationshipSubsystem* UDialogueSubsystem::GetRelationship() const
+UNpcAffinitySubsystem* UDialogueSubsystem::GetRelationship() const
 {
 	if (const UWorld* World = GetWorld())
 	{
 		if (UGameInstance* GI = World->GetGameInstance())
 		{
-			return GI->GetSubsystem<UNpcRelationshipSubsystem>();
+			return GI->GetSubsystem<UNpcAffinitySubsystem>();
 		}
 	}
 	return nullptr;

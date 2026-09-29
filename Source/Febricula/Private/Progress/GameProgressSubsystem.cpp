@@ -7,7 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
-#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcAffinitySubsystem.h"
 
 const UTimeSubsystem* UGameProgressSubsystem::GetTime() const
 {
@@ -40,16 +40,19 @@ int32 UGameProgressSubsystem::AddCounter(FName CounterId, int32 Delta)
 
 int32 UGameProgressSubsystem::GetStat(FName StatId) const
 {
-	const int32* Found = Stats.Find(StatId);
-	return Found ? *Found : 0;
+	// const int32* Found = Stats.Find(StatId);
+	// return Found ? *Found : 0;
+	return 0;
 }
 
-int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
-{
-	int32& Value = Stats.FindOrAdd(StatId);
-	Value += Delta;
-	return Value;
-}
+// int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
+// {
+// 	
+// 	// int32& Value = Stats.FindOrAdd(StatId);
+// 	// Value += Delta;
+// 	// return Value;
+// 	return 0;
+// }
 
 bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) const
 {
@@ -169,6 +172,19 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	case EGameConditionType::CounterAtMost:
 		return GetCounter(Condition.Key) <= Condition.Value;
 
+	case EGameConditionType::APAtLeat:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			return Condition.Value <= ActivitySubsystem->GetCurrentAP();
+		}
+		
+	case EGameConditionType::APAtMost:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			return Condition.Value >= ActivitySubsystem->GetCurrentAP();
+		}
+
+		
 	case EGameConditionType::StatAtLeast:
 		return GetStat(Condition.Key) >= Condition.Value;
 
@@ -177,7 +193,7 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 			// 호감도는 이 서브시스템이 아니라 UNpcRelationshipSubsystem이 소유하므로 위임한다.
 			if (const UGameInstance* GI = GetGameInstance())
 			{
-				if (const UNpcRelationshipSubsystem* Relationship = GI->GetSubsystem<UNpcRelationshipSubsystem>())
+				if (const UNpcAffinitySubsystem* Relationship = GI->GetSubsystem<UNpcAffinitySubsystem>())
 				{
 					const ENpcRelationshipLevel Required =
 						static_cast<ENpcRelationshipLevel>(FMath::Clamp(Condition.Value, 0, static_cast<int32>(ENpcRelationshipLevel::Intimate)));

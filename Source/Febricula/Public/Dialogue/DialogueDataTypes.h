@@ -53,6 +53,11 @@ enum class EGameConditionType : uint8
 
 	/** Key 카운터가 Value 이하인가 */
 	CounterAtMost			UMETA(DisplayName = "카운터 N 이하"),
+	
+	/* 잔여 AP가 N 이상인가 */
+	APAtLeat				UMETA(DisplayName = "잔여 AP N 이상"),
+	
+	APAtMost				UMETA(DisplayName = "잔여 AP N 이하"),
 
 	/** Key 능력치가 Value 이상인가 (예: Charm >= 5) - 매력/담력 선택지 조건용 */
 	StatAtLeast				UMETA(DisplayName = "능력치 N 이상"),
@@ -251,7 +256,9 @@ enum class EGameActionType : uint8
 	
 	StopSE					UMETA(DisplayName = "SE 정지"),
 	
-	SetSEVolume				UMETA(DisplayName = "SE 볼륨")
+	SetSEVolume				UMETA(DisplayName = "SE 볼륨"),
+	
+	FinishActivity			UMETA(DisplayName = "액티비티 종료")
 };
 
 /**
@@ -304,6 +311,10 @@ struct FGameCondition
 	/** 비교값. 일차, 카운터 수치, 관계 등급(ENpcRelationshipLevel의 정수값) 등 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Condition")
 	int32 Value = 0;
+	
+	FGameCondition() = default;
+	
+	FGameCondition(EGameConditionType Type, FName Key, int32 Value) : Type(Type), Key(Key), Value(Value) {};
 };
 
 /**
@@ -391,6 +402,14 @@ struct FDialogueChoice
 	/** 다음 노드. None이면 대화 종료 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
 	FName NextNodeId;
+	
+	/** FreeAction 여부 */ 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Choice")
+	bool bFreeActivity = false;
+	
+	/** 만약 액티비티면 액티비티의 Key */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
+	FGameplayTag ConnectedTag = FGameplayTag::EmptyTag;
 	
 	FDialogueChoice() = default;
 	

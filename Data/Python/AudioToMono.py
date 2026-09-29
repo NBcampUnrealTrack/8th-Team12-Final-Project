@@ -1,6 +1,6 @@
 import unreal, subprocess, os
 
-AUDIO_DIR = "/Game/Audio/3D"
+AUDIO_DIR = "/Game/Audio/SoundBase/3D"
 TEMP = "D:/temp_audio"
 
 os.makedirs(TEMP, exist_ok=True)

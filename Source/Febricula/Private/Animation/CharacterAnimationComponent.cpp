@@ -5,6 +5,7 @@
 
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "NPC/MainNpc/MainNpcCharacter.h"
 
 
 // Sets default values for this component's properties
@@ -15,6 +16,20 @@ UCharacterAnimationComponent::UCharacterAnimationComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	// ...
+}
+
+void UCharacterAnimationComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	if (AActor* Owner = GetOwner())
+	{
+		if (AMainNpcCharacter* Character = Cast<AMainNpcCharacter>(Owner))
+		{
+			FName Key = Character->GetDefaultAnimation();
+			if (Key == NAME_None) return;
+			PlayAnim(Key, true);
+		}
+	}
 }
 
 bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)

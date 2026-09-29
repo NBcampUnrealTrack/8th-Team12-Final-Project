@@ -19,7 +19,9 @@ class FEBRICULA_API UActorCacheSubsystem : public UWorldSubsystem
 public:
 	void Initialize(FSubsystemCollectionBase& Collection) override;
 
+	UFUNCTION(BlueprintCallable)
 	FTransform GetTargetTransform(FName TargetTag, ETargetTypeRole TargetTypeRole);
+	UFUNCTION(BlueprintCallable)
 	FVector GetTargetLocation(FName TargetTag, ETargetTypeRole TargetTypeRole);
 	
 	UFUNCTION(BlueprintCallable)

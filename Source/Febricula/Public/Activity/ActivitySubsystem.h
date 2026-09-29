@@ -8,8 +8,8 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ActivitySubsystem.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActivityRequested, FGameplayTag, ActivityTag, FActivityDefinition, Definition);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActivityRequested, FActivityDefinition, Definition);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActivityFinished, FGameplayTag, Tag);
 /**
  *
  */
@@ -32,24 +32,41 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void PrintFixedActivities();
 	
+	/*
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
-	void RunActivity(FGameplayTag ActivityTag);
-
+	void RunActivityByTag(FGameplayTag ActivityTag);
+	*/
+	
+	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
+	void RunActivityByIndex(int32 Index);
+	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	bool TryConsumeAP(int32 Cost);
 
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void GoHome();
 	
+	void ActivityFinished(FName ActivityName);
+	
 	int32 GetRunnableLength();
 	
 	TArray<FGameplayTag> GetRunnableActivityTag() const;
 
+	int32 GetCurrentAP() const { return CurrentAP; };
 	
 	FGameplayTag GetNowScheduleTag() const;
 
 	UPROPERTY(BlueprintAssignable, Category = ActivitySubsystem)
 	FOnActivityRequested OnActivityRequested;
+	
+	UPROPERTY(BlueprintAssignable, Category = ActivitySubsystem)
+	FOnActivityFinished OnActivityFinished;
+	
+	UPROPERTY()
+	bool bFreeActivity;
+	
+	UPROPERTY()
+	bool bWaitActivityChoice;
 	
 	// 디버그용
 #if !UE_BUILD_SHIPPING
@@ -64,6 +81,7 @@ protected:
 
 	void OnLevelLoaded(UWorld* LoadedWorld);
 	
+	void SortRunnableActivity();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
@@ -80,10 +98,16 @@ protected:
 	
 	UPROPERTY(EditdefaultsOnly, BlueprintReadOnly, Category = "Activity | FixedEventAsset")
 	TObjectPtr<UDataTable> FixedDialogues;
-
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
 	int32 CurrentAP;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activity")
 	int32 MaxAP;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
+	bool bProcessActivity;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activity")
+	FGameplayTag NowPlayedActivity;
 };

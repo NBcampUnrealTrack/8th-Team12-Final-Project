@@ -21,11 +21,12 @@
 
 @FadeOut Black 3
 @hide
-@wait .6
-@cam reset
-@label StudyLibrary5
-@StopAnim Player
-@FadeIn 3
 @wait .3
 
+@label StudyLibrary5
+@StopAnim Player
+@cam reset
+@FadeIn 3
+@wait .3
+@Teleport Player PlayerStart
 @end
