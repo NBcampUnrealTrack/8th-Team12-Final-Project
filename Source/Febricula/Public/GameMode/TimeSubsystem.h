@@ -23,6 +23,31 @@ enum class EDaySchedule : uint8;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDayChangedDelegate, int32, ChangedDay);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FScheduleChangedDelegate, FGameplayTag, ChangedScheduleName);
 
+/** UTimeSubsystem의 상태를 세이브 파일에 담기 위한 스냅샷 */
+USTRUCT(BlueprintType)
+struct FTimeSaveData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowDay = 1;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowMonth = 1;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 AbsoluteDay = 1;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowScheduleIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	FScheduleDef NowSchedule;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowRepeatCount = 0;
+};
+
 /**
  *
  */
@@ -50,7 +75,7 @@ public:
 	void SpendDay();
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule")
 	void SpendSchedule();
-	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule") 
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule")
 	void ResetSchedule();
 
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
@@ -104,6 +129,19 @@ public:
 	 */
 	const FScheduleDef* GetScheduleByIndex(int32 Index) const;
 	const FScheduleDef* GetScheduleByTag(FGameplayTag Tag) const;
+
+	// ---- 세이브/로드 ----
+
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Save")
+	FTimeSaveData GetSaveData() const;
+
+	/**
+	 * 세이브 파일의 값으로 시간 상태를 통째로 되돌린다.
+	 * 다른 시스템(ActivitySubsystem 등)이 현재 시간대를 구독하고 있으므로,
+	 * 값을 바꾼 뒤 OnScheduleChanged를 다시 브로드캐스트해서 동기화한다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Save")
+	void LoadSaveData(const FTimeSaveData& Data);
 
 
 protected:

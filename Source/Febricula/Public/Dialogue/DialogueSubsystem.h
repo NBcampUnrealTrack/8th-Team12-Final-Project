@@ -179,6 +179,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Log")
 	void ClearDialogueLog() { DialogueLog.Empty(); }
 
+	/** 세이브 파일에서 불러온 백로그로 통째로 덮어쓴다 (개별 Add 없이 한 번에 복원) */
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Log")
+	void SetDialogueLog(const TArray<FDialogueLogEntry>& InLog) { DialogueLog = InLog; }
+
 protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
 	void EnterNode(FName NodeId);

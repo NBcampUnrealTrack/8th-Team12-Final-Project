@@ -51,3 +51,15 @@ bool UNpcRelationshipSubsystem::IsRelationshipAtLeast(FName NpcId, ENpcRelations
 	// enum 정의 순서가 서열이므로 정수 비교로 "이상" 조건을 그대로 검사한다.
 	return static_cast<uint8>(GetRelationshipLevel(NpcId)) >= static_cast<uint8>(MinimumLevel);
 }
+
+FNpcRelationshipSaveData UNpcRelationshipSubsystem::GetSaveData() const
+{
+	FNpcRelationshipSaveData Data;
+	Data.AffinityByNpcId = AffinityByNpcId;
+	return Data;
+}
+
+void UNpcRelationshipSubsystem::LoadSaveData(const FNpcRelationshipSaveData& Data)
+{
+	AffinityByNpcId = Data.AffinityByNpcId;
+}

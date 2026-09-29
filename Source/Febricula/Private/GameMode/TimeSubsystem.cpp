@@ -35,7 +35,7 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		UE_LOG(LogTemp, Warning,
 			TEXT("UTimeSubsystem: WeekDaySchedule이 비어 있습니다. "
-				 "프로젝트 세팅 > Calander Default / Schedule Default 에서 DayScheduleAsset을 지정하세요."));
+				"프로젝트 세팅 > Calander Default / Schedule Default 에서 DayScheduleAsset을 지정하세요."));
 	}
 
 	InitScheduleBlock();
@@ -59,7 +59,7 @@ void UTimeSubsystem::InitScheduleBlock()
 
 int32 UTimeSubsystem::GetDayPerMonth()
 {
-	if (NowMonth % 2 == 0 )
+	if (NowMonth % 2 == 0)
 	{
 		return 30;
 	}
@@ -195,4 +195,31 @@ FGameplayTag UTimeSubsystem::GetNowDayTypeTag() const
 	// 날이 생겼을 때 이 함수를 고칠 필요가 없어야 하기 때문이다.
 	const UDayScheduleAsset* Asset = GetTodaySchedule();
 	return Asset ? Asset->DayTypeTag : FGameplayTag();
+}
+
+FTimeSaveData UTimeSubsystem::GetSaveData() const
+{
+	FTimeSaveData Data;
+	Data.NowDay = NowDay;
+	Data.NowMonth = NowMonth;
+	Data.AbsoluteDay = AbsoluteDay;
+	Data.NowScheduleIndex = NowScheduleIndex;
+	Data.NowSchedule = NowSchedule;
+	Data.NowRepeatCount = NowRepeatCount;
+	return Data;
+}
+
+void UTimeSubsystem::LoadSaveData(const FTimeSaveData& Data)
+{
+	NowDay = Data.NowDay;
+	NowMonth = Data.NowMonth;
+	AbsoluteDay = Data.AbsoluteDay;
+	NowScheduleIndex = Data.NowScheduleIndex;
+	NowSchedule = Data.NowSchedule;
+	NowRepeatCount = Data.NowRepeatCount;
+	MaxDay = GetDayPerMonth();
+
+	// ActivitySubsystem 등 현재 시간대를 구독하는 쪽에 로드된 값을 알려준다.
+	OnScheduleChanged.Broadcast(NowSchedule.ScheduleName);
+	OnDayChanged.Broadcast(NowDay);
 }

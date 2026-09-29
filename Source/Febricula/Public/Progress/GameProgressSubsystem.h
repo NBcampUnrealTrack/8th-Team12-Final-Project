@@ -15,6 +15,31 @@
 
 class UTimeSubsystem;
 
+/** UGameProgressSubsystem의 상태를 세이브 파일에 담기 위한 스냅샷 */
+USTRUCT(BlueprintType)
+struct FGameProgressSaveData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	TSet<FName> Tags;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	TSet<FName> Topics;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	TSet<FName> CompletedEvents;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	TMap<FName, int32> Counters;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	TMap<FName, int32> Stats;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 FallbackDay = 1;
+};
+
 UCLASS(BlueprintType)
 class FEBRICULA_API UGameProgressSubsystem : public UGameInstanceSubsystem
 {
@@ -101,10 +126,20 @@ public:
 	/** 조건 배열 전체를 AND로 평가한다. 배열이 비어 있으면 true */
 	UFUNCTION(BlueprintCallable, Category = "Progress|Condition")
 	bool EvaluateConditions(const TArray<FGameCondition>& Conditions) const;
-	
+
 	//디버그용
 	UFUNCTION(BlueprintCallable, Category = "Progress|Debug")
 	const TSet<FName>& GetClearedEvents() const { return CompletedEvents; }
+
+	// ---- 세이브/로드 ----
+
+	/** 지금 상태를 세이브용 스냅샷으로 뽑아낸다 */
+	UFUNCTION(BlueprintCallable, Category = "Progress|Save")
+	FGameProgressSaveData GetSaveData() const;
+
+	/** 세이브 파일에서 불러온 스냅샷으로 상태를 통째로 덮어쓴다 */
+	UFUNCTION(BlueprintCallable, Category = "Progress|Save")
+	void LoadSaveData(const FGameProgressSaveData& Data);
 
 protected:
 	/** 시간 조건 판정에 쓰는 UTimeSubsystem 접근자. 없으면 nullptr */

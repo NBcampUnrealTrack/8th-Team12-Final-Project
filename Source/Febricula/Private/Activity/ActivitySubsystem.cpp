@@ -13,14 +13,25 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	FixedEvents = S->FixedEventAsset.LoadSynchronous();
 
-	TArray<FActivityDefinition*> Rows;
-	FixedEvents->GetAllRows(TEXT("Fixed Event"), Rows);
-
-	for (const FName& RowName : FixedEvents->GetRowNames())
+	// [수정] FixedEventAsset이 프로젝트 세팅에 지정되지 않았거나 로드에 실패하면
+	// FixedEvents가 nullptr인 채로 GetAllRows()를 호출해서 즉시 크래시가 났다.
+	// 애셋이 아직 없는 레벨/프로젝트에서도 최소한 에디터는 열려야 하므로 방어 코드를 추가한다.
+	if (!FixedEvents)
 	{
-		if (const FActivityDefinition* Row = FixedEvents->FindRow<FActivityDefinition>(RowName, TEXT("Make Activity Map"), false))
+		UE_LOG(LogTemp, Error, TEXT("UActivitySubsystem::Initialize: FixedEventAsset이 설정되지 않았거나 로드에 실패했습니다. "
+			"Project Settings > Activity Setting > Event Default > Fixed Event Asset을 확인하세요."));
+	}
+	else
+	{
+		TArray<FActivityDefinition*> Rows;
+		FixedEvents->GetAllRows(TEXT("Fixed Event"), Rows);
+
+		for (const FName& RowName : FixedEvents->GetRowNames())
 		{
-			AllActivities.Add(Row->ActivityNameTag, *Row);
+			if (const FActivityDefinition* Row = FixedEvents->FindRow<FActivityDefinition>(RowName, TEXT("Make Activity Map"), false))
+			{
+				AllActivities.Add(Row->ActivityNameTag, *Row);
+			}
 		}
 	}
 
