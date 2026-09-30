@@ -72,6 +72,9 @@ enum class ESubNpcReaction : uint8
 
 	/** 놀라서 뒷걸음 */
 	Surprised	UMETA(DisplayName = "놀라기"),
+
+	/** 천천히 부딪혀서 잠깐 멈칫한다 (걷다가 사람과 어깨가 닿은 정도) */
+	LightBump	UMETA(DisplayName = "살짝 부딪힘"),
 };
 
 /**
@@ -227,13 +230,13 @@ struct FSubNpcArchetypeRow : public FTableRowBase
 
 	/** 반응별 애니메이션 (AnimLibrary 키). 비우면 애니메이션 없이 대사만 나온다 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
-	FName DodgeAnimId;
+	FName DodgeAnimId = TEXT("Dodge");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
-	FName AngryAnimId;
+	FName AngryAnimId = TEXT("Angry");
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
-	FName SurprisedAnimId;
+	FName SurprisedAnimId = TEXT("Surprised");
 
 	// ---- 대사 ----
 
@@ -277,6 +280,16 @@ struct FSubNpcArchetypeRow : public FTableRowBase
 	/** 서 있다가 오른쪽으로 밀릴 때 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
 	FName ShoveRightAnimId;
+
+	/**
+	 * 천천히 부딪혔을 때 (플레이어가 살살 밀거나, 행인이 걸어오다 플레이어와 닿았을 때).
+	 * 화내거나 놀랄 정도는 아니고 "어, 죄송" 하고 멈칫하는 동작. 비워두면 SurprisedAnimId로 대체된다.
+	 *
+	 * 기본값을 채워둔 이유: 아키타입 테이블이 없으면 이 구조체의 기본값이 그대로 쓰인다.
+	 * NPC 블루프린트의 AnimLibrary에 "LightBump" 키만 등록하면 테이블 없이도 재생된다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
+	FName LightBumpAnimId = TEXT("LightBump");
 };
 
 /** 가중 랜덤 선택 헬퍼. 어디서나 같은 규칙을 쓰기 위해 한 곳에 모아둔다 */

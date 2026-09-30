@@ -125,6 +125,17 @@ public:
 	void ReactToPlayerBump(AActor* Player, float ImpactSpeed);
 
 	/**
+	 * 천천히 부딪혔을 때의 가벼운 반응. 플레이어를 보며 잠깐 멈칫한 뒤 다시 걷는다.
+	 *
+	 * 두 경우에 불린다.
+	 *   1) 플레이어가 BumpSpeedThreshold보다 느리게 와서 닿았을 때 (ReactToPlayerBump)
+	 *   2) 행인이 걸어오다 서 있는 플레이어와 닿았을 때 (Director)
+	 *      행인은 스윕 없이 움직이므로 이 경우 NotifyHit이 안 불린다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Reaction")
+	void ReactToLightBump(AActor* Player);
+
+	/**
 	 * 부딪힘 반응이 결정된 순간 블루프린트에 알린다.
 	 *
 	 * C++가 고른 애니메이션으로 충분하면 구현하지 않아도 된다.
@@ -215,9 +226,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Interaction", meta = (ClampMin = "0.0"))
 	float BumpMemoryDuration = 12.f;
 
-	/** 이 속도(cm/s) 이상으로 부딪혀야 반응한다. 천천히 스치는 건 무시 */
+	/**
+	 * 이 속도(cm/s) 이상으로 부딪히면 큰 반응(피하기/화내기/놀라기), 미만이면 살짝 멈칫한다.
+	 *
+	 * 플레이어 걷기(500)와 달리기(1000) 사이에 둔다. 예전 값 300은 걷기보다 낮아서
+	 * 걸어서 닿기만 해도 전부 큰 반응이 나왔다.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0"))
-	float BumpSpeedThreshold = 300.f;
+	float BumpSpeedThreshold = 700.f;
 
 	/** 반응 후 다시 반응하기까지의 쿨다운 (초). 없으면 벽에 끼었을 때 무한 반복된다 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0"))
@@ -440,6 +456,19 @@ public:
 	bool IsWalkingOnPath() const { return CurrentActivity == ESubNpcActivity::Walking && CurrentPath != nullptr; }
 
 	/**
+	 * 경로 위에서 뒷사람을 막는 몸이 있는가.
+	 *
+	 * 걷는 중이 아니어도 부딪혀 멈춘(Reacting) 사람은 경로 위에 그대로 서 있다.
+	 * 이걸 빼면 뒷사람이 앞사람을 못 보고 뚫고 지나간다.
+	 * 스팟에서 반응 중인 사람은 경로 밖에 서 있으므로 제외한다.
+	 */
+	bool IsBlockingOnPath() const
+	{
+		return IsWalkingOnPath()
+			|| (CurrentActivity == ESubNpcActivity::Reacting && CurrentPath != nullptr && !bResumeSpotAfterReaction);
+	}
+
+	/**
 	 * 좌우로 밀어낼 양을 누적한다. 실제 반영은 다음 틱에서 보간으로 이뤄진다.
 	 * 즉시 위치를 바꾸지 않는 이유: 두 개체가 서로를 동시에 밀면 진동하기 때문이다.
 	 */
@@ -458,6 +487,27 @@ public:
 	}
 
 	bool IsReversedOnPath() const { return bReversedOnPath; }
+
+	/** 앞이 막혀 크게 감속한 상태인가. 뒷사람이 기다릴지 추월할지 판단하는 데 쓴다 */
+	bool IsHeldUp() const { return CurrentSpeedScale < 0.6f; }
+
+	/**
+	 * 막힌 앞사람을 추월하려고 옆 차선으로 옮겨 가라는 요청.
+	 *
+	 * 좌우 밀어내기(PendingAvoidNudge)는 한 번 반영하고 사라지는 약한 힘이라
+	 * 앞사람 옆으로 빠져나가기엔 부족하다. 그래서 목표 차선을 따로 주고,
+	 * Director가 계속 갱신하는 동안(Until까지) 그쪽으로 옮겨 간다.
+	 */
+	void RequestPassLane(float TargetLane, float Until)
+	{
+		PassLaneTarget = TargetLane;
+		PassLaneUntil = Until;
+	}
+
+	/** 추월 중인가. 추월하는 동안에는 방향을 바꾸지 않아야 좌우로 떨지 않는다 */
+	bool IsPassing() const;
+
+	float GetPassLaneTarget() const { return PassLaneTarget; }
 
 	/** 회수 예약 여부. 순회 중에 배열이 바뀌지 않도록 Director가 나중에 처리한다 */
 	bool IsPendingRecycle() const { return bPendingRecycle; }
@@ -507,4 +557,12 @@ protected:
 
 	/** 실제로 적용 중인 감속 배율. 급브레이크로 보이지 않게 보간한다 */
 	float CurrentSpeedScale = 1.f;
+
+	// [주의] 아래 멤버는 반드시 클래스 맨 끝에 둔다 (위쪽 프로퍼티 오프셋을 밀지 않도록).
+
+	/** 추월할 때 옮겨 갈 목표 차선 오프셋 */
+	float PassLaneTarget = 0.f;
+
+	/** 이 시각까지 PassLaneTarget 쪽으로 옮겨 간다. Director가 갱신을 멈추면 자연히 끝난다 */
+	float PassLaneUntil = -1.f;
 };

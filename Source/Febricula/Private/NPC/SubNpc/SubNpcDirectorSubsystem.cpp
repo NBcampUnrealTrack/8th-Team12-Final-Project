@@ -9,6 +9,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "GameMode/NPCSetting.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
 
@@ -90,6 +91,18 @@ namespace SubNpcCrowdCVars
 	/** 차선이 이만큼(cm) 안으로 겹칠 때만 "앞이 막혔다"로 본다 */
 	constexpr float FollowLaneWidth = 70.f;
 
+	/** 추월할 때 앞사람과 벌릴 차선 간격 (cm). FollowLaneWidth보다 커야 제동이 풀린다 */
+	constexpr float PassLaneGap = 80.f;
+
+	/**
+	 * 비켜 가는 동안의 최소 전진 배율. 옆 이동이 전진 거리에 묶여 있으므로
+	 * 너무 낮으면 옆으로도 못 빠지고 앞사람 뒤에서 머뭇거린다.
+	 */
+	constexpr float PassMinScale = 0.55f;
+
+	/** 추월 요청 유지 시간 (초). 회피 갱신 주기보다 길어야 끊기지 않는다 */
+	constexpr float PassHoldTime = 0.4f;
+
 	/**
 	 * 플레이어를 이 거리(cm) 안에서 인지하고 피한다.
 	 *
@@ -105,6 +118,12 @@ namespace SubNpcCrowdCVars
 
 	/** 이 비율 안쪽으로 정면에서 막히면 속도를 줄인다 */
 	constexpr float PlayerBlockRatio = 0.65f;
+
+	/**
+	 * 캡슐 반지름 합에 이만큼(cm) 더한 거리 안이면 "몸이 닿았다"로 본다.
+	 * 회피 갱신이 0.1초 간격이라, 딱 맞닿는 순간을 놓치지 않게 약간 여유를 둔다.
+	 */
+	constexpr float LightBumpContactSlack = 12.f;
 
 	static int32 TraceSpawn = 0;
 	static FAutoConsoleVariableRef CVarTraceSpawn(
@@ -264,6 +283,19 @@ void USubNpcDirectorSubsystem::PrewarmPool(TSubclassOf<ASubNpcCharacter> NpcClas
 
 void USubNpcDirectorSubsystem::SetArchetypeTable(UDataTable* InTable)
 {
+	// 스포너에 테이블이 없으면 프로젝트 설정의 기본 테이블을 쓴다.
+	// 레벨마다 스포너를 일일이 세팅하지 않아도 대사·애니메이션이 한 곳에서 관리된다.
+	if (!InTable)
+	{
+		InTable = GetDefault<UNPCSetting>()->DefaultSubNpcArchetypeTable.LoadSynchronous();
+		if (!InTable)
+		{
+			UE_LOG(LogTemp, Warning,
+				TEXT("[Crowd] 아키타입 테이블이 없습니다. 프로젝트 설정 > NPC Setting > Default Sub Npc Archetype Table을 지정하세요. ")
+				TEXT("지정 전까지 행인은 기본값으로 움직이고, 대사가 없어 말 걸기가 비활성화됩니다."));
+		}
+	}
+
 	ArchetypeTable = InTable;
 }
 
@@ -619,6 +651,9 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		return;
 	}
 
+	const UWorld* World = GetWorld();
+	const float Now = World ? World->GetTimeSeconds() : 0.f;
+
 	// [측정 근거] stat game에서 Director 전체(TickableGameObjects Time)의
 	// 0명 -> 90명 델타가 0.06 ms에 불과했다. 예전 기본값 24는 근거 없이 보수적이었고,
 	// 그 탓에 90명 중 24명만 회피에 참여해 나머지가 그대로 겹쳐 보였다.
@@ -632,7 +667,10 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 
 	for (ASubNpcCharacter* Npc : ActiveNpcs)
 	{
-		if (!IsValid(Npc) || !Npc->IsWalkingOnPath())
+		// [버그 수정] 예전에는 걷는 사람만 모았다. 플레이어에게 부딪혀 멈춘(Reacting)
+		// 앞사람이 목록에서 빠지니, 뒷사람은 제동을 못 걸고 그대로 뚫고 지나갔다.
+		// 멈춘 사람도 장애물로는 넣고, 감속·밀어내기는 걷는 사람에게만 건다.
+		if (!IsValid(Npc) || !Npc->IsBlockingOnPath())
 		{
 			continue;
 		}
@@ -658,8 +696,18 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 	{
 		const float PlayerAvoidSq = FMath::Square(SubNpcCrowdCVars::PlayerAvoidDistance);
 
+		const APlayerController* PC = World ? World->GetFirstPlayerController() : nullptr;
+		APawn* PlayerPawn = PC ? PC->GetPawn() : nullptr;
+		const float PlayerRadius = PlayerPawn ? PlayerPawn->GetSimpleCollisionRadius() : 0.f;
+
 		for (ASubNpcCharacter* Npc : Nearby)
 		{
+			// 멈춰서 반응 중인 사람은 비켜 갈 필요가 없다.
+			if (!Npc->IsWalkingOnPath())
+			{
+				continue;
+			}
+
 			const FVector ToPlayer = ViewerLocation - Npc->GetActorLocation();
 
 			// 높이 차이는 무시한다. 위층에 있는 플레이어를 피할 이유는 없다.
@@ -684,6 +732,28 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 			// 개체 이름 해시로 방향을 갈라서, 마주친 사람들이 같은 쪽으로만
 			// 쏠리지 않게 한다.
 			const float Side = FVector::DotProduct(ToPlayer, Npc->GetActorRightVector());
+
+			// [살짝 부딪힘] 걸어오다 플레이어 몸에 닿았으면 멈칫하고 쳐다본다.
+			// 행인은 스윕 없이 움직이므로 서 있는 플레이어에게 걸어 들어가도
+			// NotifyHit이 안 불린다. 그래서 여기서 거리로 직접 판정한다.
+			if (PlayerPawn)
+			{
+				const float ContactDist = Npc->GetSimpleCollisionRadius() + PlayerRadius
+					+ SubNpcCrowdCVars::LightBumpContactSlack;
+				if (Dist < ContactDist && FMath::Abs(Side) < ContactDist)
+				{
+					// [버그 수정] 예전에는 여기서 무조건 가벼운 반응을 냈다. 그런데 이 판정은
+					// 플레이어가 뛰어와 부딪힐 때도 NotifyHit보다 먼저 걸리는 경우가 많아서,
+					// 쿨다운에 막혀 속도와 상관없이 가벼운 반응만 나왔다.
+					// NotifyHit과 같은 입구로 보내 속도에 따라 반응을 고르게 한다.
+					Npc->ReactToPlayerBump(PlayerPawn, PlayerPawn->GetVelocity().Size2D());
+					if (!Npc->IsWalkingOnPath())
+					{
+						continue;   // 반응에 들어갔으면 이번 회피는 건너뛴다
+					}
+				}
+			}
+
 			const float Sign = (FMath::Abs(Side) > 1.f)
 				? (Side > 0.f ? -1.f : 1.f)
 				: ((GetTypeHash(Npc->GetFName()) & 1) ? -1.f : 1.f);
@@ -719,12 +789,13 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 				continue;
 			}
 
-			// [의도] 같은 그룹(친구)끼리는 밀어내지 않는다.
-			// "친구는 붙고 남남은 떨어진다"는 그림이 이 한 줄에서 나온다.
-			if (A->IsSameGroup(B))
+			// 둘 다 멈춰 있으면 서로 할 일이 없다.
+			if (!A->IsWalkingOnPath() && !B->IsWalkingOnPath())
 			{
 				continue;
 			}
+
+			const bool bSameGroup = A->IsSameGroup(B);
 
 			// [종방향 회피] 좌우 회피보다 **먼저, 더 넓은 거리에서** 판정한다.
 			//
@@ -752,8 +823,79 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 							/ FMath::Max(1.f, SubNpcCrowdCVars::FollowSlowDistance - SubNpcCrowdCVars::FollowStopDistance),
 						0.f, 1.f);
 
-					Rear->RequestSlowDown(Scale);
+					// [버그 수정] 친구끼리도 앞뒤로는 막아야 한다.
+					// 예전에는 같은 그룹이면 이 검사 전에 continue 해버렸고, 추종자는
+					// 속도 하한(SpeedScaleMin) 때문에 리더가 멈춰도 계속 걸어 리더를 뚫고 지나갔다.
+					// 다만 평소 대열 간격을 흔들지 않도록, 친구끼리는 정지 거리 안쪽에서만 세운다.
+					const bool bShouldBrake = !bSameGroup || Gap < SubNpcCrowdCVars::FollowStopDistance;
+
+					if (Rear->IsWalkingOnPath())
+					{
+						ASubNpcCharacter* Front = (Rear == A) ? B : A;
+
+						// [추월] 앞사람이 멈췄거나 막혀서 크게 느려졌으면, 뒤에 붙어 서서
+						// 미는 대신 옆 차선으로 비켜 지나간다. 옆에 공간이 없을 때만 기다린다.
+						bool bPassing = false;
+						if (!Front->IsWalkingOnPath() || Front->IsHeldUp())
+						{
+							const float HalfWidth = Rear->GetCurrentPath()->GetLaneHalfWidth();
+							const float FrontLane = Front->GetLaneOffset();
+							const float RearLane = Rear->GetLaneOffset();
+
+							// [좌우 떨림 방지] 이미 추월 중이면 처음 고른 쪽을 끝까지 유지한다.
+							// 매번 새로 고르면 앞사람 차선이 조금만 흔들려도 좌우가 뒤바뀐다.
+							const bool bAlreadyPassing = Rear->IsPassing();
+							const float CommittedSide = FMath::Sign(Rear->GetPassLaneTarget() - FrontLane);
+
+							// 처음이면 이미 치우친 쪽으로 빠진다. 정확히 같으면 이름 해시로 가른다.
+							const float Prefer = (bAlreadyPassing && CommittedSide != 0.f)
+								? CommittedSide
+								: (!FMath::IsNearlyEqual(RearLane, FrontLane, 1.f)
+									? FMath::Sign(RearLane - FrontLane)
+									: ((GetTypeHash(Rear->GetFName()) & 1) ? 1.f : -1.f));
+
+							// 추월 중에는 반대쪽으로 갈아타지 않는다.
+							const int32 NumSides = bAlreadyPassing ? 1 : 2;
+							for (int32 SideIdx = 0; SideIdx < NumSides; ++SideIdx)
+							{
+								const float Side = (SideIdx == 0) ? Prefer : -Prefer;
+								const float TargetLane = FrontLane + Side * SubNpcCrowdCVars::PassLaneGap;
+								if (FMath::Abs(TargetLane) <= HalfWidth)
+								{
+									Rear->RequestPassLane(TargetLane, Now + SubNpcCrowdCVars::PassHoldTime);
+									bPassing = true;
+									break;
+								}
+							}
+						}
+
+						if (bPassing)
+						{
+							// 비켜 가는 동안에도 계속 걷는다. 옆 이동이 전진 거리에 묶여 있으므로
+							// 여기서 멈추면 옆으로도 못 빠진다. 옆으로 벌어질수록 원래 속도로 돌아온다.
+							const float Clear = FMath::Clamp(LaneGap / SubNpcCrowdCVars::FollowLaneWidth, 0.f, 1.f);
+							Rear->RequestSlowDown(FMath::Max(Scale, FMath::Lerp(SubNpcCrowdCVars::PassMinScale, 1.f, Clear)));
+						}
+						else if (bShouldBrake)
+						{
+							Rear->RequestSlowDown(Scale);
+						}
+					}
 				}
+			}
+
+			// [의도] 같은 그룹(친구)끼리는 좌우로 밀어내지 않는다.
+			// "친구는 붙고 남남은 떨어진다"는 그림이 이 한 줄에서 나온다.
+			if (bSameGroup)
+			{
+				continue;
+			}
+
+			// 추월 중인 쌍은 좌우로 밀어내지 않는다. 추월 차선이 이미 간격을 벌리고 있고,
+			// 밀어내기까지 겹치면 두 힘이 싸워서 서로 좌우로 흔들린다.
+			if (A->IsPassing() || B->IsPassing())
+			{
+				continue;
 			}
 
 			const float DistSq = FVector::DistSquared(LocA, B->GetActorLocation());
@@ -772,8 +914,15 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 			const float OffB = B->GetLaneOffset();
 			const float Sign = (OffA != OffB) ? (OffA < OffB ? -1.f : 1.f) : ((i % 2 == 0) ? -1.f : 1.f);
 
-			A->AddAvoidanceNudge(Sign * Push);
-			B->AddAvoidanceNudge(-Sign * Push);
+			// 멈춘 쪽은 밀지 않는다. 반응이 끝나는 순간 쌓인 양만큼 튀어나간다.
+			if (A->IsWalkingOnPath())
+			{
+				A->AddAvoidanceNudge(Sign * Push);
+			}
+			if (B->IsWalkingOnPath())
+			{
+				B->AddAvoidanceNudge(-Sign * Push);
+			}
 
 		}
 	}

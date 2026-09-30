@@ -92,6 +92,24 @@ namespace SubNpcCrowdFlow
 	 * 이제는 천천히 회복시켜서, 다음 갱신까지 감속이 유지되게 한다.
 	 */
 	constexpr float SpeedScaleRecoverRate = 1.5f;
+
+	/** 추월할 때 옆 차선으로 옮겨 가는 속도 (1/초). 밀어내기(AvoidInterpSpeed)보다 빨라야 한다 */
+	constexpr float PassLaneInterpRate = 5.f;
+
+	/**
+	 * 전진 1cm당 옆으로 움직일 수 있는 최대 거리. 0.7이면 약 35도로 비스듬히 빠진다.
+	 * 이 값이 없으면 멈춘 채 옆으로만 미끄러지는 게걸음이 된다.
+	 */
+	constexpr float MaxSteerRatio = 0.7f;
+}
+
+namespace SubNpcLightBump
+{
+	/**
+	 * 살짝 부딪혔을 때 멈칫하는 시간 (초). 큰 반응(ReactionDuration)보다 짧아야 한다.
+	 * 길면 가볍게 스쳤는데도 한참 서 있어서 길을 막는다.
+	 */
+	constexpr float Duration = 1.1f;
 }
 
 namespace SubNpcGroupTuning
@@ -325,6 +343,8 @@ void ASubNpcCharacter::ClearRuntimeState()
 	PathHandoffOffset = FVector::ZeroVector;
 	PendingSpeedScale = 1.f;
 	CurrentSpeedScale = 1.f;
+	PassLaneTarget = 0.f;
+	PassLaneUntil = -1.f;
 	GroupFollowGap = 0.f;
 	ActivityEndTime = 0.f;
 	DodgeTargetOffset = 0.f;
@@ -529,6 +549,12 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 	}
 }
 
+bool ASubNpcCharacter::IsPassing() const
+{
+	const UWorld* World = GetWorld();
+	return World && World->GetTimeSeconds() < PassLaneUntil;
+}
+
 void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 {
 	if (!CurrentPath)
@@ -550,6 +576,7 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	// 각자 독립적으로 걸으면 신호에 걸릴 때마다 대열이 흩어진다.
 	// 진행 부호. 역방향이면 PathDistance가 줄어드는 쪽이 "앞"이다.
 	const float Along = bReversedOnPath ? -1.f : 1.f;
+	const float PathDistanceBefore = PathDistance;
 
 	if (ASubNpcCharacter* Leader = GroupLeader.Get())
 	{
@@ -590,17 +617,36 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 		PathDistance += WalkSpeed * CurrentSpeedScale * DeltaTime * Along;
 	}
 
-	// 이웃이 밀어낸 양을 반영한다. Director가 이번 프레임에 누적해 둔 값이다.
-	// 즉시 더하지 않고 목표를 향해 보간하는 이유: 서로 밀면 진동하기 때문이다.
-	if (!FMath::IsNearlyZero(PendingAvoidNudge))
+	const float HalfWidth = CurrentPath->GetLaneHalfWidth();
+	const float LaneBefore = LaneOffset;
+	const bool bPassing = IsPassing();
+
+	if (bPassing)
 	{
-		const float Target = LaneOffset + FMath::Clamp(PendingAvoidNudge, -MaxAvoidOffset, MaxAvoidOffset);
-		const float HalfWidth = CurrentPath->GetLaneHalfWidth();
-		LaneOffset = FMath::Clamp(
-			FMath::FInterpTo(LaneOffset, Target, DeltaTime, AvoidInterpSpeed),
-			-HalfWidth, HalfWidth);
-		PendingAvoidNudge = 0.f;
+		// 막힌 앞사람을 추월하는 중이면 옆 차선으로 옮겨 간다.
+		// 추월 중에는 이웃의 밀어내기를 받지 않는다. 두 힘이 서로 싸우면 좌우로 떤다.
+		LaneOffset = FMath::FInterpTo(LaneOffset, PassLaneTarget, DeltaTime, SubNpcCrowdFlow::PassLaneInterpRate);
 	}
+	else if (!FMath::IsNearlyZero(PendingAvoidNudge))
+	{
+		// 이웃이 밀어낸 양을 반영한다. Director가 이번 프레임에 누적해 둔 값이다.
+		// 즉시 더하지 않고 목표를 향해 보간하는 이유: 서로 밀면 진동하기 때문이다.
+		const float Target = LaneOffset + FMath::Clamp(PendingAvoidNudge, -MaxAvoidOffset, MaxAvoidOffset);
+		LaneOffset = FMath::FInterpTo(LaneOffset, Target, DeltaTime, AvoidInterpSpeed);
+	}
+	PendingAvoidNudge = 0.f;
+
+	// [게걸음 방지] 옆으로는 앞으로 나간 만큼만 움직인다.
+	//
+	// 예전에는 차선 이동이 전진과 무관했다. 앞이 막혀 거의 멈춘 사람이 옆으로만
+	// 미끄러지고, 이웃끼리 서로 밀어내며 좌우로 흔들렸다. 사람은 피할 때
+	// 앞으로 걸으면서 비스듬히 빠진다. 옆 이동을 전진 거리에 묶으면 그 그림이 된다.
+	const float ForwardStep = FMath::Abs(PathDistance - PathDistanceBefore);
+	const float MaxLateral = ForwardStep * SubNpcCrowdFlow::MaxSteerRatio;
+	LaneOffset = FMath::Clamp(
+		LaneBefore + FMath::Clamp(LaneOffset - LaneBefore, -MaxLateral, MaxLateral),
+		-HalfWidth, HalfWidth);
+	const float LateralStep = LaneOffset - LaneBefore;
 
 	// 스팟 판정은 일정 거리마다 다시 굴린다 (경로 진입 시 1회 판정의 부작용 제거).
 	if (FMath::Abs(PathDistance - NextSpotCheckDistance) >= SpotCheckInterval)
@@ -680,7 +726,20 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 		(CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid);
 
 	// 회전은 살짝 보간한다. 스플라인 방향을 그대로 대입하면 코너에서 홱 돌아 로봇처럼 보인다.
-	const FRotator TargetRot = Dir.Rotation();
+	// 비스듬히 비켜 갈 때는 실제로 움직이는 방향을 본다. 경로 방향만 보면
+	// 몸은 정면을 향한 채 옆으로 미끄러지는 게걸음이 된다.
+	FVector FacingDir = Dir;
+	if (bIsClose && ForwardStep > KINDA_SMALL_NUMBER && !FMath::IsNearlyZero(LateralStep))
+	{
+		// 차선 오프셋은 스플라인 진행 방향(역방향 여부와 무관)의 오른쪽 기준이다.
+		const FVector PathRight = FVector::CrossProduct(FVector::UpVector, Dir * Along).GetSafeNormal2D();
+		FacingDir = (Dir * ForwardStep + PathRight * LateralStep).GetSafeNormal2D();
+		if (FacingDir.IsNearlyZero())
+		{
+			FacingDir = Dir;
+		}
+	}
+	const FRotator TargetRot = FacingDir.Rotation();
 	const FRotator NewRot = bIsClose
 		? FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 8.f)
 		: TargetRot;
@@ -1021,9 +1080,11 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 		return;
 	}
 
-	// 천천히 스치는 건 무시. 안 그러면 인파를 헤치고 걸을 때마다 전원이 화를 낸다.
+	// 천천히 닿은 건 화낼 일이 아니다. 잠깐 멈칫하는 가벼운 반응으로 돌린다.
+	// (예전에는 그냥 무시해서, 살살 밀면 아무 반응 없이 몸이 겹쳐 보였다)
 	if (ImpactSpeed < BumpSpeedThreshold)
 	{
+		ReactToLightBump(Player);
 		return;
 	}
 
@@ -1125,6 +1186,57 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	OnBumped.Broadcast(Player);
 }
 
+void ASubNpcCharacter::ReactToLightBump(AActor* Player)
+{
+	const UWorld* World = GetWorld();
+	if (!World || !Player)
+	{
+		return;
+	}
+
+	// 걷거나 스팟에서 뭔가 하던 중일 때만. 풀에 있거나 이미 반응 중이면 무시한다.
+	if (CurrentActivity != ESubNpcActivity::Walking && CurrentActivity != ESubNpcActivity::AtSpot)
+	{
+		return;
+	}
+
+	// 쿨다운은 큰 반응과 같이 쓴다. 붙어 선 채로 매 프레임 멈칫하면 안 된다.
+	const float Now = World->GetTimeSeconds();
+	if (Now - LastReactionTime < ReactionCooldown)
+	{
+		return;
+	}
+
+	const bool bWasWalking = (CurrentActivity == ESubNpcActivity::Walking);
+	bResumeSpotAfterReaction = (CurrentActivity == ESubNpcActivity::AtSpot && OccupiedSpot != nullptr);
+
+	CurrentReaction = ESubNpcReaction::LightBump;
+	CurrentActivity = ESubNpcActivity::Reacting;
+	ActivityEndTime = Now + SubNpcLightBump::Duration;
+	LastReactionTime = Now;
+	LastBumpTime = Now;
+
+	// 제자리에서 멈칫한다. 옆으로 밀리지 않으므로 차선은 그대로 둔다.
+	DodgeTargetOffset = LaneOffset;
+
+	// 부딪힌 상대를 쳐다본다. "누구지?" 하고 돌아보는 게 반응의 핵심이다.
+	FaceTowards(Player);
+
+	const FName AnimId = Archetype.LightBumpAnimId.IsNone() ? Archetype.SurprisedAnimId : Archetype.LightBumpAnimId;
+	if (!AnimId.IsNone())
+	{
+		PlayNpcAnim(AnimId, /*bLoop=*/false);
+	}
+
+	SetMovementState(ENpcMovementState::Interacting);
+
+	const FVector ToPlayerDir = Player->GetActorLocation() - GetActorLocation();
+	const bool bFromRight = FVector::DotProduct(ToPlayerDir, GetActorRightVector()) > 0.f;
+	OnBumpReaction(ESubNpcReaction::LightBump, /*bPushedLeft=*/bFromRight, bWasWalking);
+
+	OnBumped.Broadcast(Player);
+}
+
 void ASubNpcCharacter::EndReaction()
 {
 	StopNpcAnim();
@@ -1178,6 +1290,15 @@ bool ASubNpcCharacter::CanInteract_Implementation(AActor* Interactor) const
 
 	// 멀리 있는(저LOD) 행인에게는 프롬프트를 띄우지 않는다.
 	if (CurrentLodBand == ESubNpcLodBand::Far || CurrentLodBand == ESubNpcLodBand::Culled)
+	{
+		return false;
+	}
+
+	// [버그 수정] 할 말이 없으면 프롬프트도 띄우지 않는다.
+	// 예전에는 대사가 비어 있어도 E 프롬프트가 떠서, 눌러도 아무 일이 없었다.
+	// 대사는 아키타입 테이블(프로젝트 설정 > NPC Setting)의 IdleBarks / BumpedBarks에서 온다.
+	FText Unused;
+	if (!PickBarkLine(Unused))
 	{
 		return false;
 	}
