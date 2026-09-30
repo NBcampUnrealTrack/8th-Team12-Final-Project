@@ -46,6 +46,16 @@ struct FCustomerActionVariant
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action", meta = (ClampMin = "0.0"))
 	float Weight = 1.f;
+
+	/**
+	 *	이 몽타주가 도는 **동안** 손에 폰을 보인다.
+	 *
+	 *	⚠ 「행동이 끝나면 숨긴다」가 아니라 **몽타주가 도는 동안만**이다. 대기
+	 *	  상태는 몽타주가 끝나도 `Order.Ready` 이벤트를 기다리며 남아 있어서,
+	 *	  행동 종료로 판단하면 폰이 빈손에 떠 있게 된다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action")
+	bool bShowPhone = false;
 };
 
 /**
@@ -228,9 +238,14 @@ public:
 	 *
 	 *	@param ForceVariant `-1` 이면 평소대로 가중 무작위로 뽑는다. 그 외에는
 	 *	                    **그 번호의 변형**을 쓴다 (장식 손님의 고정 몸짓용).
+	 *	@param PlayRate     재생 속도. 2 면 두 배 빠르다.
+	 *
+	 *	⚠ 돌려주는 시간은 **속도를 나눈 실제 재생 시간**이다. `Montage_Play` 의
+	 *	  반환값은 원본 길이라 그대로 쓰면 호출부가 두 배를 기다린다.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
-	float PlayAction(FName ActionName, float FallbackSeconds = 2.f, int32 ForceVariant = -1);
+	float PlayAction(FName ActionName, float FallbackSeconds = 2.f, int32 ForceVariant = -1,
+		float PlayRate = 1.f);
 
 	/** 재생 중인 행동을 끊는다 (상태 이탈 시) */
 	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Action")
@@ -394,6 +409,55 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Seat")
 	float SitZAdjust = 0.f;
 
+	/**
+	 *	좌석으로 **미끄러져 들어가는** 시간(초). 0 이면 예전처럼 즉시 스냅한다.
+	 *
+	 *	## ⚠⚠ 왜 필요한가 — 「자리로 순간이동한다」의 정체
+	 *
+	 *	`SitAt` 은 좌석 트랜스폼으로 **스냅**한다(`TeleportPhysics`). 걸어서
+	 *	도착한 지점과 좌석 사이가 아무리 가까워도 그 거리는 **한 프레임에**
+	 *	사라진다 — 그게 순간이동으로 보인다.
+	 *
+	 *	`MoveTo` 의 도착 판정을 조여 그 거리를 39cm → 5cm 로 줄였지만(§9-9),
+	 *	0 으로는 못 만든다. 남은 거리를 **시간에 걸쳐** 없애는 것이 이 값이다.
+	 *
+	 *	⚠ 미끄러지는 동안 이동 모드는 이미 `MOVE_None` 이라 캡슐이 의자를 밀지
+	 *	  않는다. 그래서 위치를 직접 써도 안전하다.
+	 *
+	 *	⚠ 너무 길면 앉는 애님이 먼저 끝나 **공중에서 앉은 자세로 미끄러진다.**
+	 *	  0.3~0.4 근처가 눈에 안 띈다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Seat", meta = (ClampMin = "0.0"))
+	float SeatBlendTime = 0.5f;
+
+	/**
+	 *	한 틱에 이만큼(cm) 넘게 움직이면 **경고를 찍는다.** 0 이면 안 본다.
+	 *
+	 *	## ⚠⚠ 이것이 있어야 「순간이동한다」를 고칠 수 있다
+	 *
+	 *	위치를 직접 쓰는 곳이 여럿이고(`TeleportToPoint` · `SitAt` · `StandUp` ·
+	 *	좌석 보간) 어느 것이 범인인지 화면만 봐서는 못 가른다. 실제로 두 번
+	 *	엉뚱한 곳을 고쳤다.
+	 *
+	 *	⚠ 틱 간격이 1/30 이라 350cm/s 로 **걸어도** 한 틱에 12cm 는 움직인다.
+	 *	  기본값 40 은 그 세 배 — 걷기로는 안 찍히고 스냅만 찍히는 값이다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Debug", meta = (ClampMin = "0.0"))
+	float TeleportWarnDistance = 40.f;
+
+	/**
+	 *	착석 순간 좌석까지 이만큼(cm) 넘게 남아 있으면 **경고를 찍는다.**
+	 *
+	 *	⚠ 0 이 될 수 없다. 좌석 지점은 의자 위(내비 구멍)라 손님은 거기 못 선다 —
+	 *	  내비로 투영한 자리까지만 걸어오고, 실측으로 **56~117cm** 가 남는다. 남는
+	 *	  거리는 `SeatBlendTime` 이 미끄러져 메운다.
+	 *
+	 *	⚠ 그래서 기본값은 **투영 거리보다 넉넉히** 잡는다. 이 값을 넘으면 그때는
+	 *	  진짜로 이동이 안 일어난 것이다 (상태가 건너뛰어졌거나 경로가 막혔거나).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Debug", meta = (ClampMin = "0.0"))
+	float SeatWarnDistance = 150.f;
+
 	UFUNCTION(BlueprintCallable, Category = "BurgerHouse|Seat")
 	void StandUp();
 
@@ -440,18 +504,257 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Tray")
 	FTransform TrayHandOffset = FTransform::Identity;
 
-	/** 좌석 지점 기준 트레이 놓는 자리 (앞·위로) */
+	/**
+	 *	좌석 지점 기준 트레이 놓는 자리 (앞·위로).
+	 *
+	 *	## ⚠⚠ Z 는 **테이블 상판 높이**다 — 좌면 높이가 아니다
+	 *
+	 *	좌석 지점의 Z 는 **바닥(0)** 이다 (`SitAt` 주석). 그래서 이 Z 가 곧 상판
+	 *	높이가 된다.
+	 *
+	 *	실측: `Table_A` 는 높이 70cm(원점 z 35 · 반높이 35) 라 상판이 **z = 70**.
+	 *	예전 기본값 30 은 상판보다 **40cm 아래** — 트레이가 테이블 **안에** 있었다.
+	 *
+	 *	⚠ 트레이 메시는 원점이 바닥이라(`Props/Tray` 는 z 0~2.2) 상판 높이를 그대로
+	 *	  주면 상판 **위에** 얹힌다. 반높이를 더하지 말 것.
+	 *
+	 *	⚠ X 45 는 앉은 사람 **앞**으로 45cm 다. 방향은 좌석의 사용 회전을 따르므로
+	 *	  의자마다 알아서 맞는다.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Tray")
-	FVector TrayTableOffset = FVector(45.f, 0.f, 30.f);
+	FVector TrayTableOffset = FVector(45.f, 0.f, 70.f);
+
+	/**
+	 *	놓을 자리 이 거리(cm) 안에 **트레이 액터**가 이미 있으면 내 것은 안 놓는다.
+	 *
+	 *	마주보고 앉은 손님 둘이 각자 놓으면 테이블 한가운데서 겹치기 때문이다
+	 *	(실측 6.5cm). 그 자리에 놓인 것이 2인용 세트다 (`ACounterTray::bTwoPersonSet`).
+	 *
+	 *	⚠⚠ 옆 사람의 트레이까지 잡으면 **그 사람 트레이가 통째로 사라진다.** 실측 —
+	 *
+	 *	```
+	 *	짝을 이룬 둘        공용 트레이까지 3 · 12cm
+	 *	혼자 앉은 사람      38cm      <- 여기를 물면 안 된다
+	 *	```
+	 *
+	 *	⚠ 40 으로 뒀다가 실제로 혼자 앉은 손님이 트레이를 잃었다 (벽쪽 좌석을
+	 *	  30cm 옮기면서 공용 트레이가 그쪽으로 다가갔기 때문). **25** 면 양쪽에
+	 *	  13cm 여유가 남는다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Tray", meta = (ClampMin = "0.0"))
+	float SharedTrayRadius = 25.f;
 
 	/** 트레이 메쉬 — 액터를 새로 스폰하지 않는다 (스폰·파괴 경로를 안 늘리려고) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UStaticMeshComponent> Tray;
 
+	/**
+	 *	지금 폰을 요구하는 몽타주. 이것이 **재생 중일 때만** 폰이 보인다.
+	 *
+	 *	⚠ 널이면 숨긴다. 몽타주가 끝나면 `Tick` 이 알아서 비운다.
+	 */
+	TObjectPtr<UAnimMontage> PhoneMontage;
+
+	/** 도약 검출용 — 지난 틱의 위치 (`TeleportWarnDistance`) */
+	FVector LastTickLocation = FVector::ZeroVector;
+	bool bHasLastTickLocation = false;
+
+	/**
+	 *	마지막으로 앉은 좌석의 트랜스폼.
+	 *
+	 *	⚠ `PlaceTrayAt` 이 빈 트랜스폼을 받았을 때 대신 쓴다 — 트리의
+	 *	  `TableLocation` 바인딩이 비어 있으면 트레이가 **월드 원점**으로 날아간다.
+	 */
+	FTransform SitSeatTransform;
+
+	/**
+	 *	앉기가 끝나면 트레이를 테이블에 놓아야 하는가.
+	 *
+	 *	⚠⚠ `S_Eat` 의 `Tray[PlaceOnTable]` 은 상태에 **들어가는 순간** 돈다. 그런데
+	 *	  `Sit At Seat` 는 이제 좌석까지 **걸어간 뒤** 앉는다 — 그대로 놓으면 손님이
+	 *	  아직 걸어오는 중에 트레이가 테이블에 떨어지고, 손님은 빈손으로 걸어온다.
+	 *	  그래서 **앉을 때까지 미룬다.**
+	 */
+	bool bPendingTrayOnTable = false;
+
+	/** 좌석 미끄러짐 — 남은 시간이 0 보다 크면 `Tick` 이 보간한다 (`SeatBlendTime`) */
+	FTransform SeatBlendFrom;
+	FTransform SeatBlendTo;
+	float SeatBlendLeft = 0.f;
+
+	/** 미끄러짐이 끝난 뒤 `MOVE_Walking` 으로 되돌릴 것인가 (`StandUp` 경로) */
+	bool bSeatBlendRestoreWalking = false;
+
+	/** 좌석/기립 미끄러짐을 시작한다. `SeatBlendTime` 이 0 이면 그 자리에서 스냅. */
+	void BeginSeatBlend(const FTransform& To, bool bRestoreWalkingWhenDone);
+
+	// ──────────────── 트레이에 얹히는 것들
+	//
+	// ## ⚠ 전부 `Tray` 의 **자식**이다
+	//
+	// 그래서 `HoldTray` · `PlaceTrayAt` · `DropTray` 가 트레이를 옮기면 **같이
+	// 따라간다.** 손에 붙이는 코드도, 테이블에 놓는 코드도 손댈 필요가 없다.
+	//
+	// ⚠ 숨김도 `Tray` 에서 내려온다 (`SetHiddenInGame(true, /*bPropagate=*/true)`).
+	//   자식마다 따로 숨기면 한 군데를 빠뜨렸을 때 **음식만 공중에 뜬 채로** 보인다.
+	//
+	// ⚠ 콜리전은 **전부 끈다.** 켜 두면 손에 든 음식이 손님 캡슐을 밀거나
+	//   내비를 막는다 — 증상이 「손님이 이상하게 걷는다」로 보여 원인 찾기가 고약하다.
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> BurgerBox;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> Fries;
+
+	/** 영수증 — 평평한 흰 종이. 엔진 기본 `Plane` 을 얇게 눕혀 쓴다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> Receipt;
+
+	/**
+	 *	감자튀김 세트 (`FRIES_ASSET.md`) — 봉투감자 · 콜라 · 흩어진 감자 · 케찹.
+	 *
+	 *	⚠⚠ 이 넷은 원래 **셸 메시에 합쳐져** 들어온다 (`ll_import.py` 가
+	 *	  `ALL_MESHES_INTO_ONE`). 트레이에 얹으려고 `ll_fries_set_import.py` 가
+	 *	  합치지 않고 한 번 더 구워 `Props/Food/` 에 따로 뽑아 뒀다.
+	 *
+	 *	⚠ 그래서 **피벗이 월드 원점**이고 지오메트리만 테이블 위 좌표에 있다
+	 *	  (블렌더에서 배치를 버텍스에 구웠기 때문). 상대 위치가 −290 같은 값으로
+	 *	  보이는 것이 정상이다 — 배치 스크립트가 `bounds.origin` 을 빼서 계산한다.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> Coke;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> Ketchup;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> FriesLoose;
+
+	/**
+	 *	귀에 대는 휴대폰 — `Talking_On_A_Cell_Phone` 이 도는 동안만 보인다.
+	 *
+	 *	⚠ 실측: 그 애님에서 귀로 가는 것은 **오른손**이다 (`hand_r` 가 머리까지
+	 *	  26.5cm, 왼손은 40.5cm). 그래서 `PhoneSocket` 기본값이 `hand_r` 다.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> Phone;
+
+	/** 폰을 붙일 본. ⚠ 못 찾으면 컴포넌트 원점(발밑)으로 폴백한다 (§9-20). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Prop")
+	FName PhoneSocket = TEXT("hand_r");
+
+	/** 손 기준 보정. 눈으로 맞추는 값. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Prop")
+	FTransform PhoneHandOffset = FTransform::Identity;
+
+
+	// ──────────────── 로코모션을 몽타주로 (`Import/PLAN_Montage_Locomotion.md`)
+
+	/**
+	 *	걷기·서기·앉기를 **몽타주로** 돌린다 (`ABP_Customer` 의 `LocoSlot`).
+	 *
+	 *	## 끄면 어떻게 되나 — **상태 기계로 되돌아간다**
+	 *
+	 *	`LocoSlot` 에 아무것도 안 걸리면 슬롯은 Source 를 그대로 통과시킨다. 그
+	 *	Source 가 상태 기계다. 즉 이 스위치 하나로 예전 그림으로 돌아간다 —
+	 *	그래서 상태 기계를 **안 지우고 남겨 뒀다.**
+	 *
+	 *	⚠ 끄면 틱도 같이 꺼진다 (`BeginPlay`).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion")
+	bool bMontageLocomotion = true;
+
+	/**
+	 *	상태별 행동 이름. `Actions` 맵의 키와 **철자까지 같아야** 한다.
+	 *
+	 *	⚠ 틀리면 `PlayAction` 이 몽타주를 못 찾아 시간만 세고 슬롯이 빈 채로
+	 *	  남는다 → 상태 기계 포즈가 그대로 나와서 **「바꿨는데 아무것도 안
+	 *	  변한다」** 로 보인다. 조용히 실패하는 쪽이다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion")
+	FName LocoIdleAction = TEXT("Loco_Idle");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion")
+	FName LocoWalkAction = TEXT("Loco_Walk");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion")
+	FName LocoSitAction = TEXT("Loco_Sit");
+
+	/**
+	 *	**트레이를 든 동안** 쓸 걷기/서기. 비우면 평소 것을 쓴다.
+	 *
+	 *	## ⚠ 양손으로 들려면 애님이 그렇게 생겨야 한다
+	 *
+	 *	트레이를 몸통에 붙이는 것만으로는 **손이 따라가지 않는다.** 손 위치는
+	 *	애님이 정한다 — Mixamo 세트의 `Carrying` 이 두 손을 앞으로 모은 동작이라
+	 *	그것을 쓴다.
+	 *
+	 *	⚠ 이 이름들이 `Actions` 맵에 **없으면** `PlayAction` 이 몽타주를 못 찾아
+	 *	  시간만 세고, 슬롯이 비어 상태 기계 포즈가 나온다 — 「트레이는 들었는데
+	 *	  팔이 그대로」로 보인다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion")
+	FName LocoCarryWalkAction = TEXT("Loco_CarryWalk");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion")
+	FName LocoCarryIdleAction = TEXT("Loco_CarryIdle");
+
+	/**
+	 *	걷기로 치는 속도(cm/s). **상태 기계의 전이 규칙과 같은 값**이라야 한다.
+	 *
+	 *	⚠ 실측: `ABP_Customer` 의 `Idle→Walk` 는 `Speed > 5`, 되돌아오는 쪽은
+	 *	  `Speed < 5` 다. 문서가 한동안 **10** 이라고 적어 놨었는데 틀린 값이었다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion", meta = (ClampMin = "0.0"))
+	float LocoWalkSpeed = 5.f;
+
+	/**
+	 *	임계값 주변의 **떨림 방지** 폭(cm/s).
+	 *
+	 *	## ⚠⚠ 이게 없으면 Idle↔Walk 가 초당 수십 번 뒤집힌다
+	 *
+	 *	상태 기계는 전이 블렌드가 그 떨림을 덮어 줬다. 몽타주는 바뀔 때마다 재생을
+	 *	새로 걸기 때문에 **블렌드인이 계속 처음부터 다시 시작해 애님이 얼어붙는다.**
+	 *	그래서 걷기 시작은 `LocoWalkSpeed + 이 값`, 멈춤은 `LocoWalkSpeed - 이 값`.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BurgerHouse|Locomotion", meta = (ClampMin = "0.0"))
+	float LocoSpeedHysteresis = 1.f;
+
 protected:
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	/**
+	 *	속도·착석 상태를 보고 `LocoSlot` 에 걸 몽타주를 바꾼다. 틱에서 부른다.
+	 *
+	 *	⚠ **바뀔 때만** 재생한다. 매 틱 걸면 블렌드인이 계속 처음부터 다시
+	 *	  시작해서 애님이 얼어붙는다.
+	 */
+	void UpdateLocomotionMontage();
+
+	/**
+	 *	`Actions` 의 몽타주를 **끝없이** 재생한다.
+	 *
+	 *	## 루프를 거는 법 — 에셋이 아니라 런타임이다
+	 *
+	 *	몽타주는 기본이 1회 재생이다. 세그먼트의 `LoopingCount` 는 무한 스위치가
+	 *	**아니다** (0 으로 두면 길이가 0 이 된다). 대신 재생 뒤에
+	 *	`Montage_SetNextSection(섹션, 같은 섹션)` 으로 자기 자신을 가리키게 하면
+	 *	끊김 없이 영원히 돈다.
+	 *
+	 *	⚠ 장식 루프(`PlayLoopedAction`)처럼 타이머로 다시 걸면 안 된다 — 걷기가
+	 *	  1.067초라 분당 83회를 다시 걸어야 하고, 타이밍이 흔들리면 보폭이 튄다.
+	 *
+	 *	⚠ 섹션 이름은 **박아 넣지 않는다.** 몽타주에서 읽는다.
+	 */
+	bool PlayLoopingMontageAction(FName ActionName);
+
+	/** `LocoSlot` 에 지금 걸려 있는 행동. 비어 있으면 아직 아무것도 안 걸었다. */
+	FName CurrentLocoAction;
+
 	/** 행동마다 **직전에 뽑은** 변형. `bAvoidRepeatVariant` 용. */
 	TMap<FName, int32> LastVariant;
 

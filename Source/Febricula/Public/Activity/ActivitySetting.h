@@ -16,7 +16,8 @@ class FEBRICULA_API UActivitySetting : public UDeveloperSettings
 public:
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Event Default")
 	TSoftObjectPtr<UDataTable> FixedEventAsset;
+	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category = "Event Default")
+	TSoftObjectPtr<UDataTable> FixedDialogueAsset;
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Event Default")
 	TMap<FName, TSoftObjectPtr<UWorld>> Levels;
-
 };

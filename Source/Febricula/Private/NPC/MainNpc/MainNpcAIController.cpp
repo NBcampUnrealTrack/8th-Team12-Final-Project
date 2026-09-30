@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
+#include "NPC/MainNpc/MainNpcCharacter.h"
 #include "NPC/MainNpc/NpcRoute.h"
 
 const FName AMainNpcAIController::BBKey_AIState(TEXT("AIState"));
@@ -69,6 +70,14 @@ void AMainNpcAIController::StartPatrol(ANpcRoute* Route)
 {
 	if (SetupRoute(Route))
 	{
+		if (ACharacter* NowCharacter = Cast<ACharacter>(GetPawn()))
+		{
+			if (UCharacterMovementComponent* Movement = NowCharacter->GetCharacterMovement())
+			{
+				Movement->bOrientRotationToMovement = true;
+			}
+		}
+
 		SetAIState(ENpcAIState::Patrol);
 	}
 }
@@ -81,18 +90,10 @@ void AMainNpcAIController::StartGuide(ANpcRoute* Route)
 		{
 			if (UCharacterMovementComponent* Movement = NowCharacter->GetCharacterMovement())
 			{
-				UE_LOG(LogTemp, Warning, TEXT("MovementMode=%d TickEnabled=%d MaxSpeed=%.1f Orient=%d"),
-						(int32)Movement->MovementMode,
-						Movement->IsComponentTickEnabled(),
-						Movement->MaxWalkSpeed,
-						Movement->bOrientRotationToMovement);
+				Movement->bOrientRotationToMovement = true;
 			}
 		}
 		const bool bOk = SetupRoute(Route);
-		UE_LOG(LogTemp, Warning, TEXT("Brain=%s Paused=%d Running=%d"),
-			*GetNameSafe(BrainComponent),
-			BrainComponent ? (int32)BrainComponent->IsPaused() : -1,
-			BrainComponent ? (int32)BrainComponent->IsRunning() : -1);
 
 		if (bOk)
 		{

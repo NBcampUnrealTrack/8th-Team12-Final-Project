@@ -9,23 +9,49 @@
 #include "EngineUtils.h"
 #include "FebriculaCharacter.h"
 #include "Activity/ActivitySetting.h"
+#include "Activity/ActivitySubsystem.h"
 #include "Animation/CharacterAnimationComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Dialogue/NpcCrowdManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/FebriculaGameMode.h"
 #include "GameMode/LevelAutoEventSetting.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Level/MovableMapActor.h"
 #include "Progress/GameProgressSubsystem.h"
 #include "NPC/BaseNpcCharacter.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
 #include "NPC/MainNpc/MainNpcCharacter.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "WorldPartition/HLOD/HLODActor.h"
 
 TStatId UDialogueSubsystem::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UDialogueSubsystem, STATGROUP_Tickables);
+}
+
+void UDialogueSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		return;
+	}
+
+	UGameInstance* GI = World->GetGameInstance();
+	if (!GI)
+	{
+		return;
+	}
+
+	if (UActivitySubsystem* ActivitySubsystem = GI->GetSubsystem<UActivitySubsystem>())
+	{
+		ActivitySubsystem->BindDialogue();
+	}
 }
 
 void UDialogueSubsystem::Tick(float DeltaTime)
@@ -144,8 +170,14 @@ bool UDialogueSubsystem::IsAutoAdvanceSatisfied(float DeltaTime)
 
 void UDialogueSubsystem::SetDataTables(UDataTable* InEventTable, UDataTable* InDialogueTable)
 {
-	EventTable = InEventTable;
-	DialogueTable = InDialogueTable;
+	if (InEventTable)
+	{
+		EventTable = InEventTable;
+	}
+	if (InDialogueTable)
+	{
+		DialogueTable = InDialogueTable;
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -405,7 +437,7 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 	}
 
 	const FDialogueChoice Chosen = PendingChoices[ChoiceIndex];
-
+	
 	// 조건 미달 선택지는 UI에서 비활성으로 보이지만, 혹시 모르니 여기서도 막는다.
 	const UGameProgressSubsystem* Progress = GetProgress();
 	if (Progress && !Progress->EvaluateConditions(Chosen.Conditions))
@@ -568,6 +600,22 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	}
 }
 
+void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
+{
+	BlockPlayerInput(true);
+	bHasHoldingLine = true;
+	HoldingSpeaker = Row.SpeakerName;
+	HoldingDialogue = Row.Text;
+	bDialogueActive = true;
+	OnDialogueLine.Broadcast(Row.SpeakerName, Row.Text);
+	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
+
+	if (Row.Choices.Num() > 0)
+	{
+		PresentChoices(Row.Choices);
+	}
+}
+
 void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices)
 {
 	const UGameProgressSubsystem* Progress = GetProgress();
@@ -583,10 +631,18 @@ void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices
 		View.Text = Choice.Text;
 		// 조건 미달이면 목록엔 보이되 못 고르게 한다 (매력/담력 부족 선택지 노출용)
 		View.bEnabled = Progress ? Progress->EvaluateConditions(Choice.Conditions) : true;
+		UE_LOG(LogTemp, Warning, TEXT("View Name: %s"), *View.Text.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("View: %s, Enabled=%d"), *View.Text.ToString(), View.bEnabled);
 		Views.Add(View);
 	}
-
+	for (FDialogueChoiceView Choice : Views)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("View Name2: %s"), *Choice.Text.ToString());		
+	}
+	HoldingChoices = Views;
 	OnDialogueChoices.Broadcast(Views);
+	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueChoices.IsBound());
+	bWaitingForChoice = true;
 }
 
 void UDialogueSubsystem::ResolveNodeExit()
@@ -731,11 +787,13 @@ void UDialogueSubsystem::CameraToPlayerCam(const float MoveTime)
 	}
 }
 
-bool UDialogueSubsystem::GetCurrentLine(FText& OutSpeaker, FText& OutLine)
-{
-	OutSpeaker = HoldingSpeaker;
-	OutLine = HoldingDialogue;
-	return bHasHoldingLine;
+	bool UDialogueSubsystem::GetCurrentLine(FText& OutSpeaker, FText& OutLine, TArray<FDialogueChoiceView>& OutChoiceViews)
+	{
+		OutSpeaker = HoldingSpeaker;
+		OutLine = HoldingDialogue;
+		UE_LOG(LogTemp, Warning, TEXT("Holding Line Count: %d"), HoldingChoices.Num());
+		OutChoiceViews = HoldingChoices;
+		return bHasHoldingLine;	
 }
 
 void UDialogueSubsystem::AddCharacterByName(FName Name, ACharacter* Character)
@@ -913,7 +971,37 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			MainNpc->PauseAIDuringTalk();
 		}
 		break;
+		
+	case EGameActionType::StartCrowdSpawn:
+		if (!Action.Key.IsNone())
+		{
+			TArray<AActor*> Founds;
+			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
+			if (Founds.Num() > 0)
+			{
+				if (IsValid(Founds[0]))
+				{
+					if (ANpcCrowdManager* CrowdManager = Cast<ANpcCrowdManager>(Founds[0]))
+					{
+						if (!Action.Key2.IsNone())
+						{
+							CrowdManager->Play(Action.Key2);
+						}
+						else
+						{
+							UE_LOG(LogTemp, Warning, TEXT("Path 식별자가 지정되지 않음"))
+						}
+					}
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("CrowdManager를 찾을 수 없음"))
+			}
 
+		}
+		break;
+		
 		// ---- 애니메이션 ----
 
 	case EGameActionType::PlayAnim:
@@ -1130,9 +1218,50 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 					}
 				}
 			}
+			break;
+		}
+	case EGameActionType::Interact:
+		{
+			TArray<AActor*> Founds;
+			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
+			if (Founds.IsEmpty()) break;
+			if (AMovableMapActor* MapActor = Cast<AMovableMapActor>(Founds[0]))
+			{
+				if (!Action.Key2.IsNone())
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Interact Instant: %s : %d"), *Action.Key2.ToString(), Action.Key2.ToString().ToBool())
+					MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, Action.Key2.ToString().ToBool());
+					break;
+				}
+				MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, false);
+			}
+			break;
+		}
+	case EGameActionType::UnInteract:
+		{
+			TArray<AActor*> Founds;
+			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
+			if (Founds.IsEmpty()) break;
+			if (AMovableMapActor* MapActor = Cast<AMovableMapActor>(Founds[0]))
+			{
+				if (!Action.Key2.IsNone())
+				{
+					MapActor->StartMove(Founds[0], Action.Key2.ToString().ToBool());
+					break;
+				}
+				MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, false);
+			}
+			break;
 		}
 	}
 
+	case EGameActionType::ConsumeAP:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			ActivitySubsystem->TryConsumeAP(Action.Value);
+		}
+		break;
+	
 	default:
 		break;
 	}

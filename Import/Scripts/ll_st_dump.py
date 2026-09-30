@@ -34,7 +34,7 @@
 """
 import unreal
 
-ASSET = '/Game/BurgerHouse/AI/ST_Customer'
+ASSET = '/Game/BurgerHouse/BP/ST_Customer'
 
 TRIG = {0: 'None', 1: 'OnStateSucceeded', 2: 'OnStateFailed',
         3: 'OnStateCompleted', 4: 'OnTick', 8: 'OnEvent', 16: 'OnDelegate'}

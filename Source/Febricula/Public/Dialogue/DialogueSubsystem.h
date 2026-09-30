@@ -55,6 +55,8 @@ class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
 	GENERATED_BODY()
 
 public:
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	
 	//~ Begin FTickableGameObject
 	// 자동 진행(AutoAdvance) 조건을 매 틱 검사해야 해서 Tickable 서브시스템으로 둔다.
 	virtual void Tick(float DeltaTime) override;
@@ -147,7 +149,7 @@ public:
 
 	//지연 생성된 위젯을 위한 함수
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Dialogue Holder")
-	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine);
+	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine, TArray<FDialogueChoiceView>& OutChoiceViews);
 
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void AddCharacterByName(FName Name, ACharacter* Character);
@@ -155,6 +157,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void RemoveCharacterByName(FName Name, ACharacter* Character);
 
+	void ActivityDialoguePrint(const FDialogueNodeRow& Row);
 	// ---- HUD가 구독할 델리게이트 ----
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
@@ -272,8 +275,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
 	FText HoldingDialogue;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
-	TArray<FDialogueChoice> HoldingChoices;
-
+	TArray<FDialogueChoiceView> HoldingChoices;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	bool bBlockPlayerInput;
 

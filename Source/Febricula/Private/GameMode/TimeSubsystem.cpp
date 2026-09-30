@@ -140,6 +140,11 @@ void UTimeSubsystem::SpendSchedule()
 	OnScheduleChanged.Broadcast(NowSchedule.ScheduleName);
 }
 
+int32 UTimeSubsystem::GetNowScheduleAp()
+{
+	return NowSchedule.ActionPoint;
+}
+
 void UTimeSubsystem::ResetSchedule()
 {
 	int32 Day = GetAbsoluteDay();

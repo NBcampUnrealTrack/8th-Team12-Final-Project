@@ -2,6 +2,9 @@
 
 #include "StoreSubsystem.h"
 #include "SlotPoint.h"
+#include "CounterTray.h"
+// ⚠ TActorIterator 의 정의는 여기 있다. 없으면 "undefined class" 로만 터진다.
+#include "EngineUtils.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/CapsuleComponent.h"
@@ -15,8 +18,33 @@ DEFINE_LOG_CATEGORY_STATIC(LogBurgerHouseNPC, Log, All);
 
 ACustomerCharacter::ACustomerCharacter()
 {
-	// 손님은 스스로 틱할 게 없다. 시간 세기는 StateTree 태스크가 한다.
-	PrimaryActorTick.bCanEverTick = false;
+	// 원래 손님은 스스로 틱할 게 없었다 — 시간 세기는 StateTree 태스크가 한다.
+	//
+	// ⚠⚠ 그런데 **로코모션을 몽타주로 돌리면서 틱이 필요해졌다.** 걷기 시작·정지는
+	//    이벤트가 없고 속도를 봐야만 알 수 있다. 상태 기계는 매 프레임 규칙을
+	//    평가해 주지만 몽타주는 **우리가 알아채고 걸어 줘야** 한다
+	//    (`Import/PLAN_Montage_Locomotion.md` 의 「매 프레임 반응」).
+	//
+	// ⚠ 그래서 30Hz 로 낮춘다. 블렌드가 0.2초라 33ms 지연은 안 보인다.
+	//   `bMontageLocomotion` 이 꺼져 있으면 `BeginPlay` 가 틱을 끈다 — 예전처럼
+	//   **한 번도 안 도는** 상태로 돌아간다.
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickInterval = 1.f / 30.f;
+
+	// 트레이에 얹히는 것들을 만드는 작은 헬퍼 — 넷 다 설정이 같다.
+	auto MakeTrayItem = [this](const TCHAR* Name) -> UStaticMeshComponent*
+	{
+		UStaticMeshComponent* C = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		if (C)
+		{
+			// ⚠ 콜리전을 켜면 손에 든 음식이 손님 캡슐을 밀거나 내비를 막는다.
+			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			C->SetGenerateOverlapEvents(false);
+			// ⚠ 납작한 것의 그림자는 VSM 마킹을 먹는다 (트레이와 같은 이유).
+			C->SetCastShadow(false);
+		}
+		return C;
+	};
 
 	Tray = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Tray"));
 	if (Tray)
@@ -27,7 +55,47 @@ ACustomerCharacter::ACustomerCharacter()
 		Tray->SetGenerateOverlapEvents(false);
 		// ⚠ 납작한 것의 그림자는 VSM 마킹을 먹는다 (UE 함정 19).
 		Tray->SetCastShadow(false);
-		Tray->SetHiddenInGame(true);
+
+	}
+
+	// 트레이 위에 얹히는 것들. **전부 `Tray` 의 자식**이라 트레이를 옮기면 따라간다.
+	//
+	// ⚠ 메시·오프셋은 여기서 안 박는다 — `ll_tray_setup.py` 가 BP 에 꽂는다.
+	//   C++ 에 경로를 박으면 아티스트가 못 바꾼다.
+	BurgerBox = MakeTrayItem(TEXT("BurgerBox"));
+	Fries = MakeTrayItem(TEXT("Fries"));
+	Receipt = MakeTrayItem(TEXT("Receipt"));
+	Coke = MakeTrayItem(TEXT("Coke"));
+	Ketchup = MakeTrayItem(TEXT("Ketchup"));
+	FriesLoose = MakeTrayItem(TEXT("FriesLoose"));
+	for (UStaticMeshComponent* C : { BurgerBox.Get(), Fries.Get(), Receipt.Get(),
+									 Coke.Get(), Ketchup.Get(), FriesLoose.Get() })
+	{
+		if (C)
+		{
+			C->SetupAttachment(Tray);
+		}
+	}
+
+	// ## ⚠⚠ 숨기기는 **자식을 붙인 뒤**다
+	//
+	// `bPropagateToChildren` 은 **그 순간 붙어 있는 자식**에게만 내려간다. 예전에는
+	// 이 줄이 `Tray` 를 만든 직후, 음식 세 개를 만들기 **전**에 있었다. 그래서
+	// 트레이만 숨고 **버거·감자·영수증은 처음부터 보였다.**
+	if (Tray)
+	{
+		Tray->SetHiddenInGame(true, /*bPropagateToChildren=*/true);
+	}
+
+	// ⚠ 폰은 트레이의 자식이 **아니다** — 손에 붙고 트레이와 무관하다.
+	Phone = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Phone"));
+	if (Phone)
+	{
+		Phone->SetupAttachment(GetMesh());
+		Phone->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Phone->SetGenerateOverlapEvents(false);
+		Phone->SetCastShadow(false);
+		Phone->SetHiddenInGame(true);
 	}
 }
 
@@ -94,10 +162,40 @@ bool ACustomerCharacter::ApplyStartRole()
 		const FTransform Use = Seat->GetUseTransform();
 		SitAt(Use);
 
-		// 프리필 손님은 `Pickup` 을 건너뛰므로 손에 든 적이 없다. 들려 준 뒤
-		// 테이블에 놓아야 트레이가 보인다 (`PlaceTrayAt` 이 `bHasTray` 를 본다).
-		HoldTray();
-		PlaceTrayAt(Use);
+		// ## ⚠⚠ 마주보고 앉으면 트레이가 **겹친다**
+		//
+		// 둘 다 자기 앞 `TrayTableOffset`(45cm) 에 놓으므로 테이블 한가운데서
+		// 만난다 — 실측으로 **6.5cm** 떨어져 있었다.
+		//
+		// 그래서 **그 자리에 이미 트레이 액터가 있으면 내 것은 안 놓는다.** 거기에
+		// 놓인 것이 2인용 세트(`ACounterTray::bTwoPersonSet`)다.
+		//
+		// ⚠ 「누가 먼저냐」를 따지지 않는다. 레벨에 놓인 액터가 늘 이긴다 —
+		//   사람이 눈으로 맞춘 배치가 자동 배치보다 정확하기 때문이다.
+		const FVector Where = Use.TransformPosition(TrayTableOffset);
+		const AActor* Shared = nullptr;
+		for (TActorIterator<ACounterTray> It(GetWorld()); It; ++It)
+		{
+			if (*It && FVector::Dist(It->GetActorLocation(), Where) <= SharedTrayRadius)
+			{
+				Shared = *It;
+				break;
+			}
+		}
+
+		if (Shared)
+		{
+			UE_LOG(LogBurgerHouseNPC, Log,
+				TEXT("%s 트레이를 안 놓는다 — %s 가 %.0fcm 안에 있다 (공용 트레이)"),
+				*GetName(), *Shared->GetName(), FVector::Dist(Shared->GetActorLocation(), Where));
+		}
+		else
+		{
+			// 프리필 손님은 `Pickup` 을 건너뛰므로 손에 든 적이 없다. 들려 준 뒤
+			// 테이블에 놓아야 트레이가 보인다 (`PlaceTrayAt` 이 `bHasTray` 를 본다).
+			HoldTray();
+			PlaceTrayAt(Use);
+		}
 
 		// 장식 손님은 트리를 안 타므로 여기서 몸짓을 걸어 준다.
 		//
@@ -245,6 +343,240 @@ void ACustomerCharacter::TeleportToPoint(const FVector& Location, const FRotator
 	{
 		C->SetControlRotation(Yaw);
 	}
+}
+
+// ─────────────────────────────────────────── 로코모션을 몽타주로 (`LocoSlot`)
+
+void ACustomerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// ## ⚠⚠ 트레이를 **여기서 다시 붙인다** — 생성자의 소켓 이름은 못 믿는다
+	//
+	// 생성자의 `Tray->SetupAttachment(GetMesh(), TraySocket)` 이 쓰는 `TraySocket`
+	// 은 **C++ 기본값**이다. 블루프린트가 덮어쓴 값은 생성자가 끝난 뒤에 들어온다.
+	//
+	// 그래서 손님을 마네퀸으로 바꾸고 BP 에서 `spine_05` 로 고쳤는데도, 실제
+	// 부착은 옛 기본값 `mixamorig:RightHand` 로 일어났다. 마네퀸에 없는 이름이라
+	// `GetSocketTransform` 이 **컴포넌트 원점으로 폴백**하는데, 메시 컴포넌트는
+	// 캡슐 기준 `z −90` 이라 그 자리가 곧 **발밑**이다.
+	//
+	// ⚠⚠ 죽지 않는다. 경고도 없다. 「버거가 발밑에 붙어 있다」로만 보인다.
+	if (Tray)
+	{
+		Tray->AttachToComponent(GetMesh(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale, TraySocket);
+		Tray->SetRelativeTransform(TrayHandOffset);
+		Tray->SetHiddenInGame(true, /*bPropagateToChildren=*/true);
+	}
+
+	// ⚠ 트레이와 **같은 이유**로 여기서 다시 붙인다 — 생성자의 소켓 이름은
+	//    C++ 기본값이라 블루프린트가 덮어쓴 값이 안 들어가 있다 (§9-20).
+	if (Phone)
+	{
+		Phone->AttachToComponent(GetMesh(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale, PhoneSocket);
+		Phone->SetRelativeTransform(PhoneHandOffset);
+		Phone->SetHiddenInGame(true);
+	}
+
+	// ⚠ 스위치가 꺼져 있으면 **틱을 아예 안 돈다.** 예전 동작(상태 기계)이 그대로다.
+	SetActorTickEnabled(bMontageLocomotion);
+}
+
+void ACustomerCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// ⚠ **보간보다 먼저** 읽는다 — 이 틱에 좌석 보간이 옮긴 거리는 「도약」이
+	//    아니라 의도된 것이므로 아래에서 따로 표시한다.
+	const bool bBlendingThisTick = (SeatBlendLeft > 0.f);
+
+	// ⚠ **로코모션보다 먼저**다. 여기서 위치를 옮긴 뒤 속도를 봐야 한다.
+	if (SeatBlendLeft > 0.f)
+	{
+		SeatBlendLeft = FMath::Max(SeatBlendLeft - DeltaSeconds, 0.f);
+
+		// ⚠ 등속으로 옮기면 출발과 도착에서 툭 끊긴다. SmoothStep 이 양끝을 죽인다.
+		const float Alpha = (SeatBlendTime > 0.f)
+			? FMath::SmoothStep(0.f, 1.f, 1.f - (SeatBlendLeft / SeatBlendTime))
+			: 1.f;
+
+		SetActorLocationAndRotation(
+			FMath::Lerp(SeatBlendFrom.GetLocation(), SeatBlendTo.GetLocation(), Alpha),
+			FQuat::Slerp(SeatBlendFrom.GetRotation(), SeatBlendTo.GetRotation(), Alpha),
+			/*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
+
+		if (SeatBlendLeft <= 0.f)
+		{
+			if (bSeatBlendRestoreWalking)
+			{
+				if (UCharacterMovementComponent* Move = GetCharacterMovement())
+				{
+					Move->SetMovementMode(MOVE_Walking);
+				}
+				bSeatBlendRestoreWalking = false;
+			}
+			// ⚠ **다 앉은 뒤에** 트레이를 테이블에 놓는다 (`bPendingTrayOnTable` 주석).
+			if (bPendingTrayOnTable)
+			{
+				bPendingTrayOnTable = false;
+				PlaceTrayAt(SitSeatTransform);
+			}
+
+			// 보간하려고 켰던 틱을 원래대로 (`BeginSeatBlend` 주석)
+			SetActorTickEnabled(bMontageLocomotion);
+		}
+	}
+
+	if (bMontageLocomotion)
+	{
+		UpdateLocomotionMontage();
+	}
+
+	// ## 소품 — **몽타주가 도는 동안만** 보인다
+	//
+	// ⚠ 행동이 끝났는지로 판단하면 안 된다. 대기 상태는 몽타주가 끝나도
+	//   `Order.Ready` 를 기다리며 남아 있어서 폰이 빈손에 떠 있게 된다.
+	if (Phone)
+	{
+		const UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+		const bool bShow = (PhoneMontage != nullptr) && Anim
+			&& const_cast<UAnimInstance*>(Anim)->Montage_IsPlaying(PhoneMontage);
+		if (!bShow)
+		{
+			PhoneMontage = nullptr;
+		}
+		if (Phone->bHiddenInGame == bShow)
+		{
+			Phone->SetHiddenInGame(!bShow);
+		}
+	}
+
+	// ## 도약 검출 (`TeleportWarnDistance`)
+	//
+	// ⚠ 「누가 옮겼는지」를 못 찍는다 — 옮긴 쪽이 아니라 **결과**를 보기 때문이다.
+	//    대신 그 순간의 상태(앉음·보간·속도)를 같이 찍어 후보를 좁힌다.
+	const FVector Now = GetActorLocation();
+	if (TeleportWarnDistance > 0.f && bHasLastTickLocation)
+	{
+		const float Moved = FVector::Dist2D(LastTickLocation, Now);
+		if (Moved > TeleportWarnDistance)
+		{
+			UE_LOG(LogBurgerHouseNPC, Warning,
+				TEXT("도약 %s — 한 틱에 %.1fcm (%s -> %s) | 앉음=%d 좌석보간=%d 속도=%.0f 역할=%s"),
+				*GetName(), Moved,
+				*LastTickLocation.ToCompactString(), *Now.ToCompactString(),
+				bSitting ? 1 : 0, bBlendingThisTick ? 1 : 0,
+				GetVelocity().Size2D(), *StartRole.ToString());
+		}
+	}
+	LastTickLocation = Now;
+	bHasLastTickLocation = true;
+}
+
+void ACustomerCharacter::UpdateLocomotionMontage()
+{
+	// ## 어떤 상태여야 하나
+	//
+	// ⚠ 앉음이 **속도보다 먼저**다. 앉은 손님은 속도가 0 이라 어차피 Idle 로
+	//    가겠지만, `SitAt` 이 순간이동으로 자리를 잡는 프레임에는 속도가 튄다.
+	//    순서를 뒤집으면 앉는 순간 한 프레임 걷는 그림이 나온다.
+	FName Desired;
+	if (bSitting)
+	{
+		Desired = LocoSitAction;
+	}
+	else
+	{
+		// ## ⚠⚠ 히스테리시스 — 임계값 하나로 판정하면 안 된다
+		//
+		// 목표에 다 와서 감속할 때 속도가 5 근처에서 떨린다. 임계값이 하나면
+		// Idle↔Walk 가 초당 수십 번 뒤집히고, 그때마다 몽타주를 새로 걸어
+		// **블렌드인이 계속 0 에서 다시 시작해 애님이 얼어붙는다.**
+		//
+		// 지금 걷는 중이면 더 낮은 값까지 버티고, 서 있으면 더 높은 값을 넘어야
+		// 걷기 시작한다.
+		// ⚠ **트레이를 들었으면 다른 애님**이다 — 양손이 앞으로 모여야 한다.
+		//   몸통에 붙이는 것만으로는 손이 안 따라온다 (`LocoCarryWalkAction` 주석).
+		const FName WalkName = (bHasTray && !LocoCarryWalkAction.IsNone())
+			? LocoCarryWalkAction : LocoWalkAction;
+		const FName IdleName = (bHasTray && !LocoCarryIdleAction.IsNone())
+			? LocoCarryIdleAction : LocoIdleAction;
+
+		const bool bWalkingNow = (CurrentLocoAction == WalkName);
+		const float Threshold = bWalkingNow
+			? FMath::Max(LocoWalkSpeed - LocoSpeedHysteresis, 0.f)
+			: LocoWalkSpeed + LocoSpeedHysteresis;
+
+		Desired = (GetVelocity().Size2D() > Threshold) ? WalkName : IdleName;
+	}
+
+	if (Desired == CurrentLocoAction)
+	{
+		return;			// ⚠ 바뀔 때만 건다 (헤더 주석)
+	}
+
+	if (PlayLoopingMontageAction(Desired))
+	{
+		CurrentLocoAction = Desired;
+	}
+	// ⚠ 실패하면 `CurrentLocoAction` 을 **안 바꾼다.** 다음 틱에 다시 시도하고,
+	//    그동안 슬롯은 상태 기계 포즈를 통과시키므로 화면이 비지 않는다.
+}
+
+bool ACustomerCharacter::PlayLoopingMontageAction(FName ActionName)
+{
+	const FCustomerAction* Found = Actions.Find(ActionName);
+	if (!Found || Found->Variants.Num() == 0)
+	{
+		// ⚠ 조용히 넘어가면 「몽타주로 바꿨는데 아무것도 안 변한다」가 된다.
+		//    원인이 대개 `Actions` 키 철자다.
+		UE_LOG(LogBurgerHouseNPC, Warning,
+			TEXT("%s 로코모션 행동 %s 가 Actions 에 없다 — 철자를 볼 것"),
+			*GetName(), *ActionName.ToString());
+		return false;
+	}
+
+	const int32 Idx = PickVariant(ActionName, *Found);
+	UAnimMontage* M = Found->Variants.IsValidIndex(Idx) ? Found->Variants[Idx].Montage : nullptr;
+	if (!M)
+	{
+		UE_LOG(LogBurgerHouseNPC, Warning,
+			TEXT("%s 로코모션 행동 %s 에 몽타주가 비어 있다"), *GetName(), *ActionName.ToString());
+		return false;
+	}
+
+	UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!Anim)
+	{
+		// ⚠ AnimBP 가 없으면 여기로 온다 — `BP_Customer > Mesh > Anim Class` 를 볼 것.
+		return false;
+	}
+
+	if (Anim->Montage_Play(M) <= 0.f)
+	{
+		UE_LOG(LogBurgerHouseNPC, Warning,
+			TEXT("%s 로코모션 몽타주 %s 재생 실패"), *GetName(), *GetNameSafe(M));
+		return false;
+	}
+
+	// ## ⚠⚠ 여기가 루프를 거는 곳이다
+	//
+	// 몽타주는 기본이 1회 재생이라 끝나면 블렌드아웃되어 슬롯이 비고, 상태 기계
+	// 포즈가 드러난다 — 「걷다가 갑자기 Idle 로 튄다」로 보인다.
+	//
+	// 섹션의 **다음 섹션을 자기 자신**으로 만들면 끊김 없이 영원히 돈다.
+	// 세그먼트의 `LoopingCount` 는 이 용도가 아니다 (0 은 무한이 아니라 길이 0).
+	//
+	// ⚠ 섹션 이름은 박아 넣지 않는다. 팩토리 기본값이 `Default` 지만 손으로 만든
+	//    몽타주는 다를 수 있다.
+	if (M->GetNumSections() > 0)
+	{
+		const FName Sec = M->GetSectionName(0);
+		Anim->Montage_SetNextSection(Sec, Sec, M);
+	}
+	return true;
 }
 
 void ACustomerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -412,7 +744,7 @@ int32 ACustomerCharacter::PickStableVariant(FName ActionName, int32 StableKey) c
 	return INDEX_NONE;
 }
 
-float ACustomerCharacter::PlayAction(FName ActionName, float FallbackSeconds, int32 ForceVariant)
+float ACustomerCharacter::PlayAction(FName ActionName, float FallbackSeconds, int32 ForceVariant, float PlayRate)
 {
 	if (const FCustomerAction* Found = Actions.Find(ActionName))
 	{
@@ -427,7 +759,15 @@ float ACustomerCharacter::PlayAction(FName ActionName, float FallbackSeconds, in
 			UAnimMontage* M = Found->Variants[Idx].Montage;
 			if (UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
 			{
-				const float Len = Anim->Montage_Play(M);
+				// ⚠⚠ `Montage_Play` 가 돌려주는 것은 **재생 속도를 안 나눈 원본 길이**다.
+				//    그대로 돌려주면 속도를 2배로 올렸을 때 태스크가 **두 배**를
+				//    기다린다 — 「애님은 빨리 끝났는데 손님이 멍하니 서 있다」.
+				const float Rate = FMath::Max(PlayRate, KINDA_SMALL_NUMBER);
+				const float Len = Anim->Montage_Play(M, Rate) / Rate;
+
+				// ⚠ 소품은 **이 몽타주가 도는 동안만** 보인다. 여기서 기억해 두고
+				//    `Tick` 이 재생 여부를 보고 켜고 끈다.
+				PhoneMontage = Found->Variants[Idx].bShowPhone ? M : nullptr;
 				// `Montage_Play` 는 실패하면 0 을 준다 — 그때는 기다리기라도 해야
 				// 상태가 멈추지 않는다. ⚠ 0 을 그대로 돌려주면 태스크가 즉시
 				// 성공해 루프가 순식간에 지나간다 (「빨리 감기」 오진의 원인).
@@ -576,6 +916,34 @@ void ACustomerCharacter::StopAction()
 
 // ---------------------------------------------------------------- 착석
 
+void ACustomerCharacter::BeginSeatBlend(const FTransform& To, bool bRestoreWalkingWhenDone)
+{
+	bSeatBlendRestoreWalking = bRestoreWalkingWhenDone;
+
+	if (SeatBlendTime <= 0.f)
+	{
+		// 예전 동작 — 그 자리에서 스냅
+		SetActorLocationAndRotation(To.GetLocation(), To.GetRotation(),
+			/*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
+		if (bRestoreWalkingWhenDone)
+		{
+			if (UCharacterMovementComponent* Move = GetCharacterMovement())
+			{
+				Move->SetMovementMode(MOVE_Walking);
+			}
+		}
+		return;
+	}
+
+	SeatBlendFrom = GetActorTransform();
+	SeatBlendTo = To;
+	SeatBlendLeft = SeatBlendTime;
+
+	// ⚠ 틱이 꺼져 있을 수 있다 (`bMontageLocomotion` 이 false 면 `BeginPlay` 가
+	//    껐다). 보간은 틱이 돌아야 하므로 여기서 켠다 — 끝나면 원래대로 돌린다.
+	SetActorTickEnabled(true);
+}
+
 void ACustomerCharacter::SitAt(const FTransform& SeatTransform)
 {
 	if (bSitting)
@@ -609,8 +977,37 @@ void ACustomerCharacter::SitAt(const FTransform& SeatTransform)
 	}
 	Loc.Z += SitZAdjust;
 
-	SetActorLocationAndRotation(Loc, SeatTransform.GetRotation(),
-		/*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
+	// ## ⚠⚠ 여기까지 **걸어서** 왔어야 한다
+	//
+	// 남은 거리가 크면 아래 보간이 그 거리를 통째로 메운다 — 그것이 화면에서는
+	// 「자리로 순간이동」이다. 보간은 **증상 완화**일 뿐 원인이 아니다.
+	//
+	// 실측으로 두 번 걸렸다 —
+	//  1. `Root/Pickup` 에 붙인 알림음 태스크가 `Succeeded` 를 돌려줘 픽업 갈래가
+	//     통째로 건너뛰어졌다.
+	//  2. `S_Move` 의 `bRequireNavigableEndLocation` 이 켜져 있어, 의자 위(내비
+	//     바깥)를 목적지로 받은 `MoveTo` 가 **즉시 Failed** 로 끝났다.
+	//
+	// 둘 다 「이동이 조용히 안 일어난다」라 화면만 봐서는 안 보인다. 그래서 여기서
+	// 거리를 **소리 내서** 찍는다.
+	const float Gap = FVector::Dist2D(GetActorLocation(), Loc);
+	if (Gap > SeatWarnDistance)
+	{
+		UE_LOG(LogBurgerHouseNPC, Warning,
+			TEXT("%s 착석 — 좌석까지 **%.0fcm** 남은 채로 앉는다. 내비 투영 거리(보통 60~120cm)")
+			TEXT("보다 훨씬 크면 **이동이 아예 안 일어난 것**이다 — 상태가 건너뛰어졌거나")
+			TEXT("(태스크가 Succeeded 를 돌려줌) 경로가 막혔다."),
+			*GetName(), Gap);
+	}
+
+	// ⚠ 트레이를 테이블에 놓을 때 쓴다 (`SitSeatTransform` 주석). **좌석 지점**
+	//    그대로다 — 캡슐 높이를 더한 `Loc` 이 아니다. `TrayTableOffset` 이 좌석
+	//    기준으로 맞춰져 있기 때문이다.
+	SitSeatTransform = SeatTransform;
+
+	// ⚠ **스냅이 아니라 미끄러진다** (`SeatBlendTime`). 남은 몇 cm 가 한 프레임에
+	//    사라지면 그것도 눈에 띈다.
+	BeginSeatBlend(FTransform(SeatTransform.GetRotation(), Loc), /*bRestoreWalkingWhenDone=*/false);
 
 	bSitting = true;
 }
@@ -624,13 +1021,10 @@ void ACustomerCharacter::StandUp()
 	bSitting = false;
 
 	// 앉기 전 자리로 되돌린다 — 좌석 안에서 일어나면 의자를 뚫고 걸어 나온다
-	SetActorLocationAndRotation(PreSitTransform.GetLocation(), PreSitTransform.GetRotation(),
-		/*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
-
-	if (UCharacterMovementComponent* Move = GetCharacterMovement())
-	{
-		Move->SetMovementMode(MOVE_Walking);
-	}
+	//
+	// ⚠ 걷기로 되돌리는 것은 **미끄러짐이 끝난 뒤**다. 도중에 켜면 캡슐이
+	//    의자 안에서 움직이기 시작해 기물을 뚫는다.
+	BeginSeatBlend(PreSitTransform, /*bRestoreWalkingWhenDone=*/true);
 }
 
 // ---------------------------------------------------------------- 트레이
@@ -645,7 +1039,10 @@ void ACustomerCharacter::HoldTray()
 		FAttachmentTransformRules::SnapToTargetNotIncludingScale, TraySocket);
 	// ⚠ 본에 직접 붙이면 손목 원점·회전 기준이라 어긋난다. 여기서 보정한다.
 	Tray->SetRelativeTransform(TrayHandOffset);
-	Tray->SetHiddenInGame(false);
+	// ⚠⚠ **자식까지** 전파해야 한다. 생성자가 `SetHiddenInGame(true, true)` 로
+	//    내렸기 때문에 버거박스·감자·영수증은 **각자** 숨김 플래그를 들고 있다.
+	//    여기서 전파를 빼면 트레이만 나타나고 **음식은 계속 안 보인다.**
+	Tray->SetHiddenInGame(false, /*bPropagateToChildren=*/true);
 	bHasTray = true;
 }
 
@@ -655,11 +1052,49 @@ void ACustomerCharacter::PlaceTrayAt(const FTransform& Where)
 	{
 		return;
 	}
+
+	FTransform Table = Where;
+
+	// ## ⚠⚠ 빈 트랜스폼이 들어온다
+	//
+	// `S_Eat` 의 `Tray[PlaceOnTable]` 은 `TableLocation`/`TableRotation` 을
+	// 바인딩으로 받는데 그것이 **비어 있다** (실측: 둘 다 0). 그대로 쓰면
+	// 트레이가 **월드 원점**에 놓이고, 화면에서는 「트레이가 사라졌다」로 보인다.
+	//
+	// ⚠ 앉은 좌석을 알고 있으므로 그것으로 대신한다. 소리 내서 찍는다 — 조용히
+	//   메우면 바인딩이 빈 채로 영원히 남는다.
+	if (Table.GetLocation().IsNearlyZero())
+	{
+		UE_LOG(LogBurgerHouseNPC, Warning,
+			TEXT("%s 트레이 놓기 — 받은 자리가 비어 있다(0,0,0). 앉은 좌석 %s 으로 대신한다. ")
+			TEXT("트리의 `Tray[PlaceOnTable]` ▸ TableLocation 바인딩을 볼 것"),
+			*GetName(), *SitSeatTransform.GetLocation().ToCompactString());
+		Table = SitSeatTransform;
+	}
+
+	// ⚠ **다 앉은 뒤에** 놓는다. 아직 걸어가는 중이면 미뤄 둔다
+	//   (`bPendingTrayOnTable` 주석) — 안 그러면 빈손으로 걸어온다.
+	if (!bSitting || SeatBlendLeft > 0.f)
+	{
+		bPendingTrayOnTable = true;
+		UE_LOG(LogBurgerHouseNPC, Log,
+			TEXT("%s 트레이 놓기를 **미룬다** — 아직 앉는 중 (앉음=%d, 남은보간=%.2fs)"),
+			*GetName(), bSitting ? 1 : 0, SeatBlendLeft);
+		return;
+	}
+
 	// 월드에 떼어 놓는다. 손님이 일어나 걸어가도 트레이는 테이블에 남는다.
 	Tray->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-	Tray->SetWorldLocationAndRotation(
-		Where.TransformPosition(TrayTableOffset), Where.GetRotation());
-	Tray->SetHiddenInGame(false);
+	const FVector Put = Table.TransformPosition(TrayTableOffset);
+	Tray->SetWorldLocationAndRotation(Put, Table.GetRotation());
+	Tray->SetHiddenInGame(false, /*bPropagateToChildren=*/true);
+
+	// ⚠ **놓았다는 것도 찍는다.** 안 찍으면 「테이블에 안 올라간다」를 진단할 때
+	//   여기까지 왔는지 못 왔는지를 못 가른다 — 실제로 한 번 헤맸다.
+	UE_LOG(LogBurgerHouseNPC, Log,
+		TEXT("%s 트레이를 테이블에 놓았다 — %s (좌석 %s + 오프셋 %s)"),
+		*GetName(), *Put.ToCompactString(),
+		*Table.GetLocation().ToCompactString(), *TrayTableOffset.ToCompactString());
 }
 
 void ACustomerCharacter::DropTray()
@@ -672,6 +1107,6 @@ void ACustomerCharacter::DropTray()
 	Tray->AttachToComponent(GetMesh(),
 		FAttachmentTransformRules::SnapToTargetNotIncludingScale, TraySocket);
 	Tray->SetRelativeTransform(TrayHandOffset);
-	Tray->SetHiddenInGame(true);
+	Tray->SetHiddenInGame(true, /*bPropagateToChildren=*/true);
 	bHasTray = false;
 }

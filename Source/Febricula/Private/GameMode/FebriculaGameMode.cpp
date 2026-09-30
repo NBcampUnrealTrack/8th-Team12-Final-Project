@@ -39,7 +39,7 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 	{
 		AFebriculaPlayerStart* Now = *It;
 		UE_LOG(LogTemp, Warning, TEXT("%s"), *Now->SpawnPointTag.GetTagName().ToString());
-		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %d"), Now->SpawnPointTag.IsValid());
+		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %s"), *NowSchedule.ToString());
 		UE_LOG(LogTemp, Warning, TEXT("%d"), NowSchedule.MatchesTag(Now->SpawnPointTag));
 		if (!Now->SpawnPointTag.IsValid())
 		{
@@ -85,20 +85,18 @@ void AFebriculaGameMode::BeginPlay()
 	NPCCharacterMap = GetDefault<UNPCSetting>()->NPCCharacterMap;
 
 	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
-	PlayEvent();
+	const bool bSpecialEvent = PlayEvent();
 
-	if (ALevelAutoEventSetting* AES = Cast<ALevelAutoEventSetting>(GetWorldSettings()))
+	if (!bSpecialEvent)
 	{
-		ActivityWidget = AES->ActivityWidget;
-	}
-	if (ActivityWidget.IsNull()) return;
-
-	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-	{
-		ActivityWidgetObject = CreateWidget<UUserWidget>(PC, ActivityWidget.LoadSynchronous());
-		ActivityWidgetObject->AddToViewport();
-
-
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			TArray<FGameplayTag> RunnableActivityTags = ActivitySubsystem->GetRunnableActivityTag();
+			if (RunnableActivityTags.Num() > 0)
+			{
+				ActivitySubsystem->PrintFixedActivities();
+			}
+		}
 	}
 }
 
@@ -111,7 +109,7 @@ TSoftClassPtr<ABaseNpcCharacter> AFebriculaGameMode::GetNpcViaName(FName NowName
 	return nullptr;
 }
 
-void AFebriculaGameMode::PlayEvent()
+bool AFebriculaGameMode::PlayEvent()
 {
 	if (ALevelAutoEventSetting* AES = Cast<ALevelAutoEventSetting>(GetWorldSettings()))
 	{
@@ -127,11 +125,12 @@ void AFebriculaGameMode::PlayEvent()
 					if (PC->GetPawn())
 					{
 						DialogueSubsystem->SetDataTables(AutoEventTable, AutoDialogueTable);
-						DialogueSubsystem->TryStartEventForNpc("", UGameplayStatics::GetPlayerController(this, 0)->GetPawn());
+						const bool bEventExist = DialogueSubsystem->TryStartEventForNpc("", UGameplayStatics::GetPlayerController(this, 0)->GetPawn());
+						return bEventExist;
 					}
 				}
 			}
 		}
 	}
-
+	return false;
 }

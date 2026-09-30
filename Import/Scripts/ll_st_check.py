@@ -12,9 +12,9 @@
 """
 import unreal
 
-ST_PATH = '/Game/BurgerHouse/AI/ST_Customer'
-BP_PAWN = '/Game/BurgerHouse/AI/BP_Customer'
-BP_CTRL = '/Game/BurgerHouse/AI/BP_CustomerAI'
+ST_PATH = '/Game/BurgerHouse/BP/ST_Customer'
+BP_PAWN = '/Game/BurgerHouse/BP/BP_Customer'
+BP_CTRL = '/Game/BurgerHouse/BP/BP_CustomerAI'
 
 W = unreal.log_warning
 E = unreal.log_error

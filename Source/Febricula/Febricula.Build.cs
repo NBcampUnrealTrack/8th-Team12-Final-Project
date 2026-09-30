@@ -32,28 +32,8 @@ public class Febricula : ModuleRules
 		PublicIncludePaths.AddRange(new string[] {
 			"Febricula",
 			// BurgerHouse — 손님 NPC 루프 (Import/BURGERHOUSE.md)
-			"Febricula/BurgerHouse",
-			"Febricula/Variant_Platforming",
-			"Febricula/Variant_Platforming/Animation",
-			"Febricula/Variant_Combat",
-			"Febricula/Variant_Combat/AI",
-			"Febricula/Variant_Combat/Animation",
-			"Febricula/Variant_Combat/Gameplay",
-			"Febricula/Variant_Combat/Interfaces",
-			"Febricula/Variant_Combat/UI",
-			"Febricula/Variant_SideScrolling",
-			"Febricula/Variant_SideScrolling/AI",
-			"Febricula/Variant_SideScrolling/Gameplay",
-			"Febricula/Variant_SideScrolling/Interfaces",
-			"Febricula/Variant_SideScrolling/UI"
+			"Febricula/BurgerHouse"
 		});
 
-		// Uncomment if you are using Slate UI
-		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
-
-		// Uncomment if you are using online features
-		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
-
-		// To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
 	}
 }

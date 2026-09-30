@@ -67,24 +67,41 @@
 			]
 		},
 		{
-			"Name": "MetaHumanCoreTech",
-			"Enabled": true
-		},
-		{
-			"Name": "MetaHumanCharacter",
-			"Enabled": true
-		},
-		{
 			"Name": "MotionWarping",
 			"Enabled": true
 		},
 		{
-			"Name": "Revvy",
+			"Name": "MassAI",
 			"Enabled": true
+		},
+		{
+			"Name": "MassGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "ZoneGraph",
+			"Enabled": true
+		},
+		{
+			"Name": "SMSystem",
+			"Enabled": false,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/9d8db9962594400988f8ddd3fb83cd88"
+		},
+		{
+			"Name": "Revvy",
+			"Enabled": false
 		},
 		{
 			"Name": "AlembicHairImporter",
 			"Enabled": true
+		},
+		{
+			"Name": "Bridge",
+			"Enabled": false
+		},
+		{
+			"Name": "MetaHumanSDK",
+			"Enabled": false
 		}
 	]
 }

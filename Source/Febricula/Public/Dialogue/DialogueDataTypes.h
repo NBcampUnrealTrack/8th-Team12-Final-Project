@@ -164,6 +164,8 @@ enum class EGameActionType : uint8
 	/** Key(NpcId) 다시 제자리에 세운다 */
 	NpcPauseAI				UMETA(DisplayName = "대화 중 NPC AI 정지"),
 
+	StartCrowdSpawn			UMETA(DisplayName = "군중 소환 개시"),
+	
 	// ---- 애니메이션 ----
 
 	/**
@@ -226,11 +228,19 @@ enum class EGameActionType : uint8
 	
 	SpawnActor				UMETA(DisplayName = "캐릭터 스폰"),
 	
+	ControlActor			UMETA(DisplayName = "액터 제어"),
+	
 	ShowActor				UMETA(DisplayName = "캐릭터 보임"),
 	
 	HideActor				UMETA(DisplayName = "캐릭터 숨김"),	
 	
-	Teleport				UMETA(DisplayName = "특정 위치로 순간이동")
+	Teleport				UMETA(DisplayName = "특정 위치로 순간이동"),
+
+	Interact				UMETA(DisplayName = "상호작용 후 상태로 설정"),
+	
+	UnInteract				UMETA(DisplayName = "상호작용 전 상태로 설정"),
+	
+	ConsumeAP				UMETA(DisplayName = "AP 소모")
 };
 
 /**
@@ -308,6 +318,10 @@ struct FGameAction
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action")
 	int32 Value = 0;
+	
+	FGameAction() = default;
+	
+	FGameAction(EGameActionType Type, FName Key, FName Key2, int32 Value) : Type(Type), Key(Key), Key2(Key2), Value(Value) {}
 };
 
 USTRUCT(BlueprintType)
@@ -351,6 +365,18 @@ struct FDialogueChoice
 	/** 다음 노드. None이면 대화 종료 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
 	FName NextNodeId;
+	
+	FDialogueChoice() = default;
+	
+	FDialogueChoice(const FText& Text, const TArray<FGameCondition>& Conditions, const TArray<FGameAction>& Actions,
+		const FName& NextNodeId)
+		: Text(Text),
+		  Conditions(Conditions),
+		  Actions(Actions),
+		  NextNodeId(NextNodeId)
+	{
+	}
+	
 };
 
 /**

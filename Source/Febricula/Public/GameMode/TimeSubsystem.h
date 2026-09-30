@@ -67,6 +67,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable)
 	FScheduleChangedDelegate OnScheduleChanged;
+	
+	int32 GetNowScheduleAp();
 
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
 	int32 GetDayPerMonth();

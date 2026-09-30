@@ -72,6 +72,20 @@ public:
 	 */
 	void ApplyLodBand(ESubNpcLodBand NewBand);
 
+	/**
+	 * 이동 틱 주기를 정한다. **거리만** 본다.
+	 *
+	 * 예전에는 ApplyLodBand가 틱 주기까지 같이 정했다. 그런데 그 밴드는
+	 * "지금 화면에 그려지고 있나"로도 한 단계 내려간다. 카메라를 돌리면
+	 * 뒤쪽 개체가 순식간에 Far로 떨어졌다가 다시 올라오고, 그때마다 틱 주기가
+	 * 0초 <-> 0.3초를 오가면서 위치 갱신이 뚝뚝 끊겼다.
+	 * 애니메이션은 계속 재생되니 "걷는데 순간이동하는" 그림이 된다.
+	 *
+	 * 이동은 화면에 보이든 말든 매끄러워야 한다. 그래서 분리했다.
+	 * 절약 효과가 큰 쪽(포즈 평가, 강제 LOD, 그림자)은 ApplyLodBand가 그대로 맡는다.
+	 */
+	void ApplyMovementTickRate(ESubNpcLodBand DistanceBand);
+
 	UFUNCTION(BlueprintPure, Category = "Crowd|LOD")
 	ESubNpcLodBand GetLodBand() const { return CurrentLodBand; }
 
@@ -83,6 +97,24 @@ public:
 	/** 그룹으로 다닐 때 앞사람. 있으면 앞사람의 경로 진행도를 따라간다 */
 	void SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap, float LaneOffset);
 
+	// ---- StateTree 진입점 ----------------------------------------------------
+	//
+	// StateTree 태스크가 부르는 함수들. 후보 선정·확률 판정·점유 같은 로직은
+	// 이미 이 클래스에 있으므로 태스크에서 다시 구현하지 않고 여기로 위임한다.
+	// 나중에 Mass로 옮길 때 태스크는 그대로 두고 이 구현만 갈아끼우면 된다.
+
+	/** 근처 스팟 중 하나에 들어가 본다. 성공하면 상태가 AtSpot으로 바뀐다 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
+	bool TryEnterNearbySpot();
+
+	/** 지정한 스팟에 들어가 본다 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
+	bool TryEnterSpot(ANpcActivitySpot* Spot);
+
+	/** 스팟에 있으면 나온다. 없으면 아무 일도 하지 않는다 */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
+	void LeaveSpotIfAny();
+
 	// ---- 반응 --------------------------------------------------------------
 
 	/**
@@ -91,6 +123,22 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Reaction")
 	void ReactToPlayerBump(AActor* Player, float ImpactSpeed);
+
+	/**
+	 * 부딪힘 반응이 결정된 순간 블루프린트에 알린다.
+	 *
+	 * C++가 고른 애니메이션으로 충분하면 구현하지 않아도 된다.
+	 * 몽타주·사운드·나이아가라 등 연출을 붙이고 싶을 때 쓴다.
+	 *
+	 * @param Reaction      고른 반응 종류 (피하기 / 화내기 / 놀라기)
+	 * @param bPushedLeft   true면 왼쪽으로 밀린다 (= 오른쪽에서 부딪혔다)
+	 * @param bWasWalking   부딪힐 때 걷고 있었는가. false면 서 있던 중
+	 *
+	 * [주의] UFUNCTION은 클래스 크기에 영향이 없다. 여기에 변수를 추가하면
+	 * WalkSpeed / bIsMoving / CurrentSpeed 오프셋이 밀려 AnimBP가 깨진다.
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Crowd|Reaction")
+	void OnBumpReaction(ESubNpcReaction Reaction, bool bPushedLeft, bool bWasWalking);
 
 	UPROPERTY(BlueprintAssignable, Category = "Crowd|Reaction")
 	FOnNpcInteracted OnBumped;
@@ -114,6 +162,9 @@ protected:
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
 		bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
 
+	/** 거리 밴드에 맞는 애니메이션 갱신 빈도를 적용한다 (N프레임에 한 번 평가) */
+	static void ApplyAnimUpdateRate(class USkeletalMeshComponent* MeshComp, int32 FrameSkip);
+
 	/** 경로를 따라 전진. LOD에 따라 이동 방식이 달라진다 */
 	void TickPathFollow(float DeltaTime);
 
@@ -126,6 +177,12 @@ protected:
 	/** 스팟 행동 시작/종료 */
 	void BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option);
 	void EndSpotActivity();
+
+	/** 다음 단계로 넘어간다. 남은 단계가 없으면 EndSpotActivity를 부른다 */
+	void AdvanceSpotStep();
+
+	/** 단계 하나를 재생한다 (애니메이션 + 종료 시각 설정) */
+	void PlaySpotStep(FName AnimId, float MinDuration, float MaxDuration, bool bLoop);
 
 	/** 반응 종료 후 다시 걷기 */
 	void EndReaction();
@@ -204,12 +261,63 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "1.0"))
 	float TurnAroundNudge = 20.f;
 
+	/**
+	 * 스팟에 들를지 판정하는 간격 (cm).
+	 *
+	 * 예전에는 경로에 진입할 때 한 번만 판정했다. 그러면 경로 중간이나 끝에 있는 스팟도
+	 * 진입 순간에 당첨될 수 있어서, 이미 지나쳐 걸어간 개체가 뒤에 있는 스팟으로
+	 * 순간이동하는 것처럼 보였다. 일정 거리마다 다시 굴려서 "근처에 왔을 때" 들르게 한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "10.0"))
+	float SpotCheckInterval = 150.f;
+
+	/** 이 거리 안에 있는 스팟만 후보로 본다 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path", meta = (ClampMin = "0.0"))
+	float SpotEngageRadius = 400.f;
+
+	// ---- 소프트 회피 ---------------------------------------------------------
+
+	/**
+	 * 가까운 행인끼리 좌우로 살짝 비켜서게 한다.
+	 *
+	 * RVO 같은 정식 회피와는 다르다. 진로를 다시 계산하지 않고, 이미 갖고 있는
+	 * 좌우 오프셋 값 하나만 서로 반대로 민다. "스스로 판단하지 않는다"는 원칙을
+	 * 깨지 않으면서 겹침만 줄이는 절충안이다.
+	 *
+	 * Director가 Near/Mid 대역에 대해서만 계산한다. 멀리서 겹치는 건 어차피 안 보인다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance")
+	bool bSoftAvoidance = true;
+
+	/** 회피 오프셋이 목표값을 향해 움직이는 속도 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance", meta = (ClampMin = "0.1"))
+	float AvoidInterpSpeed = 3.f;
+
+	/** 한 프레임에 밀릴 수 있는 최대량 (cm). 너무 크면 옆으로 튄다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance", meta = (ClampMin = "0.0"))
+	float MaxAvoidOffset = 60.f;
+
 	/** LOD 단계별 틱 간격 (초). Near는 매 프레임 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
 	float MidTickInterval = 0.1f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
 	float FarTickInterval = 0.3f;
+
+	/**
+	 * Mid / Far에서 몇 프레임에 한 번 포즈를 평가할지.
+	 *
+	 * 프로파일링에서 군중 비용의 86%가 애니메이션으로 나왔고, 그 부분은 거리와
+	 * 무관하게 매 프레임 돌고 있었다. 멀리 있는 개체를 4~8프레임에 한 번만
+	 * 평가하게 하면 그만큼 그대로 절약된다. 사이 프레임은 보간으로 채운다.
+	 *
+	 * 1이면 매 프레임 (절약 없음).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD", meta = (ClampMin = "1", ClampMax = "16"))
+	int32 MidAnimFrameSkip = 2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD", meta = (ClampMin = "1", ClampMax = "16"))
+	int32 FarAnimFrameSkip = 4;
 
 	/** Mid / Far에서 강제할 스켈레탈 메시 LOD 인덱스 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|LOD")
@@ -249,8 +357,34 @@ protected:
 	/** 그룹 추종 시 앞사람과 벌릴 간격 (cm) */
 	float GroupFollowGap = 0.f;
 
-	/** 이 개체의 걷기 속도 (cm/s) */
+	/**
+	 * 이 개체의 걷기 속도 (cm/s).
+	 *
+	 * [애님 블루프린트에 노출하는 이유]
+	 *   서브 NPC는 CharacterMovement를 쓰지 않고 위치를 직접 세팅한다.
+	 *   그래서 GetVelocity()가 항상 0이고, 서드퍼슨 ABP처럼 속도로 로코모션을
+	 *   판단하는 그래프는 영원히 대기 포즈만 낸다.
+	 *
+	 *   ABP가 이 값을 직접 읽게 하면 해결된다. 함수 호출이 아니라 프로퍼티 읽기라
+	 *   Property Access로 접근할 수 있고, 그러면 Thread Safe Update Animation
+	 *   안에서도 쓸 수 있다.
+	 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Crowd|Anim")
 	float WalkSpeed = 160.f;
+
+	/**
+	 * 지금 실제로 걷고 있는가. ABP의 걷기/대기 전환에 쓴다.
+	 * 스팟에서 활동 중이거나 반응 중이면 false다.
+	 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Crowd|Anim")
+	bool bIsMoving = false;
+
+	/**
+	 * ABP가 읽을 현재 속력 (cm/s). 걷는 중이면 WalkSpeed, 아니면 0.
+	 * 로코모션 블렌드스페이스에 그대로 넣을 수 있는 값이다.
+	 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Crowd|Anim")
+	float CurrentSpeed = 0.f;
 
 	/** 마지막으로 반응한 시각. 쿨다운 판정용 */
 	float LastReactionTime = -1000.f;
@@ -264,6 +398,113 @@ protected:
 	/** 반응 중 옆으로 비킬 목표 오프셋 */
 	float DodgeTargetOffset = 0.f;
 
+	/** 지금 재생 중인 반응 종류. 피하기만 걸으면서 비키고 나머지는 멈춘다 */
+	ESubNpcReaction CurrentReaction = ESubNpcReaction::None;
+
 	/** 이 개체에 적용된 아키타입 (대사·반응 가중치 조회용) */
 	FSubNpcArchetypeRow Archetype;
+
+	// ---- 소프트 회피 (Director가 호출) --------------------------------------
+
+public:
+	/** 회피 계산에 필요한 값들. Director가 이웃끼리 비교할 때 읽는다 */
+	float GetPathDistance() const { return PathDistance; }
+	float GetLaneOffset() const { return LaneOffset; }
+
+	/** 그룹 리더 (없으면 nullptr) */
+	ASubNpcCharacter* GetGroupLeader() const { return GroupLeader.Get(); }
+
+	/**
+	 * 같은 그룹인가.
+	 *
+	 * 친구끼리는 회피로 밀어내면 안 된다. 붙어 다니라고 묶어놓고 떼어놓으면
+	 * 대형이 계속 흔들려서 오히려 더 어색하다.
+	 *
+	 * [주의] 이 클래스에 데이터 멤버를 새로 추가하지 않는다.
+	 * WalkSpeed / bIsMoving / CurrentSpeed 앞에 멤버가 끼면 오프셋이 밀려서
+	 * AnimBP의 Property Access가 엉뚱한 값을 읽는다 (걷기 애니메이션이 깨진다).
+	 * 메서드 추가는 레이아웃에 영향이 없으므로 안전하다.
+	 */
+	bool IsSameGroup(const ASubNpcCharacter* Other) const
+	{
+		if (!Other || Other == this)
+		{
+			return false;
+		}
+		const ASubNpcCharacter* MyLeader = GroupLeader.Get();
+		const ASubNpcCharacter* ItsLeader = Other->GroupLeader.Get();
+		return (MyLeader && MyLeader == ItsLeader)
+			|| (MyLeader == Other)
+			|| (ItsLeader == this);
+	}
+	bool IsWalkingOnPath() const { return CurrentActivity == ESubNpcActivity::Walking && CurrentPath != nullptr; }
+
+	/**
+	 * 좌우로 밀어낼 양을 누적한다. 실제 반영은 다음 틱에서 보간으로 이뤄진다.
+	 * 즉시 위치를 바꾸지 않는 이유: 두 개체가 서로를 동시에 밀면 진동하기 때문이다.
+	 */
+	void AddAvoidanceNudge(float Amount) { PendingAvoidNudge += Amount; }
+
+	/**
+	 * 앞사람이 막고 있으니 속도를 줄이라는 요청 (0~1 배율).
+	 *
+	 * 행인은 1차원 경로 위를 걷기 때문에, 좌우로만 밀어내면 앞사람이 느릴 때
+	 * **그대로 뚫고 지나간다.** 진행 방향으로도 제동이 필요하다.
+	 * 여러 요청이 오면 가장 강한(가장 느린) 것을 따른다.
+	 */
+	void RequestSlowDown(float Scale)
+	{
+		PendingSpeedScale = FMath::Min(PendingSpeedScale, FMath::Clamp(Scale, 0.f, 1.f));
+	}
+
+	bool IsReversedOnPath() const { return bReversedOnPath; }
+
+	/** 회수 예약 여부. 순회 중에 배열이 바뀌지 않도록 Director가 나중에 처리한다 */
+	bool IsPendingRecycle() const { return bPendingRecycle; }
+	void ClearPendingRecycle() { bPendingRecycle = false; }
+
+protected:
+	/** 이번 프레임에 이웃들이 밀어낸 양의 합 */
+	float PendingAvoidNudge = 0.f;
+
+	/** 경로 끝에 닿아 회수를 기다리는 중 */
+	bool bPendingRecycle = false;
+
+	// ---- 스팟 단계 진행 ------------------------------------------------------
+
+	/** 지금 재생 중인 스팟 행동 (단계 배열을 들고 있어야 이어서 재생할 수 있다) */
+	FNpcActivityOption CurrentSpotOption;
+
+	/** 지금 몇 번째 단계인가. -1 = 첫 동작(AnimId), 0부터는 ExtraSteps 인덱스 */
+	int32 CurrentSpotStep = -1;
+
+	/**
+	 * 반응이 끝난 뒤 하던 스팟 행동으로 되돌아갈지.
+	 * 앉아 있다가 부딪혀 놀란 사람은 다시 앉는 게 자연스럽다.
+	 */
+	bool bResumeSpotAfterReaction = false;
+
+	/** 다음 스팟 판정을 할 경로 진행 거리. 경로 진입 시 한 번만 보는 문제를 없앤다 */
+	float NextSpotCheckDistance = 0.f;
+
+	/**
+	 * 경로를 갈아탈 때 생기는 위치 튐을 흡수하는 잔여 오프셋 (월드 공간).
+	 *
+	 * 경로 전환은 본질적으로 불연속이다. 새 스플라인의 어느 지점으로 옮겨 앉는 순간
+	 * 위치가 한 프레임 만에 바뀌고, 그게 「사라졌다가 다른 데서 나타남」으로 보인다.
+	 *
+	 * 그래서 전환 순간의 어긋난 양을 여기에 담아두고, 매 틱 조금씩 0으로 줄인다.
+	 * 결과적으로 사람이 새 경로 쪽으로 **부드럽게 미끄러져 들어간다.**
+	 *
+	 * [주의] 이 멤버에는 UPROPERTY를 붙이지 않는다. 리플렉션 프로퍼티를 추가하면
+	 * ABP_Passerby의 Property Access가 읽는 WalkSpeed / bIsMoving / CurrentSpeed의
+	 * 오프셋 계산에 영향을 줄 수 있다. 여기 순수 C++ 멤버로 두면 안전하다.
+	 */
+	FVector PathHandoffOffset = FVector::ZeroVector;
+
+	/** 이번 갱신에서 요청된 감속 배율 (1 = 감속 없음). Director가 채우고 틱이 소비한다 */
+	float PendingSpeedScale = 1.f;
+
+	/** 실제로 적용 중인 감속 배율. 급브레이크로 보이지 않게 보간한다 */
+	float CurrentSpeedScale = 1.f;
 };
