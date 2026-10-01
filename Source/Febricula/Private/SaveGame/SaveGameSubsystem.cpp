@@ -7,6 +7,7 @@
 #include "GameMode/TimeSubsystem.h"
 #include "Progress/GameProgressSubsystem.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "Dialogue/DialogueLogSubsystem.h"
 #include "Engine/GameInstance.h"
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,10 @@ bool USaveGameSubsystem::SaveToSlot(int32 SlotIndex)
 	{
 		Relationship->PackIntoSave(SaveData);
 	}
+	if (UDialogueLogSubsystem* DialogueLog = GI->GetSubsystem<UDialogueLogSubsystem>())
+	{
+		DialogueLog->PackIntoSave(SaveData);
+	}
 
 	return UGameplayStatics::SaveGameToSlot(SaveData, GetSlotName(SlotIndex), 0);
 }
@@ -107,6 +112,10 @@ bool USaveGameSubsystem::LoadFromSlot(int32 SlotIndex)
 	if (UNpcRelationshipSubsystem* Relationship = GI->GetSubsystem<UNpcRelationshipSubsystem>())
 	{
 		Relationship->RestoreFromSave(SaveData);
+	}
+	if (UDialogueLogSubsystem* DialogueLog = GI->GetSubsystem<UDialogueLogSubsystem>())
+	{
+		DialogueLog->RestoreFromSave(SaveData);
 	}
 
 	return true;

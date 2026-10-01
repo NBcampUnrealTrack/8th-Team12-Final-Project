@@ -26,6 +26,7 @@
 #include "NPC/MainNpc/MainNpcCharacter.h"
 #include "NPC/MainNpc/NpcRelationshipSubsystem.h"
 #include "WorldPartition/HLOD/HLODActor.h"
+#include "Dialogue/DialogueLogSubsystem.h"
 
 TStatId UDialogueSubsystem::GetStatId() const
 {
@@ -84,6 +85,13 @@ void UDialogueSubsystem::Tick(float DeltaTime)
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
+			if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+			{
+				if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+				{
+					Log->AddLine(SimpleLineSpeaker, Next);
+				}
+			}
 			OnDialogueLine.Broadcast(SimpleLineSpeaker, Next);
 		}
 		else
@@ -358,6 +366,13 @@ bool UDialogueSubsystem::StartSimpleLines(const FText& Speaker, const TArray<FTe
 	
 	const FText First = SimpleLineQueue[0];
 	SimpleLineQueue.RemoveAt(0);
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			Log->AddLine(SimpleLineSpeaker, First);
+		}
+	}
 	OnDialogueLine.Broadcast(SimpleLineSpeaker, First);
 	return true;
 }
@@ -392,6 +407,13 @@ void UDialogueSubsystem::Advance()
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
+			if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+			{
+				if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+				{
+					Log->AddLine(SimpleLineSpeaker, Next);
+				}
+			}
 			OnDialogueLine.Broadcast(SimpleLineSpeaker, Next);
 		}
 		else
@@ -425,6 +447,13 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 		return;
 	}
 
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			Log->AddPlayerChoice(Chosen.Text);
+		}
+	}
 	PendingChoices.Reset();
 	bWaitingForChoice = false;
 
@@ -569,6 +598,13 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	HoldingSpeaker = Row->SpeakerName;
 	HoldingDialogue = Row->Text;
 //	HoldingChoices = Row->Choices;
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			Log->AddLine(Row->SpeakerName, Row->Text);
+		}
+	}
 	OnDialogueLine.Broadcast(Row->SpeakerName, Row->Text);
 
 	// 선택지가 있는 노드는 질문 대사와 선택지를 "동시에" 띄운다.
@@ -587,6 +623,13 @@ void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
 	HoldingSpeaker = Row.SpeakerName;
 	HoldingDialogue = Row.Text;
 	bDialogueActive = true;
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			Log->AddLine(Row.SpeakerName, Row.Text);
+		}
+	}
 	OnDialogueLine.Broadcast(Row.SpeakerName, Row.Text);
 	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
 
@@ -620,6 +663,18 @@ void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices
 		UE_LOG(LogTemp, Warning, TEXT("View Name2: %s"), *Choice.Text.ToString());		
 	}
 	HoldingChoices = Views;
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			TArray<FText> ChoiceTexts;
+			for (const FDialogueChoiceView& V : Views)
+			{
+				ChoiceTexts.Add(V.Text);
+			}
+			Log->AttachChoices(ChoiceTexts);
+		}
+	}
 	OnDialogueChoices.Broadcast(Views);
 	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueChoices.IsBound());
 	bWaitingForChoice = true;

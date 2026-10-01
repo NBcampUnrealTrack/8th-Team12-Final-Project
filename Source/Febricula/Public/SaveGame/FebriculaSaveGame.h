@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
+#include "Dialogue/DialogueLogSubsystem.h"
 #include "FebriculaSaveGame.generated.h"
 
 /**
@@ -54,4 +55,9 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Category = "SaveGame|Relationship")
 	TMap<FName, float> AffinityByNpcId;
+
+	// ---- DialogueLogSubsystem ----
+
+	UPROPERTY(BlueprintReadWrite, Category = "SaveGame|DialogueLog")
+	TArray<FDialogueLogEntry> DialogueLog;
 };
