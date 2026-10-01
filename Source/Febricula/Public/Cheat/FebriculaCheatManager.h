@@ -24,6 +24,9 @@ public:
 	void GetCachedCharacter();
 	
 	UFUNCTION(Exec)
+	void GetCurrentAP();
+	
+	UFUNCTION(Exec)
 	void GetClearedEvents();
 	
 	UFUNCTION(Exec)
@@ -37,4 +40,7 @@ public:
 	
 	UFUNCTION(Exec)
 	void GetAllCachedTargetPoints();
+	
+	UFUNCTION(Exec)
+	void GetNowStat(FName StatName);
 };

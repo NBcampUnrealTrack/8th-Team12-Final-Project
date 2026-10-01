@@ -29,4 +29,6 @@
 @FadeIn 3
 @wait .3
 @Teleport Player PlayerStart
+@AddStat Int 3
+@FinishActivity Study
 @end

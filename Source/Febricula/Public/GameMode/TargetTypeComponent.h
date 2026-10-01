@@ -16,6 +16,13 @@ class FEBRICULA_API UTargetTypeComponent : public UActorComponent
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "TargetType")
 	ETargetTypeRole TargetTypeRole;
+	
+	void ActivateTarget();
+
+protected:
+	UPROPERTY(EditAnywhere, meta=(EditCondition="TargetTypeRole == ETargetTypeRole::Prop"))
+	TSoftObjectPtr<UStaticMesh> PropMesh;
+
+
+
 };
-
-

@@ -36,6 +36,14 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueBoxHidden);
 
+USTRUCT(Blueprintable, BlueprintType)
+struct FCharacterCache
+{
+	GENERATED_BODY()
+public:
+	TWeakObjectPtr<ACharacter> Character;
+	FTransform Transform;
+};
 
 UCLASS()
 class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
@@ -150,7 +158,12 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
 	FOnDialogueBoxHidden OnDialogueBoxHidden;
 	
-	TMap<FName,TWeakObjectPtr<ACharacter>> GetCachedCharacter() const;
+	TMap<FName, FCharacterCache> GetCachedCharacter() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cache")
+	FTransform GetDefaultTransform(FName NpcId);
+	
+	bool CheckNpcCached(FName NpcName) const;
 
 protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
@@ -237,10 +250,9 @@ protected:
 	bool bBlockPlayerInput;
 	
 	UPROPERTY()
-	TMap<FName, TWeakObjectPtr<ACharacter>> CachedCharacter;
+	TMap<FName, FCharacterCache> CachedCharacter;
 	
 	UPROPERTY()
 	TArray<FName> ClearedEvents;
-	
-	
 };
+

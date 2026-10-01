@@ -856,7 +856,7 @@ def process(path, action_types, condition_types, outdir, check_only):
  
 def main():
     ap = argparse.ArgumentParser(description="Febricula dialogue script parser")
-    ap.add_argument("inputs", nargs="*", default=["DT_SuahDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
+    ap.add_argument("inputs", nargs="*", default=["FixedDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
     ap.add_argument("--outdir", help="JSON 출력 폴더 (기본: 입력 파일과 같은 위치)")
     ap.add_argument("--enum-header", nargs="*", default=["D:\\febricula\\Febricula\\Source\\Febricula\\Public\\Dialogue\\DialogueDataTypes.h"],
                     help="EGameActionType / EGameConditionType이 정의된 .h 경로 (여러 개 가능)")
@@ -867,7 +867,7 @@ def main():
         for header in args.enum_header:
             found = extract_enum(header, enum_name)
             if found:
-                print(f"{label} {len(found)}개를 {Path(header).name}에서 읽음")
+                 print(f"{label} {len(found)}개를 {Path(header).name}에서 읽음")
                 return found
         if args.enum_header:
             print(f"경고: 헤더에서 {enum_name}을 찾지 못함 - 내장 목록 사용", file=sys.stderr)

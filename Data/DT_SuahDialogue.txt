@@ -2,15 +2,23 @@
 @cast 천율 = "강천율" PC_GangChunyul
 @cast ??? = "???"
 
-@label Suah_001
-@Teleport NPC_Suah SuahFirst
-@StopAnim NPC_Suah 
-@end
-
 @label Suah_002
+@FadeOut Black 3
+@hide
+@wait .6
+
+@label Suah_003
+@Teleport Player SuahCheonFirst
+@FadeIn 3
+@cam Loc -3.8 268.0 153 Rot 0 -13.1 -107.5 1.0 193
+@wait .3
+
+@label Suah_004
 천율: 저기...
-@PlaySE First drop_book
 서아: 힉...!
+@Interact BookProp
+@NpcFacePlayer NPC_Suah
+@PlaySE First drop_book
 손에 쥐고 있던 책이 바닥으로 떨어졌다.
 서아: 아... 그... 저...
 @menu 
@@ -19,20 +27,20 @@
 @end
 
 @label FirstPassive_01
-@NpcFaceNpc Player NPC_Suah
+@AddAffinity NPC_Suah 3
 천율: 미안. 놀래킬 생각은 없었는데...
 @NpcFacePlayer NPC_Suah
 ???: 아, 아니에요... 그... 죄... 죄송합니다...
-@AddAffinity NPC_Suah 3
-@jump Suah_003
+@jump Suah_005
+
 
 @label FirstActive_01
 @NpcFaceNpc Player NPC_Suah
 @NpcFacePlayer NPC_Suah
 ???: 으... 으으...
-@jump Suah_003
+@jump Suah_005
 
-@label Suah_003
+@label Suah_005
 천율: 넌... 혹시 도서부원이니?
 ???: 네? 아.... 아니, 네... 그... 네...
 횡설수설하며 어쩔 줄 몰라하는 그 모습은 퍽 애처로워 보였다.
@@ -44,8 +52,15 @@
 천율: 고마워. 어... 그러니까...
 서아: 이, 이서아.
 서아: 이서아라고... 합니다...
-천율: 그래, 고마워 서아야.
 @AddAffinity NPC_Suah 5
+천율: 그래, 고마워 서아야.
+@FadeOut Black 3
+@wait .6
+@cam reset
+@Teleport Player PlayerStart
+@ConsumeAP 1
+@FinishActivity NPC_Suah 1
+@FadeIn 3
 @end
 
 

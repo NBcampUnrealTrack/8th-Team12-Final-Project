@@ -79,8 +79,8 @@ public:
 		Stats[Val] = NewValue;
 	}
 
-	//UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
-	//int32 AddStat(FName StatId, int32 Delta);
+	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
+	int32 AddStat(FName StatId, int32 Delta);
 
 	// ---- 이벤트 완료 기록 ----
 

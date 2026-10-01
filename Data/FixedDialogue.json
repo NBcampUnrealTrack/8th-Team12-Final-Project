@@ -189,7 +189,7 @@
     "Branches": [],
     "NextNodeId": "StudyLibrary5",
     "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 3.0,
+    "AutoAdvanceValue": 0.3,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": true,
     "Camera": {
@@ -236,6 +236,18 @@
         "Type": "Teleport",
         "Key": "Player",
         "Key2": "PlayerStart",
+        "Value": 0
+      },
+      {
+        "Type": "AddStat",
+        "Key": "Int",
+        "Key2": "None",
+        "Value": 3
+      },
+      {
+        "Type": "FinishActivity",
+        "Key": "Study",
+        "Key2": "None",
         "Value": 0
       }
     ],

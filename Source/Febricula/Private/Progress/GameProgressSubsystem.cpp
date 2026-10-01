@@ -40,19 +40,26 @@ int32 UGameProgressSubsystem::AddCounter(FName CounterId, int32 Delta)
 
 int32 UGameProgressSubsystem::GetStat(FName StatId) const
 {
-	// const int32* Found = Stats.Find(StatId);
-	// return Found ? *Found : 0;
-	return 0;
+	int64 Value = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
+	if (Value < -1 || Value > static_cast<int64>(EPlayerStat::Max))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
+		return 0;
+	}
+	return Stats[Value];
 }
 
-// int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
-// {
-// 	
-// 	// int32& Value = Stats.FindOrAdd(StatId);
-// 	// Value += Delta;
-// 	// return Value;
-// 	return 0;
-// }
+int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
+{
+	int64 Index = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
+	if (Index < -1 || Index > static_cast<int64>(EPlayerStat::Max))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
+		return 0;
+	}
+ 	Stats[Index] += Delta;
+ 	return Stats[Index];
+}
 
 bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) const
 {

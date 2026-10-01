@@ -9,7 +9,7 @@
 #include "ActivitySubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActivityRequested, FActivityDefinition, Definition);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActivityFinished, FGameplayTag, Tag);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActivityFinished, FName, ChannelName, FName, ActivityName);
 /**
  *
  */
@@ -32,11 +32,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void PrintFixedActivities();
 	
-	/*
-	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
-	void RunActivityByTag(FGameplayTag ActivityTag);
-	*/
-	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void RunActivityByIndex(int32 Index);
 	
@@ -46,7 +41,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void GoHome();
 	
+	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
+	int32 GetCurrentAP();
+	
 	void ActivityFinished(FName ActivityName);
+	
+	void ActivityFinished(FName NpcName, int32 EventNumber);
 	
 	int32 GetRunnableLength();
 	

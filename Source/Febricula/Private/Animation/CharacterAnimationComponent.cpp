@@ -18,6 +18,12 @@ UCharacterAnimationComponent::UCharacterAnimationComponent()
 	// ...
 }
 
+void UCharacterAnimationComponent::HandleAnimInitialized()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[AnimCheck] 애님 재초기화 (프레임 %llu)\n블루프린트 스택:\n%s"),
+	GFrameCounter, *FFrame::GetScriptCallstack());   // ← 여기에 브레이크포인트
+}
+
 void UCharacterAnimationComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -30,6 +36,12 @@ void UCharacterAnimationComponent::BeginPlay()
 			PlayAnim(Key, true);
 		}
 	}
+	
+	if (ACharacter* Character = Cast<ACharacter>(GetOwner()))
+	{
+		Character->GetMesh()->OnAnimInitialized.AddDynamic(this, &UCharacterAnimationComponent::HandleAnimInitialized);
+	}
+
 }
 
 bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
@@ -64,9 +76,14 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 
 				UAnimMontage* Played = AnimInstance->PlaySlotAnimationAsDynamicMontage(
 					*Found, AnimSlotName, AnimBlendTime, AnimBlendTime, /*InPlayRate=*/1.f, LoopCount);
-				
 				if (Played)
 				{
+					AnimInstance->OnMontageEnded.RemoveDynamic(this, &UCharacterAnimationComponent::HandleMontageEnded);
+					AnimInstance->OnMontageEnded.AddDynamic(this, &UCharacterAnimationComponent::HandleMontageEnded);
+
+					UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 재생 시작: %s, 길이 %.2f"),
+						*GetNameSafe(Played), Played->GetPlayLength());
+
 					return true;
 				}
 
@@ -85,7 +102,7 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 	return false;
 }
 
-void UCharacterAnimationComponent::StopAnim(float BlendOutTime)
+void UCharacterAnimationComponent::StopAnim(float BlendOutTime, bool bFromLogic)
 {
 	//UE_LOG(LogTemp, Warning, TEXT("STOP ANIM!"));
 	ACharacter* Owner = Cast<ACharacter>(GetOwner());
@@ -97,7 +114,22 @@ void UCharacterAnimationComponent::StopAnim(float BlendOutTime)
 	if (bPreferSingleNodeAnim)
 	{
 		MeshComp->Stop();
-		// 애님 BP로 복귀
+		// 애님 BP로 복귀		
+		if (bFromLogic)
+		{
+			if (AActor* Actor = GetOwner())
+			{
+				if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(Actor))
+				{
+					FName AnimName = MainNpc->GetDefaultAnimation();
+					if (AnimName != NAME_None && AnimLibrary.Contains(AnimName))
+					{
+						PlayAnim(AnimName, true);
+						return;
+					}
+				}
+			}
+		}
 		MeshComp->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 		return;
 	}
@@ -126,5 +158,28 @@ void UCharacterAnimationComponent::TickComponent(float DeltaTime, enum ELevelTic
 			}
 		}
 	}
+	
+	const ACharacter* Owner = Cast<ACharacter>(GetOwner());
+	const USkeletalMeshComponent* Mesh = Owner ? Owner->GetMesh() : nullptr;
+	if (!Mesh) return;
+
+	const int32 Mode = (int32)Mesh->GetAnimationMode();
+	const UAnimInstance* Anim = Mesh->GetAnimInstance();
+
+	if (Mode != LastAnimMode || Anim != LastAnimInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[AnimCheck] 프레임 %llu: 모드 %d → %d, 인스턴스 %p → %p"),
+			GFrameCounter, LastAnimMode, Mode, LastAnimInstance, Anim);
+		LastAnimMode = Mode;
+		LastAnimInstance = Anim;
+	}
+
+
+}
+
+void UCharacterAnimationComponent::HandleMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 몽타주 종료: %s, 중단됨=%d"),
+	*GetNameSafe(Montage), bInterrupted);   // ← 여기에 브레이크포인트
 
 }

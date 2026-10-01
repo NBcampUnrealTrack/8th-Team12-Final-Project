@@ -14,11 +14,11 @@ void UActorCacheSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 FTransform UActorCacheSubsystem::GetTargetTransform(FName TargetTag, ETargetTypeRole TargetTypeRole)
 {
-	if (TObjectPtr<ATargetPoint> NowTarget = *CachedTargetPoints.Find(TargetTag))
+	if (TObjectPtr<ATargetPoint> NowTarget = CachedTargetPoints.FindRef(TargetTag))
 	{
 		if (UTargetTypeComponent* TargetTypeComponent = NowTarget->GetComponentByClass<UTargetTypeComponent>())
 		{
-			if (TargetTypeComponent->TargetTypeRole == TargetTypeRole)
+			if (TargetTypeComponent->TargetTypeRole == TargetTypeRole || TargetTypeRole == ETargetTypeRole::WildCard)
 			{
 				return NowTarget->GetTransform();
 			}
@@ -34,11 +34,11 @@ FTransform UActorCacheSubsystem::GetTargetTransform(FName TargetTag, ETargetType
 
 FVector UActorCacheSubsystem::GetTargetLocation(FName TargetTag, ETargetTypeRole TargetTypeRole)
 {
-	if (TObjectPtr<ATargetPoint> NowTarget = *CachedTargetPoints.Find(TargetTag))
+	if (TObjectPtr<ATargetPoint> NowTarget = CachedTargetPoints.FindRef(TargetTag))
 	{
 		if (UTargetTypeComponent* TargetTypeComponent = NowTarget->GetComponentByClass<UTargetTypeComponent>())
 		{
-			if (TargetTypeComponent->TargetTypeRole == TargetTypeRole)
+			if (TargetTypeComponent->TargetTypeRole == TargetTypeRole || TargetTypeRole == ETargetTypeRole::WildCard)
 			{
 				return NowTarget->GetActorLocation();
 			}
@@ -54,13 +54,40 @@ FVector UActorCacheSubsystem::GetTargetLocation(FName TargetTag, ETargetTypeRole
 
 bool UActorCacheSubsystem::AddActorToCache(ATargetPoint* Actor)
 {
-	if (Actor->Tags.Num() > 0)
+	if (Actor)
 	{
-		CachedTargetPoints.Add(Actor->Tags[0], Actor);
+		if (Actor->Tags.Num() > 0)
+		{
+			CachedTargetPoints.Add(Actor->Tags[0], Actor);
+			return true;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("액터에 태그가 할당되지 않음"));
+	}
+	UE_LOG(LogTemp, Warning, TEXT("존재하지 않는 액터"));
+	return false;
+}
+
+bool UActorCacheSubsystem::RemoveActorFromCache(FName TargetTag)
+{
+	if (CachedTargetPoints.Contains(TargetTag))
+	{
+		CachedTargetPoints.Remove(TargetTag);
 		return true;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("액터에 태그가 할당되지 않음"));
+	UE_LOG(LogTemp, Warning, TEXT("캐싱되지 않은 Target Tag"))
 	return false;
+}
+
+UTargetTypeComponent* UActorCacheSubsystem::GetTargetTypeComponent(FName TargetTag)
+{
+	if (ATargetPoint* Target = CachedTargetPoints.FindRef(TargetTag))
+	{
+		if (UTargetTypeComponent* TargetTypeComponent = Target->GetComponentByClass<UTargetTypeComponent>())
+		{
+			return TargetTypeComponent;
+		}
+	}
+	return nullptr;
 }
 
 void UActorCacheSubsystem::PrintAllCachedTarget() const

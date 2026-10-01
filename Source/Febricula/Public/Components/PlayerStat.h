@@ -14,5 +14,6 @@ enum class EPlayerStat : uint8
 	Luck,
 	Courage,
 	HandWork,
+	Speech,
 	Max UMETA(Hidden)
 };

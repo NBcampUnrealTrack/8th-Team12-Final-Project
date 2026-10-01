@@ -5,9 +5,11 @@
 UENUM(BlueprintType)
 enum class ETargetTypeRole : uint8
 {
+	WildCard,
 	Sound,	
 	Teleport,
 	Spawn,
 	Camera,
-	MoveGoal
+	MoveGoal,
+	Prop
 };

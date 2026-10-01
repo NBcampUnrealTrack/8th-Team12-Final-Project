@@ -126,6 +126,8 @@ enum class EGameActionType : uint8
 
 	/** Key 카운터를 Value만큼 증감 */
 	AddCounter				UMETA(DisplayName = "카운터 증감"),
+	
+	AddStat					UMETA(DisplayName = "스탯 증감"),
 
 	/** Key 이벤트를 완료 처리 */
 	CompleteEvent			UMETA(DisplayName = "이벤트 완료 처리"),
