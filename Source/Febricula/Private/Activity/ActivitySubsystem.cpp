@@ -41,8 +41,8 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// 레벨 로드 완료 시 활동 목록 재검사
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UActivitySubsystem::OnLevelLoaded);
 	
-	CurrentAP = 6;
-	MaxAP = 6;
+	CurrentAP = 1;
+	MaxAP = 1;
 }
 
 void UActivitySubsystem::HandleDialogueFinished()
@@ -135,19 +135,19 @@ void UActivitySubsystem::PrintFixedActivities()
 	
 }
 
-void UActivitySubsystem::RunActivityByIndex(int32 Index)
+bool UActivitySubsystem::RunActivityByIndex(int32 Index)
 {
 	TArray<FActivityDefinition> RunnableActivityValues;
 	TArray<FGameplayTag> RunnableActivitiesTags;
 	RunnableActivities.GenerateValueArray(RunnableActivityValues);
 	RunnableActivities.GenerateKeyArray(RunnableActivitiesTags);
 	
-	if (Index < 0 || Index >= RunnableActivityValues.Num()) return;
-	if (!TryConsumeAP(RunnableActivityValues[Index].ActionPointCost)) return;
+	if (Index < 0 || Index >= RunnableActivityValues.Num()) return false;
+	if (!TryConsumeAP(RunnableActivityValues[Index].ActionPointCost)) return false;
 	NowPlayedActivity = RunnableActivitiesTags[Index];
 
 	OnActivityRequested.Broadcast(RunnableActivityValues[Index]);
-	
+	return true;
 	// 	const FActivityDefinition* Definition = RunnableActivities.Find(ActivityTag);
 	// 	if (!Definition)
 	// 	{

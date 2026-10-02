@@ -105,7 +105,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Prop | Interaction Branch")
 	TArray<FInteractionBranch> InteractionBranches;
 	
-	
 	UPROPERTY(Transient)
 	bool bUsed = false;
 };

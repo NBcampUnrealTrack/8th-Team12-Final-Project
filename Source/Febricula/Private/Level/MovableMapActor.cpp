@@ -5,7 +5,10 @@
 
 #include "TimerManager.h"
 #include "Components/ArrowComponent.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AMovableMapActor::AMovableMapActor()
@@ -54,6 +57,14 @@ void AMovableMapActor::CloseActor(AActor* Interactor, bool bInstant)
 	bInteracted = false;
 }
 
+void AMovableMapActor::FinishDialogue()
+{
+	if (bUsed)
+	{
+		StartMove(UGameplayStatics::GetPlayerCharacter(this, 0), false);
+	}
+}
+
 void AMovableMapActor::StartMoveWrapper(AActor* Interactor, EMoveState MoveState, bool bInstant)
 {
 	NowState = MoveState;
@@ -66,7 +77,6 @@ void AMovableMapActor::StartMoveWrapper(AActor* Interactor, EMoveState MoveState
 void AMovableMapActor::Interact_Implementation(AActor* Interactor)
 {
 	Super::Interact_Implementation(Interactor);
-	StartMove(Interactor);
 	//Super::Interact_Implementation(Interactor);
 }
 
@@ -80,6 +90,10 @@ void AMovableMapActor::BeginPlay()
 		{
 			Hinges.Add(Hinge);
 		}
+	}
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		DialogueSubsystem->OnDialogueFinished.AddDynamic(this, &AMovableMapActor::FinishDialogue);
 	}
 }
 // Called every frame

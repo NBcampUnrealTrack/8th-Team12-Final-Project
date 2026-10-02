@@ -109,25 +109,22 @@ FText AInteractableProp::GetInteractionPrompt_Implementation(AActor* Interactor)
 
 void AInteractableProp::ExecuteActionsWrapper()
 {
-	FInteractionBranch NowBranch;
-	if (const UGameInstance* GI = GetGameInstance())
+	//FInteractionBranch NowBranch;
+	// if (const UGameInstance* GI = GetGameInstance())
+	// {
+		// if (const UGameProgressSubsystem* GSP = GI->GetSubsystem<UGameProgressSubsystem>())
+		// {
+		// 	for (FInteractionBranch Branch : InteractionBranches)
+		// 	{
+		// 		if (GSP->EvaluateConditions(Branch.Conditions))
+		// 		{
+		// 			NowBranch = Branch;
+		// 		}
+		// 	}
+		// }
+	// }
+	if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
-		if (const UGameProgressSubsystem* GSP = GI->GetSubsystem<UGameProgressSubsystem>())
-		{
-			for (FInteractionBranch Branch : InteractionBranches)
-			{
-				if (GSP->EvaluateConditions(Branch.Conditions))
-				{
-					NowBranch = Branch;
-				}
-			}
-		}
-		if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
-		{
-			if (NowBranch.Actions.Num() > 0)
-			{
-				Dialogue->ExecuteActions(NowBranch.Actions);
-			}
-		}
+		Dialogue->ExecuteQueuedActions();
 	}
 }

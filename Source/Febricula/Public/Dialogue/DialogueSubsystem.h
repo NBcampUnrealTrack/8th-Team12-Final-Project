@@ -142,6 +142,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void RemoveCharacterByName(FName Name, ACharacter* Character);
 	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | ActionQueue")
+	void ExecuteQueuedActions();
+	
 	void ActivityDialoguePrint(const FDialogueNodeRow& Row);
 	
 	// ---- HUD가 구독할 델리게이트 ----
@@ -254,5 +257,9 @@ protected:
 	
 	UPROPERTY()
 	TArray<FName> ClearedEvents;
+	
+		
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop | Debug")
+	TArray<FGameAction> QueuedLevelChange;
 };
 

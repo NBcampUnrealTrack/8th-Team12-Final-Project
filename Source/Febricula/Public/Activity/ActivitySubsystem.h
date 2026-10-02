@@ -33,7 +33,7 @@ public:
 	void PrintFixedActivities();
 	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
-	void RunActivityByIndex(int32 Index);
+	bool RunActivityByIndex(int32 Index);
 	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	bool TryConsumeAP(int32 Cost);

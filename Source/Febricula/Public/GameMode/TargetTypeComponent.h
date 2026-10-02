@@ -18,6 +18,7 @@ public:
 	ETargetTypeRole TargetTypeRole;
 	
 	void ActivateTarget();
+	void BeginPlay() override;
 
 protected:
 	UPROPERTY(EditAnywhere, meta=(EditCondition="TargetTypeRole == ETargetTypeRole::Prop"))

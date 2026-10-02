@@ -21,6 +21,7 @@
 #include "GameMode/TargetTypeComponent.h"
 #include "GameMode/TargetTypeRole.h"
 #include "GameMode/TimeSubsystem.h"
+#include "Interaction/InteractionComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Level/MovableMapActor.h"
 #include "Progress/GameProgressSubsystem.h"
@@ -424,12 +425,13 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 		return;
 	}
 	
+	bool RunResult = true;
 	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
 		if (ActivitySubsystem->bWaitActivityChoice)
 		{	
 			ActivitySubsystem->bWaitActivityChoice = false;
-			ActivitySubsystem->RunActivityByIndex(ChoiceIndex);
+			RunResult = ActivitySubsystem->RunActivityByIndex(ChoiceIndex); 
 		}
 	}
 
@@ -437,7 +439,7 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 	
 	// 조건 미달 선택지는 UI에서 비활성으로 보이지만, 혹시 모르니 여기서도 막는다.
 	const UGameProgressSubsystem* Progress = GetProgress();
-	if (Progress && !Progress->EvaluateConditions(Chosen.Conditions))
+	if (!RunResult && Progress && !Progress->EvaluateConditions(Chosen.Conditions))
 	{
 		return;
 	}
@@ -859,6 +861,15 @@ void UDialogueSubsystem::RemoveCharacterByName(FName Name, ACharacter* Character
 	}
 }
 
+void UDialogueSubsystem::ExecuteQueuedActions()
+{
+	if (QueuedLevelChange.Num() > 0)
+	{
+		ExecuteAction(QueuedLevelChange.Pop());
+	}
+	QueuedLevelChange.Reset();
+}
+
 void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 {
 	UGameProgressSubsystem* Progress = GetProgress();
@@ -1133,8 +1144,45 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		if (const UActivitySetting* ActivitySetting = GetDefault<UActivitySetting>())
 		{
 			OnDialogueBoxHidden.Broadcast();
-			UGameplayStatics::OpenLevelBySoftObjectPtr(this, *ActivitySetting->Levels.Find(Action.Key));
+			if (Action.Key == NAME_None)
+			{
+				if (ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0))
+				{
+					if (UInteractionComponent* InteractionComponent = Player->GetComponentByClass<UInteractionComponent>())
+					{
+						FName TargetLevelName = InteractionComponent->GetFocusedActorTag();
+						if (TargetLevelName == NAME_None)
+						{
+							UE_LOG(LogTemp, Warning, TEXT("레벨 자동 식별 실패"));
+							break;
+						}
+						if (const TSoftObjectPtr<UWorld>* Level = ActivitySetting->Levels.Find(TargetLevelName))
+						{
+							FGameAction QueuedAction = FGameAction(EGameActionType::ChangeLevel, Action.Key, TEXT("false"), 0);
+							QueuedLevelChange.Add(QueuedAction);
+						}
+					}
+				}
+			}
+			if (const TSoftObjectPtr<UWorld>* Level = ActivitySetting->Levels.Find(Action.Key))
+			{
+				if (!Action.Key2.ToString().ToBool())
+				{
+					UGameplayStatics::OpenLevelBySoftObjectPtr(this, *Level);
+				}
+				else
+				{
+					FGameAction QueuedAction = FGameAction(EGameActionType::ChangeLevel, Action.Key, TEXT("false"), 0);
+					QueuedLevelChange.Add(QueuedAction);
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("존재하지 않는 레벨: %s"), *Action.Key.ToString());
+			}
 		}
+		
+		
 		break;
 		
 	case EGameActionType::FadeOut:
@@ -1198,7 +1246,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			{
 				FTransform SpawnTransform = CacheSubsystem->GetTargetTransform(Action.Key2);
 				// if (FoundedLocation.IsEmpty())
-				// {
+				// {w
 				// 	UE_LOG(LogTemp, Warning, TEXT("%s: 지정된 스폰 위치 %s를 찾지 못함 "), *Action.Key.ToString(), *Action.Key2.ToString());
 				// 	break;
 				// }
