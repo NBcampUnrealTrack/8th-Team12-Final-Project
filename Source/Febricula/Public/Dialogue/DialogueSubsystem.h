@@ -38,7 +38,7 @@ struct FDialogueLogEntry
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueLine, const FText&, Speaker, const FText&, Body);
 
 /** 선택지를 띄워야 할 때 */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDialogueChoices, const TArray<FDialogueChoiceView>&, Choices);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueChoices, const TArray<FDialogueChoiceView>&, Choices, bool, YesNo);
 
 /** 대화가 완전히 끝났을 때 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
@@ -110,7 +110,7 @@ public:
 
 	/** 선택지를 골랐을 때 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	void SelectChoice(int32 ChoiceIndex);
+	void SelectChoice(int32 ChoiceIndex, bool YesNo = false);
 
 	/** 강제 종료 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
@@ -166,6 +166,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void RemoveCharacterByName(FName Name, ACharacter* Character);
 	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Result")
+	bool GetResult() { return RecentDialogueResult; }
+	
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | ActionQueue")
 	void ExecuteQueuedActions();
 	
@@ -186,6 +189,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
 	FOnDialogueBoxHidden OnDialogueBoxHidden;
 	
+	// UPROPERTY(BlueprintAssignable, Category = "Dialogue")
+	// FOnChoiceSelected OnChoiceSelected;
+	//
 	TMap<FName, FCharacterCache> GetCachedCharacter() const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cache")
@@ -213,7 +219,7 @@ protected:
 	void ResolveNodeExit();
 
 	/** 선택지를 HUD에 표시하고 입력을 선택 대기 상태로 바꾼다 */
-	void PresentChoices(const TArray<FDialogueChoice>& InChoices);
+	void PresentChoices(const TArray<FDialogueChoice>& InChoices, bool YesNo = false);
 
 	UGameProgressSubsystem* GetProgress() const;
 	UNpcAffinitySubsystem* GetRelationship() const;
@@ -316,6 +322,8 @@ protected:
 	/** 대사 한 줄을 로그에 기록 + 델리게이트 브로드캐스트 */
 	void BroadcastDialogueLine(const FText& Speaker, const FText& Body);
 	
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue | Result")
+	bool RecentDialogueResult;
 		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop | Debug")
 	TArray<FGameAction> QueuedLevelChange;
