@@ -110,7 +110,7 @@ public:
 	// ---- 이벤트 완료 기록 ----
 
 	UFUNCTION(BlueprintPure, Category = "Progress|Event")
-	bool IsEventCompleted(FName EventId) const { return CompletedEvents.Contains(EventId); }
+	bool IsEventCompleted(FName EventId) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Progress|Event")
 	void MarkEventCompleted(FName EventId) { CompletedEvents.Add(EventId); }
@@ -171,5 +171,5 @@ protected:
 	TMap<FName, int32> Counters;
 
 	UPROPERTY()
-	int32 Stats[static_cast<uint8>(EPlayerStat::Max)] = {};
+	int32 Stats[static_cast<uint8>(EPlayerStat::Max)];
 };

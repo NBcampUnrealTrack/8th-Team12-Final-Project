@@ -107,4 +107,7 @@ protected:
 	
 	UPROPERTY(Transient)
 	bool bUsed = false;
+	
+	UPROPERTY(Transient)
+	bool DialogueResult = false;
 };

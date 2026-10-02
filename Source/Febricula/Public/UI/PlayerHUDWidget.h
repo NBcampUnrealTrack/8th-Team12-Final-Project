@@ -67,7 +67,7 @@ public:
 
 	/** 선택지 버튼 클릭 시 */
 	UFUNCTION(BlueprintCallable, Category = "HUD|Dialogue")
-	void RequestSelectChoice(int32 ChoiceIndex);
+	void RequestSelectChoice(int32 ChoiceIndex, bool YesNo = false);
 
 	UFUNCTION(BlueprintPure, Category = "HUD|Dialogue")
 	bool IsDialogueActive() const;
@@ -78,7 +78,7 @@ protected:
 	void HandleDialogueLine(const FText& Speaker, const FText& Body);
 
 	UFUNCTION()
-	void HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices);
+	void HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices, bool YesNo = false);
 
 	UFUNCTION()
 	void HandleDialogueFinished();

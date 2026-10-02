@@ -20,9 +20,6 @@ class FEBRICULA_API UActivitySubsystem : public UGameInstanceSubsystem
 
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-
-	UFUNCTION()
-	void HandleDialogueFinished();
 	
 	virtual void BindDialogue();
 	
@@ -47,7 +44,7 @@ public:
 	void GoHome();
 	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
-	int32 GetCurrentAP();
+	int32 GetCurrentAP() const;
 	
 	void ActivityFinished(FName ActivityName);
 	

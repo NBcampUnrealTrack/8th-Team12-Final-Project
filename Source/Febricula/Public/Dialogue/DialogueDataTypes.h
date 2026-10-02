@@ -400,7 +400,7 @@ struct FDialogueChoice
 	/** 이 선택지를 골랐을 때 실행할 액션 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
 	TArray<FGameAction> Actions;
-
+	
 	/** 다음 노드. None이면 대화 종료 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
 	FName NextNodeId;
@@ -482,6 +482,9 @@ struct FDialogueNodeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	TArray<FGameAction> OnEnterActions;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+	bool YesNo;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	TArray<FDialogueChoice> Choices;
 

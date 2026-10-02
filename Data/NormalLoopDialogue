@@ -1,0 +1,18 @@
+﻿@cast 사감 = "사감"
+
+@label Default_MorningAssemble
+사감: 아침점호 끝. 오늘도 고생해라.
+@end
+
+@label Default_Breakfast
+@Teleport Player FoodCheon
+아침을 먹었다.
+@FadeOut Black 3
+@wait .3
+@LevelChange SchoolOutside
+@end
+
+
+
+
+

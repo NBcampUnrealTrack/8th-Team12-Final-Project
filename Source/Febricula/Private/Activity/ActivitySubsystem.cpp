@@ -57,17 +57,9 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	MaxAP = 1;
 }
 
-void UActivitySubsystem::HandleDialogueFinished()
-{
-
-}
 
 void UActivitySubsystem::BindDialogue()
 {
-	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
-	{
-		DialogueSubsystem->OnDialogueFinished.AddDynamic(this, &UActivitySubsystem::HandleDialogueFinished);
-	}
 }
  
 void UActivitySubsystem::FindRunnableActivities()
@@ -253,7 +245,7 @@ void UActivitySubsystem::GoHome()
 	}
 }
 
-int32 UActivitySubsystem::GetCurrentAP()
+int32 UActivitySubsystem::GetCurrentAP() const
 {
 	return CurrentAP;
 }

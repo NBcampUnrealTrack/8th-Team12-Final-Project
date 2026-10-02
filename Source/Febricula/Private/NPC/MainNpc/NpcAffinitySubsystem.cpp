@@ -52,14 +52,14 @@ bool UNpcAffinitySubsystem::IsRelationshipAtLeast(FName NpcId, ENpcRelationshipL
 	return static_cast<uint8>(GetRelationshipLevel(NpcId)) >= static_cast<uint8>(MinimumLevel);
 }
 
-FNpcRelationshipSaveData UNpcRelationshipSubsystem::GetSaveData() const
+FNpcRelationshipSaveData UNpcAffinitySubsystem::GetSaveData() const
 {
 	FNpcRelationshipSaveData Data;
 	Data.AffinityByNpcId = AffinityByNpcId;
 	return Data;
 }
 
-void UNpcRelationshipSubsystem::LoadSaveData(const FNpcRelationshipSaveData& Data)
+void UNpcAffinitySubsystem::LoadSaveData(const FNpcRelationshipSaveData& Data)
 {
 	AffinityByNpcId = Data.AffinityByNpcId;
 }

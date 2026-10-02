@@ -77,6 +77,7 @@ void AMovableMapActor::StartMoveWrapper(AActor* Interactor, EMoveState MoveState
 void AMovableMapActor::Interact_Implementation(AActor* Interactor)
 {
 	Super::Interact_Implementation(Interactor);
+	//StartMove(Interactor, false);
 	//Super::Interact_Implementation(Interactor);
 }
 

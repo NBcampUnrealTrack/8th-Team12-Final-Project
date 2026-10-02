@@ -61,6 +61,12 @@ int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
  	return Stats[Index];
 }
 
+bool UGameProgressSubsystem::IsEventCompleted(FName EventId) const
+{
+	bool Temp = CompletedEvents.Contains(EventId);
+	return Temp;
+}
+
 bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) const
 {
 	switch (Condition.Type)
@@ -266,7 +272,13 @@ FGameProgressSaveData UGameProgressSubsystem::GetSaveData() const
 	Data.Topics = Topics;
 	Data.CompletedEvents = CompletedEvents;
 	Data.Counters = Counters;
-	Data.Stats = Stats;
+	
+	const UEnum* Enum = StaticEnum<EPlayerStat>();
+	for (int32 i = 0; i < static_cast<int32>(EPlayerStat::Max); ++i)
+	{
+		Data.Stats.Add(FName(Enum->GetNameStringByIndex(i)), Stats[i]);
+	}
+
 	Data.FallbackDay = FallbackDay;
 	return Data;
 }
@@ -277,6 +289,12 @@ void UGameProgressSubsystem::LoadSaveData(const FGameProgressSaveData& Data)
 	Topics = Data.Topics;
 	CompletedEvents = Data.CompletedEvents;
 	Counters = Data.Counters;
-	Stats = Data.Stats;
+	
+	const UEnum* Enum = StaticEnum<EPlayerStat>();
+	for (int32 i = 0; i < static_cast<int32>(EPlayerStat::Max); ++i)
+	{
+		const FName Name(Enum->GetNameStringByIndex(i));
+		Stats[i] = Data.Stats.FindRef(Name);   // 없으면 0
+	}
 	FallbackDay = Data.FallbackDay;
 }

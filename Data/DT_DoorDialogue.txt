@@ -1,7 +1,7 @@
 ﻿@label Room_Root
 학교로 갈까?
 
-@menu
+@menu YesNo
 - 예 -> Room_GoSchool
 - 아니요 -> Room_Cancle
 
@@ -21,9 +21,10 @@
 @label Classroom_Root
 어디로 갈까
 
-@menu
-- "복도로" -> Classroom_Hallway
-- "밖으로" -> Classroom_Outside
+@menu YesNo
+- 복도로 -> Classroom_Hallway
+- 밖으로 -> Classroom_Outside
+- 그만둔다
 @end
 
 @label Classroom_Hallway
@@ -41,7 +42,7 @@
 
 @label Hallway1_Root
 들어갈까?
-@menu
+@menu YesNo
 - 들어간다 -> Hallway1_Go
 - 그만둔다 -> Hallway1_Cancle
 @end

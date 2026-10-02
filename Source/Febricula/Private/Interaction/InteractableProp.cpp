@@ -125,6 +125,9 @@ void AInteractableProp::ExecuteActionsWrapper()
 	// }
 	if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
-		Dialogue->ExecuteQueuedActions();
+		if (Dialogue->GetResult())
+		{
+			Dialogue->ExecuteQueuedActions();
+		}
 	}
 }

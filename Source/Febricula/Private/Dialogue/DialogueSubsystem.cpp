@@ -8,6 +8,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "FebriculaCharacter.h"
+#include "IPropertyTable.h"
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Animation/CharacterAnimationComponent.h"
@@ -433,13 +434,13 @@ void UDialogueSubsystem::SetFastForward(bool bEnable)
 	FastForwardElapsed = 0.f;
 }
 
-void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
+void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex, bool YesNo)
 {
 	if (!bDialogueActive || !bWaitingForChoice)
 	{
 		return;
 	}
-
+	
 	if (!PendingChoices.IsValidIndex(ChoiceIndex))
 	{
 		return;
@@ -469,6 +470,20 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 
 	ExecuteActions(Chosen.Actions);
 	
+	if (YesNo == true)
+	{
+		if (ChoiceIndex == PendingChoices.Num() - 1)
+		{
+			RecentDialogueResult = false;
+		}
+		else
+		{
+			RecentDialogueResult = true
+			;
+		}
+	}
+
+	
 	if (Chosen.NextNodeId.IsNone())
 	{
 		if (Chosen.bFreeActivity)
@@ -484,6 +499,7 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
 	{
 		EnterNode(Chosen.NextNodeId);
 	}
+
 }
 
 void UDialogueSubsystem::FinishDialogue()
@@ -648,7 +664,7 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	// 질문을 읽은 플레이어는 선택지가 바로 나올 거라고 기대하기 때문이다.
 	if (Row->Choices.Num() > 0)
 	{
-		PresentChoices(Row->Choices);
+		PresentChoices(Row->Choices, Row->YesNo);
 	}
 }
 
@@ -672,7 +688,7 @@ void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
 	}
 }
 
-void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices)
+void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices, bool YesNo)
 {
 	const UGameProgressSubsystem* Progress = GetProgress();
 
@@ -696,7 +712,7 @@ void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices
 		UE_LOG(LogTemp, Warning, TEXT("View Name2: %s"), *Choice.Text.ToString());		
 	}
 	HoldingChoices = Views;
-	OnDialogueChoices.Broadcast(Views);
+	OnDialogueChoices.Broadcast(Views, YesNo);
 	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueChoices.IsBound());
 	bWaitingForChoice = true;
 }
@@ -1177,7 +1193,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 						}
 						if (const TSoftObjectPtr<UWorld>* Level = ActivitySetting->Levels.Find(TargetLevelName))
 						{
-							FGameAction QueuedAction = FGameAction(EGameActionType::ChangeLevel, Action.Key, TEXT("false"), 0);
+							FGameAction QueuedAction = FGameAction(EGameActionType::ChangeLevel, TargetLevelName, TEXT("false"), 0);
 							QueuedLevelChange.Add(QueuedAction);
 						}
 					}

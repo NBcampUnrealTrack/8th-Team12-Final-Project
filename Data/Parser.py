@@ -123,6 +123,7 @@ class Choice:
     target: str = ""            # "" = 메뉴 블록 다음 노드로 합류
     actions: list = field(default_factory=list)
     conditions: list = field(default_factory=list)
+    yes_no: bool = False
     line: int = 0
  
     def to_json(self):
@@ -130,6 +131,7 @@ class Choice:
             "Text": self.text,
             "Conditions": [c.to_json() for c in self.conditions],
             "Actions": [a.to_json() for a in self.actions],
+            "YesNo": self.yes_no,
             "NextNodeId": self.target or EMPTY,
         }
  
@@ -142,6 +144,7 @@ class Node:
     text: str = ""
     actions: list = field(default_factory=list)
     choices: list = field(default_factory=list)
+    choice_yes_or_no: bool = False
     branches: list = field(default_factory=list)
     next_id: str = ""           # "" = 미정, 2패스에서 채움
     next_fixed: bool = False    # jump/end/menu로 확정됨
@@ -171,6 +174,7 @@ class Node:
             "Text": self.text,
             "OnEnterActions": [a.to_json() for a in self.actions],
             "Choices": [c.to_json() for c in self.choices],
+            "YesNo": self.choice_yes_or_no,
             "Branches": [b.to_json() for b in self.branches],
             "NextNodeId": self.next_id or EMPTY,
             "AutoAdvance": self.auto,
@@ -314,7 +318,7 @@ class Parser:
         if node.hide_box and node.auto == "None":
             self.error(node.line,
                        "@hide를 썼으나 @wait 계열이 없음 - 대화창이 닫힌 채 영구 정지한다")
- 
+
         self.nodes.append(node)
         return node
  
@@ -341,6 +345,11 @@ class Parser:
             phantom = False
         else:
             phantom = True
+        temp_node = Node(line=self.p_line or line)
+
+        #if len(temp_node.choices) > 0:
+
+
         node = self.commit(Node(line=self.p_line or line))
         node.phantom = phantom
  
@@ -468,6 +477,14 @@ class Parser:
                     menu_node = self.nodes[-1]
                     menu_node.next_fixed = True
                     menu_node.next_id = EMPTY
+
+                    menu_node.yes_no = False
+
+                    if len(parts) == 2:
+                        if parts[1] == "YesNo":
+                            menu_node.choice_yes_or_no = True
+
+
                     if menu_node.auto != "None":
                         self.warn(line_no, "선택지 노드의 AutoAdvance는 무시되므로 None으로 강제함")
                         menu_node.auto = "None"

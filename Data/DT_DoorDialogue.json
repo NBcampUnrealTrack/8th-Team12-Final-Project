@@ -10,15 +10,18 @@
         "Text": "예",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "Room_GoSchool"
       },
       {
         "Text": "아니요",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "Room_Cancle"
       }
     ],
+    "YesNo": true,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "None",
@@ -61,6 +64,7 @@
       }
     ],
     "Choices": [],
+    "YesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -96,6 +100,7 @@
     "Text": "",
     "OnEnterActions": [],
     "Choices": [],
+    "YesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -132,18 +137,28 @@
     "OnEnterActions": [],
     "Choices": [
       {
-        "Text": "\"복도로\"",
+        "Text": "복도로",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "Classroom_Hallway"
       },
       {
-        "Text": "\"밖으로\"",
+        "Text": "밖으로",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "Classroom_Outside"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Classroom_Hallway"
       }
     ],
+    "YesNo": true,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "None",
@@ -186,6 +201,7 @@
       }
     ],
     "Choices": [],
+    "YesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -228,6 +244,7 @@
       }
     ],
     "Choices": [],
+    "YesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -267,15 +284,18 @@
         "Text": "들어간다",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "Hallway1_Go"
       },
       {
         "Text": "그만둔다",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "Hallway1_Cancle"
       }
     ],
+    "YesNo": true,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "None",
@@ -318,6 +338,7 @@
       }
     ],
     "Choices": [],
+    "YesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -353,6 +374,7 @@
     "Text": "",
     "OnEnterActions": [],
     "Choices": [],
+    "YesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
