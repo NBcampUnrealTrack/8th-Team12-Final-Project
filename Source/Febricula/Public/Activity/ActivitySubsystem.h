@@ -38,6 +38,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	bool TryConsumeAP(int32 Cost);
 
+	// ---- 세이브/로드 ----
+	
+	UFUNCTION(BlueprintCallable, Category = "ActivitySubsystem | Save")
+	void SetCurrentAP(int32 NewAP) { CurrentAP = NewAP; }
+
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void GoHome();
 	
@@ -52,8 +57,6 @@ public:
 	
 	TArray<FGameplayTag> GetRunnableActivityTag() const;
 
-	int32 GetCurrentAP() const { return CurrentAP; };
-	
 	FGameplayTag GetNowScheduleTag() const;
 
 	UPROPERTY(BlueprintAssignable, Category = ActivitySubsystem)
@@ -68,11 +71,12 @@ public:
 	UPROPERTY()
 	bool bWaitActivityChoice;
 	
+
 	// 디버그용
 #if !UE_BUILD_SHIPPING
 	const TMap<FGameplayTag, FActivityDefinition>& GetAllActivities() const;
 	const TMap<FGameplayTag, FActivityDefinition>& GetRunnableActivities() const;
-	
+
 #endif
 
 protected:

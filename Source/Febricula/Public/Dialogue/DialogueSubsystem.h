@@ -21,6 +21,19 @@ class ABaseNpcCharacter;
 class UGameProgressSubsystem;
 class UNpcAffinitySubsystem;
 
+USTRUCT(BlueprintType)
+struct FDialogueLogEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FText Speaker;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FText Body;
+};
+
+
 /** 대사 한 줄이 출력될 때. Speaker가 비어 있으면 나레이션(사물 조사 등) */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueLine, const FText&, Speaker, const FText&, Body);
 
@@ -117,6 +130,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsWaitingForAutoAdvance() const { return PendingAutoAdvance != EDialogueAutoAdvance::None; }
 
+	/**
+	 * 대사 빠른 넘기기(스킵)를 켜거나 끈다.
+	 * 켜져 있는 동안 Tick에서 일정 간격마다 Advance()를 대신 호출해준다.
+	 * 선택지 대기 중이거나 자동 진행 대기 중에는 Advance() 자체가 무시하므로 자연히 멈춘다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | FastForward")
+	void SetFastForward(bool bEnable);
+
+	UFUNCTION(BlueprintPure, Category = "Dialogue | FastForward")
+	bool IsFastForwarding() const { return bIsFastForwarding; }
+
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Action")
 	void ExecuteAction(const FGameAction& Action);
 	void ChangeActorHidden(FName Name, bool bHidden);
@@ -125,20 +149,20 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Input")
 	void BlockPlayerInput(bool bLock);
-	
+
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
 	void CameraToCinematicCam(const FVector Loc, const FRotator Rot, const float MoveTime, const float Focus);
-	
+
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Camera")
 	void CameraToPlayerCam(const float MoveTime);
-	 
+
 	//지연 생성된 위젯을 위한 함수
 	UFUNCTION(BlueprintCallable, Category= "Dialogue | Dialogue Holder")
 	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine, TArray<FDialogueChoiceView>& OutChoiceViews);
 
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void AddCharacterByName(FName Name, ACharacter* Character);
-	
+
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void RemoveCharacterByName(FName Name, ACharacter* Character);
 	
@@ -147,6 +171,7 @@ public:
 	
 	void ActivityDialoguePrint(const FDialogueNodeRow& Row);
 	
+
 	// ---- HUD가 구독할 델리게이트 ----
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
@@ -167,6 +192,18 @@ public:
 	FTransform GetDefaultTransform(FName NpcId);
 	
 	bool CheckNpcCached(FName NpcName) const;
+
+	/** 백로그(지난 대사 기록) 전체를 가져온다. UI가 스크롤 목록 바인딩에 사용 */
+	UFUNCTION(BlueprintPure, Category = "Dialogue | Log")
+	const TArray<FDialogueLogEntry>& GetDialogueLog() const { return DialogueLog; }
+
+	/** 백로그 초기화 (새 게임/세이브 로드 필요 시) */
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Log")
+	void ClearDialogueLog() { DialogueLog.Empty(); }
+
+	/** 세이브 파일에서 불러온 백로그로 통째로 덮어쓴다 (개별 Add 없이 한 번에 복원) */
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Log")
+	void SetDialogueLog(const TArray<FDialogueLogEntry>& InLog) { DialogueLog = InLog; }
 
 protected:
 	/** 노드로 진입해서 OnEnterActions 실행 + 대사 출력까지 */
@@ -189,7 +226,7 @@ protected:
 
 	/** 참가자 전원을 Talk 상태에서 풀어준다 */
 	void ReleaseParticipants();
-	
+
 	ACharacter* GetCharacterInCache(FName CharacterName) const;
 
 	/** 이번 대화에 참여 중인 NPC들. 끝날 때 한꺼번에 풀어주기 위해 들고 있는다 */
@@ -228,17 +265,27 @@ protected:
 	/** 지금 표시 중인 선택지의 원본 (SelectChoice에서 참조) */
 	TArray<FDialogueChoice> PendingChoices;
 
+	/** 대사 빠른 넘기기(Ctrl 홀드 등) 상태 */
+	bool bIsFastForwarding = false;
+
+	/** 빠른 넘기기 중 다음 Advance()까지 누적된 시간 */
+	float FastForwardElapsed = 0.f;
+
+	/** 빠른 넘기기 시 한 줄 넘기는 간격(초). 값이 작을수록 더 빠르게 넘어간다 */
+	UPROPERTY(EditDefaultsOnly, Category = "Dialogue | FastForward")
+	float FastForwardInterval = 0.1f;
+
 	/** StartSimpleLines로 띄운 즉석 대사 큐 */
 	TArray<FText> SimpleLineQueue;
 	FText SimpleLineSpeaker;
 	bool bRunningSimpleLines = false;
-	
+
 	//인 게임 시네마틱용 카메라
 	UPROPERTY()
 	TObjectPtr<ACineCameraActor> CinematicCamera[2];
-	
+
 	int32 ActiveCamIndex;
-	
+
 	//자동재생 대사 홀더. 위젯 생성보다 Broadcast가 빨랐을 때 대비
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
 	bool bHasHoldingLine;
@@ -251,12 +298,23 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	bool bBlockPlayerInput;
-	
+
 	UPROPERTY()
 	TMap<FName, FCharacterCache> CachedCharacter;
 	
 	UPROPERTY()
 	TArray<FName> ClearedEvents;
+
+	/** 지난 대사 전체 기록. UI 백로그 창에서 참조 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Log")
+	TArray<FDialogueLogEntry> DialogueLog;
+
+	/** 백로그가 무한정 커지지 않도록 상한 */
+	UPROPERTY(EditDefaultsOnly, Category = "Dialogue | Log")
+	int32 MaxLogEntries = 200;
+
+	/** 대사 한 줄을 로그에 기록 + 델리게이트 브로드캐스트 */
+	void BroadcastDialogueLine(const FText& Speaker, const FText& Body);
 	
 		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop | Debug")

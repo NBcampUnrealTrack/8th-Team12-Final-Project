@@ -64,12 +64,26 @@ void UDialogueSubsystem::Tick(float DeltaTime)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, .0f, FColor::Red, FString::Printf(TEXT("%d"), CachedCharacter.Num()));
 	}
+
+	// 빠른 넘기기(Ctrl 홀드 등) 중이면 일정 간격마다 Advance()를 대신 호출해준다.
+	// Advance() 자체가 선택지/자동진행 대기 중엔 아무것도 안 하고 리턴하므로,
+	// 그런 상황에서는 이 로직도 자연히 아무 효과 없이 대기하게 된다.
+	if (bIsFastForwarding && bDialogueActive && !bWaitingForChoice)
+	{
+		FastForwardElapsed += DeltaTime;
+		if (FastForwardElapsed >= FastForwardInterval)
+		{
+			FastForwardElapsed = 0.f;
+			Advance();
+		}
+	}
+
 	// 자동 진행을 기다리는 중일 때만 일이 있다.
 	if (!bDialogueActive || bWaitingForChoice || PendingAutoAdvance == EDialogueAutoAdvance::None)
 	{
 		return;
 	}
-	
+
 	if (!IsAutoAdvanceSatisfied(DeltaTime))
 	{
 		return;
@@ -87,7 +101,7 @@ void UDialogueSubsystem::Tick(float DeltaTime)
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
-			OnDialogueLine.Broadcast(SimpleLineSpeaker, Next);
+			BroadcastDialogueLine(SimpleLineSpeaker, Next);
 		}
 		else
 		{
@@ -108,50 +122,50 @@ bool UDialogueSubsystem::IsAutoAdvanceSatisfied(float DeltaTime)
 		return AutoAdvanceElapsed >= AutoAdvanceValue;
 
 	case EDialogueAutoAdvance::WhenPlayerNearNpc:
+	{
+		const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+		// 기준 NPC를 따로 지정했으면 그쪽, 아니면 상호작용한 상대
+		const AActor* Reference = AutoAdvanceNpcId.IsNone()
+			? ToRawPtr(CurrentInstigator)
+			: Cast<AActor>(GetCharacterInCache(AutoAdvanceNpcId));
+
+		if (!PlayerPawn || !Reference)
 		{
-			const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
-			// 기준 NPC를 따로 지정했으면 그쪽, 아니면 상호작용한 상대
-			const AActor* Reference = AutoAdvanceNpcId.IsNone()
-				? ToRawPtr(CurrentInstigator)
-				: Cast<AActor>(GetCharacterInCache(AutoAdvanceNpcId));
-
-			if (!PlayerPawn || !Reference)
-			{
-				return false;
-			}
-			
-			
-			const float RadiusSq = FMath::Square(FMath::Max(AutoAdvanceValue, 1.f));
-			
-			float Temp = FVector::DistSquared2D(PlayerPawn->GetActorLocation(), Reference->GetActorLocation());
-			UE_LOG(LogTemp, Warning, TEXT("AutoAdvanceValue: %f : %f : %d"), RadiusSq, Temp, Temp <= RadiusSq);
-
-			return FVector::DistSquared2D(PlayerPawn->GetActorLocation(), Reference->GetActorLocation()) <= RadiusSq;
+			return false;
 		}
+
+
+		const float RadiusSq = FMath::Square(FMath::Max(AutoAdvanceValue, 1.f));
+
+		float Temp = FVector::DistSquared2D(PlayerPawn->GetActorLocation(), Reference->GetActorLocation());
+		UE_LOG(LogTemp, Warning, TEXT("AutoAdvanceValue: %f : %f : %d"), RadiusSq, Temp, Temp <= RadiusSq);
+
+		return FVector::DistSquared2D(PlayerPawn->GetActorLocation(), Reference->GetActorLocation()) <= RadiusSq;
+	}
 
 	case EDialogueAutoAdvance::WhenNpcArrived:
+	{
+		// 여러 NPC가 동시에 이동할 때 누구의 도착을 기다릴지 고를 수 있다.
+		const ABaseNpcCharacter* Npc = AutoAdvanceNpcId.IsNone()
+			? Cast<ABaseNpcCharacter>(CurrentInstigator)
+			: Cast<ABaseNpcCharacter>(GetCharacterInCache(AutoAdvanceNpcId));
+
+
+
+		if (!Npc)
 		{
-			// 여러 NPC가 동시에 이동할 때 누구의 도착을 기다릴지 고를 수 있다.
-			const ABaseNpcCharacter* Npc = AutoAdvanceNpcId.IsNone()
-				? Cast<ABaseNpcCharacter>(CurrentInstigator)
-				: Cast<ABaseNpcCharacter>(GetCharacterInCache(AutoAdvanceNpcId));
-
-
-				
-			if (!Npc)
-			{
-				return false;
-			}
-			const AMainNpcAIController* AI = Cast<AMainNpcAIController>(Npc->GetController());
-			if (!AI)
-			{
-				return false;
-			}
-			//UE_LOG(LogTemp,Warning, TEXT("Remain: %d"), AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f)));
-			return AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f));
+			return false;
 		}
-		
-		
+		const AMainNpcAIController* AI = Cast<AMainNpcAIController>(Npc->GetController());
+		if (!AI)
+		{
+			return false;
+		}
+		//UE_LOG(LogTemp,Warning, TEXT("Remain: %d"), AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f)));
+		return AI->HasReachedRouteTarget(FMath::Max(AutoAdvanceValue, 1.f));
+	}
+
+
 	default:
 		return false;
 	}
@@ -254,7 +268,7 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 '%s'가 오버라이딩 한 Dialogue Table '%s'을(를) 찾지 못했습니다."), *BestRowName.ToString(), *BestRow->DialogueTable.ToSoftObjectPath().GetAssetName());	
+		UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 '%s'가 오버라이딩 한 Dialogue Table '%s'을(를) 찾지 못했습니다."), *BestRowName.ToString(), *BestRow->DialogueTable.ToSoftObjectPath().GetAssetName());
 	}
 
 	EnterNode(BestRow->RootNodeId);
@@ -362,12 +376,12 @@ bool UDialogueSubsystem::StartSimpleLines(const FText& Speaker, const TArray<FTe
 	bRunningSimpleLines = true;
 	SimpleLineSpeaker = Speaker;
 	SimpleLineQueue = Lines;
-	
+
 	BlockPlayerInput(true);
-	
+
 	const FText First = SimpleLineQueue[0];
 	SimpleLineQueue.RemoveAt(0);
-	OnDialogueLine.Broadcast(SimpleLineSpeaker, First);
+	BroadcastDialogueLine(SimpleLineSpeaker, First);
 	return true;
 }
 
@@ -401,7 +415,7 @@ void UDialogueSubsystem::Advance()
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
-			OnDialogueLine.Broadcast(SimpleLineSpeaker, Next);
+			BroadcastDialogueLine(SimpleLineSpeaker, Next);
 		}
 		else
 		{
@@ -411,6 +425,12 @@ void UDialogueSubsystem::Advance()
 	}
 
 	ResolveNodeExit();
+}
+
+void UDialogueSubsystem::SetFastForward(bool bEnable)
+{
+	bIsFastForwarding = bEnable;
+	FastForwardElapsed = 0.f;
 }
 
 void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
@@ -472,9 +492,9 @@ void UDialogueSubsystem::FinishDialogue()
 	{
 		return;
 	}
-	
+
 	UE_LOG(LogTemp, Warning, TEXT("Finish Dialogue"));
-	
+
 	// 이벤트 완료 기록. 반복 가능 이벤트도 "한 번은 봤다"는 기록은 남겨두면
 	// 후속 이벤트의 EventCompleted 조건에서 쓸 수 있다.
 	if (bCompleteEventOnFinish && !ActiveEventId.IsNone())
@@ -567,9 +587,9 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 		// }
 	}
 
-	switch(Row->Camera.CameraType)
+	switch (Row->Camera.CameraType)
 
-	
+
 	{
 	case EGameCameraType::None:
 		break;
@@ -593,15 +613,15 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	}
 		
 	ExecuteActions(Row->OnEnterActions);
-	
+
 	// 선택지가 있는 노드는 반드시 골라야 하므로 자동 진행을 걸지 않는다.
 	// if (Row->Choices.Num() > 0)
 	// {
 	// 	PendingAutoAdvance = EDialogueAutoAdvance::None;
 	// }
-		PendingAutoAdvance = Row->AutoAdvance;
-		AutoAdvanceValue = Row->AutoAdvanceValue;
-		AutoAdvanceNpcId = Row->AutoAdvanceNpcId;
+	PendingAutoAdvance = Row->AutoAdvance;
+	AutoAdvanceValue = Row->AutoAdvanceValue;
+	AutoAdvanceNpcId = Row->AutoAdvanceNpcId;
 	AutoAdvanceElapsed = 0.f;
 
 	// 이동 대기 노드: 대사를 띄우지 않고 창만 닫아둔 채 조건이 만족될 때까지 기다린다.
@@ -616,12 +636,12 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 		return;
 	}
 	BlockPlayerInput(true);
-	
+
 	bHasHoldingLine = true;
 	HoldingSpeaker = Row->SpeakerName;
 	HoldingDialogue = Row->Text;
-//	HoldingChoices = Row->Choices;
-	OnDialogueLine.Broadcast(Row->SpeakerName, Row->Text);
+
+	BroadcastDialogueLine(Row->SpeakerName, Row->Text);
 
 	// 선택지가 있는 노드는 질문 대사와 선택지를 "동시에" 띄운다.
 	// 대사를 먼저 보여주고 한 번 더 클릭해야 선택지가 나오면 클릭이 낭비되고,
@@ -761,7 +781,7 @@ void UDialogueSubsystem::BlockPlayerInput(bool bLock)
 	{
 		PC->ResetIgnoreMoveInput();
 		PC->ResetIgnoreLookInput();
-		
+
 		if (bLock)
 		{
 			PC->SetIgnoreMoveInput(true);
@@ -796,7 +816,7 @@ void UDialogueSubsystem::CameraToCinematicCam(const FVector Loc, const FRotator 
 
 	ActiveCamIndex = 1 - ActiveCamIndex;          // 번갈아
 	TObjectPtr<ACineCameraActor>& Cam = CinematicCamera[ActiveCamIndex];
-	
+
 
 	if (!IsValid(Cam) || Cam->GetWorld() != GetWorld())
 	{
@@ -913,32 +933,32 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 
 	case EGameActionType::TimeAdvanceDay:
 	case EGameActionType::TimeAdvanceSchedule:
+	{
+		const UWorld* World = GetWorld();
+		UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+		UTimeSubsystem* Time = GameInstance ? GameInstance->GetSubsystem<UTimeSubsystem>() : nullptr;
+		if (!Time)
 		{
-			const UWorld* World = GetWorld();
-			UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
-			UTimeSubsystem* Time = GameInstance ? GameInstance->GetSubsystem<UTimeSubsystem>() : nullptr;
-			if (!Time)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("시간 진행 액션: UTimeSubsystem을 찾지 못했습니다."));
-				break;
-			}
+			UE_LOG(LogTemp, Warning, TEXT("시간 진행 액션: UTimeSubsystem을 찾지 못했습니다."));
+			break;
+		}
 
-			// Value를 비워두면(0) 한 번만 진행한다. 실수로 0을 넣어도 아무 일도 안 일어나는 것보다
-			// 1회 진행이 의도에 가깝기 때문이다.
-			const int32 Steps = FMath::Clamp(Action.Value <= 0 ? 1 : Action.Value, 1, 100);
-			for (int32 i = 0; i < Steps; ++i)
+		// Value를 비워두면(0) 한 번만 진행한다. 실수로 0을 넣어도 아무 일도 안 일어나는 것보다
+		// 1회 진행이 의도에 가깝기 때문이다.
+		const int32 Steps = FMath::Clamp(Action.Value <= 0 ? 1 : Action.Value, 1, 100);
+		for (int32 i = 0; i < Steps; ++i)
+		{
+			if (Action.Type == EGameActionType::TimeAdvanceDay)
 			{
-				if (Action.Type == EGameActionType::TimeAdvanceDay)
-				{
-					Time->SpendDay();
-				}
-				else
-				{
-					Time->SpendSchedule();
-				}
+				Time->SpendDay();
+			}
+			else
+			{
+				Time->SpendSchedule();
 			}
 		}
-		break;
+	}
+	break;
 
 	case EGameActionType::TimeResetSchedule:
 		if (UTimeSubsystem* Time = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
@@ -1048,68 +1068,67 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("CrowdManager를 찾을 수 없음"))
 			}
-
 		}
 		break;
 		
 		// ---- 애니메이션 ----
 
 	case EGameActionType::PlayAnim:
+	{
+		UCharacterAnimationComponent* AnimationComponent = nullptr;
+		if (Action.Key.IsNone() || Action.Key == "Player")
 		{
-			UCharacterAnimationComponent* AnimationComponent = nullptr;
-			if (Action.Key.IsNone() || Action.Key == "Player")
+			if (AFebriculaCharacter* FC = Cast<AFebriculaCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
 			{
-				if (AFebriculaCharacter* FC = Cast<AFebriculaCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
-				{
-					AnimationComponent = FC->GetComponentByClass<UCharacterAnimationComponent>();
-				}
+				AnimationComponent = FC->GetComponentByClass<UCharacterAnimationComponent>();
 			}
-			else
-			{
-				if (ABaseNpcCharacter* Npc = FindNpcById(Action.Key))
-				{
-				
-					AnimationComponent = Npc->GetComponentByClass<UCharacterAnimationComponent>();
-				}
-			}
-			if (AnimationComponent)
-			{
-				AnimationComponent->PlayAnim(Action.Key2, Action.Value != 0);
-				//AnimationComponent->PlayNpcAnim(Action.Key2, /*bLoop=*/Action.Value != 0);
-			}
-			break;
 		}
+		else
+		{
+			if (ABaseNpcCharacter* Npc = FindNpcById(Action.Key))
+			{
+
+				AnimationComponent = Npc->GetComponentByClass<UCharacterAnimationComponent>();
+			}
+		}
+		if (AnimationComponent)
+		{
+			AnimationComponent->PlayAnim(Action.Key2, Action.Value != 0);
+			//AnimationComponent->PlayNpcAnim(Action.Key2, /*bLoop=*/Action.Value != 0);
+		}
+		break;
+	}
 	case EGameActionType::StopAnim:
+	{
+		UCharacterAnimationComponent* AnimationComponent = nullptr;
+		if (Action.Key.IsNone() || Action.Key == "Player")
 		{
-			UCharacterAnimationComponent* AnimationComponent = nullptr;
-			if (Action.Key.IsNone() || Action.Key == "Player")
+			if (AFebriculaCharacter* FC = Cast<AFebriculaCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
 			{
-				if (AFebriculaCharacter* FC = Cast<AFebriculaCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
-				{
-					AnimationComponent = FC->GetComponentByClass<UCharacterAnimationComponent>();
-				}
+				AnimationComponent = FC->GetComponentByClass<UCharacterAnimationComponent>();
 			}
-			else
-			{
-				if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(GetCharacterInCache(Action.Key)))
-				{
-					AnimationComponent = Npc->GetComponentByClass<UCharacterAnimationComponent>();
-				}
-			}
-			
-			if (AnimationComponent)
-			{
-				AnimationComponent->StopAnim();
-			}
-			break;
 		}
+		else
+		{
+			if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(GetCharacterInCache(Action.Key)))
+			{
+				AnimationComponent = Npc->GetComponentByClass<UCharacterAnimationComponent>();
+			}
+		}
+
+		if (AnimationComponent)
+		{
+			AnimationComponent->StopAnim();
+		}
+		break;
+	}
 	case EGameActionType::NpcFacePlayer:
 		if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(GetCharacterInCache(Action.Key)))
 		{
 			Npc->FaceTowards(UGameplayStatics::GetPlayerPawn(this, 0));
 		}
 		break;
-		
+
 	case EGameActionType::NPCFaceNPC:
 		if (Action.Key == "Player")
 		{
@@ -1139,7 +1158,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		}
 		break;
 
-		
+
 	case EGameActionType::ChangeLevel:
 		if (const UActivitySetting* ActivitySetting = GetDefault<UActivitySetting>())
 		{
@@ -1184,7 +1203,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		
 		
 		break;
-		
+
 	case EGameActionType::FadeOut:
 		if (APlayerController* PC = (UGameplayStatics::GetPlayerController(this, 0)))
 		{
@@ -1213,21 +1232,21 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			}
 		}
 		break;
-		
+
 	case EGameActionType::FadeIn:
 		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 		{
 			PC->PlayerCameraManager->StartCameraFade(1.f, .0f, 1.f, FColor::Black, false, false);
 		}
 		break;
-		
+
 	case EGameActionType::SpawnActor:
 		if (AFebriculaGameMode* GameMode = Cast<AFebriculaGameMode>(GetWorld()->GetAuthGameMode()))
 		{
 			FCharacterCache* Found = CachedCharacter.Find(Action.Key);
 			if (Found && Found->Character.IsValid())
 			{
-				UE_LOG(LogTemp,Warning, TEXT("%s: 이미 존재하는 NPC"), *Action.Key.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("%s: 이미 존재하는 NPC"), *Action.Key.ToString());
 				break;
 			}
 			UClass* SpawnClass = GameMode->GetNpcViaName(Action.Key).LoadSynchronous();
@@ -1262,15 +1281,15 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			}
 		}
 		break;
-	
+
 	case EGameActionType::ShowActor:
 		ChangeActorHidden(Action.Key, false);
 		break;
-		
+
 	case EGameActionType::HideActor:
 		ChangeActorHidden(Action.Key, true);
 		break;
-	
+
 	case EGameActionType::Teleport:
 		{
 			AActor* NowActor = nullptr;
@@ -1420,17 +1439,17 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 void UDialogueSubsystem::ChangeActorHidden(FName ActorName, bool bHidden)
 {
 	ACharacter* NowChar = nullptr;
-		
+
 	if (ActorName.IsNone() || ActorName == "Player")
 	{
 		NowChar = UGameplayStatics::GetPlayerCharacter(this, 0);
 	}
 	else
 	{
-		if (!CachedCharacter.Contains(ActorName)) return;			
+		if (!CachedCharacter.Contains(ActorName)) return;
 		NowChar = GetCharacterInCache(ActorName);
 	}
-		
+
 	if (NowChar)
 	{
 		NowChar->SetActorHiddenInGame(bHidden);
@@ -1482,4 +1501,19 @@ ABaseNpcCharacter* UDialogueSubsystem::FindNpcById(FName NpcId) const
 		}
 	}
 	return nullptr;
+}
+
+void UDialogueSubsystem::BroadcastDialogueLine(const FText& Speaker, const FText& Body)
+{
+	FDialogueLogEntry Entry;
+	Entry.Speaker = Speaker;
+	Entry.Body = Body;
+	DialogueLog.Add(Entry);
+
+	if (MaxLogEntries > 0 && DialogueLog.Num() > MaxLogEntries)
+	{
+		DialogueLog.RemoveAt(0, DialogueLog.Num() - MaxLogEntries);
+	}
+
+	OnDialogueLine.Broadcast(Speaker, Body);
 }

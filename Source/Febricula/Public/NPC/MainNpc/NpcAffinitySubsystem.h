@@ -13,6 +13,16 @@
 #include "NPC/NpcTypes.h"
 #include "NpcAffinitySubsystem.generated.h"
 
+/** UNpcRelationshipSubsystem의 상태를 세이브 파일에 담기 위한 스냅샷 */
+USTRUCT(BlueprintType)
+struct FNpcRelationshipSaveData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	TMap<FName, float> AffinityByNpcId;
+};
+
 UCLASS(BlueprintType)
 class FEBRICULA_API UNpcAffinitySubsystem : public UGameInstanceSubsystem
 {
@@ -37,6 +47,14 @@ public:
 	/** 이벤트 트리 전제 조건 "관계가 O 이상" 을 그대로 검사하는 헬퍼 */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "NPC|Relationship")
 	bool IsRelationshipAtLeast(FName NpcId, ENpcRelationshipLevel MinimumLevel) const;
+
+	// ---- 세이브/로드 ----
+
+	UFUNCTION(BlueprintCallable, Category = "NPC|Relationship|Save")
+	FNpcRelationshipSaveData GetSaveData() const;
+
+	UFUNCTION(BlueprintCallable, Category = "NPC|Relationship|Save")
+	void LoadSaveData(const FNpcRelationshipSaveData& Data);
 
 protected:
 	/** NpcId -> 원시 호감도 수치. 프로젝트가 커지면 SaveGame 슬롯으로 옮겨 담는다 */
