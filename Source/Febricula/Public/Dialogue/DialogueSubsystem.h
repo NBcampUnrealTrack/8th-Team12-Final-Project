@@ -38,7 +38,7 @@ struct FDialogueLogEntry
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueLine, const FText&, Speaker, const FText&, Body);
 
 /** 선택지를 띄워야 할 때 */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueChoices, const TArray<FDialogueChoiceView>&, Choices, bool, YesNo);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueChoices, const TArray<FDialogueChoiceView>&, Choices, bool, bYesNo);
 
 /** 대화가 완전히 끝났을 때 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
@@ -110,7 +110,7 @@ public:
 
 	/** 선택지를 골랐을 때 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	void SelectChoice(int32 ChoiceIndex, bool YesNo = false);
+	void SelectChoice(int32 ChoiceIndex, bool bYesNo = false);
 
 	/** 강제 종료 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
@@ -219,7 +219,7 @@ protected:
 	void ResolveNodeExit();
 
 	/** 선택지를 HUD에 표시하고 입력을 선택 대기 상태로 바꾼다 */
-	void PresentChoices(const TArray<FDialogueChoice>& InChoices, bool YesNo = false);
+	void PresentChoices(const TArray<FDialogueChoice>& InChoices, bool bYesNo = false);
 
 	UGameProgressSubsystem* GetProgress() const;
 	UNpcAffinitySubsystem* GetRelationship() const;

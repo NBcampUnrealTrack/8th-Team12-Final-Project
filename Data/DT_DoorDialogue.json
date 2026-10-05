@@ -21,7 +21,7 @@
         "NextNodeId": "Room_Cancle"
       }
     ],
-    "YesNo": true,
+    "bYesNo": true,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "None",
@@ -64,7 +64,7 @@
       }
     ],
     "Choices": [],
-    "YesNo": false,
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -100,7 +100,7 @@
     "Text": "",
     "OnEnterActions": [],
     "Choices": [],
-    "YesNo": false,
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -158,7 +158,7 @@
         "NextNodeId": "Classroom_Hallway"
       }
     ],
-    "YesNo": true,
+    "bYesNo": true,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "None",
@@ -201,7 +201,7 @@
       }
     ],
     "Choices": [],
-    "YesNo": false,
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -244,7 +244,7 @@
       }
     ],
     "Choices": [],
-    "YesNo": false,
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -295,7 +295,7 @@
         "NextNodeId": "Hallway1_Cancle"
       }
     ],
-    "YesNo": true,
+    "bYesNo": true,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "None",
@@ -338,7 +338,7 @@
       }
     ],
     "Choices": [],
-    "YesNo": false,
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
@@ -374,7 +374,7 @@
     "Text": "",
     "OnEnterActions": [],
     "Choices": [],
-    "YesNo": false,
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",

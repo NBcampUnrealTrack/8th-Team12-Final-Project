@@ -21,8 +21,6 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	
-	UPROPERTY()
-	USceneComponent* SceneComponent;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UHierarchicalInstancedStaticMeshComponent* HierarchyStaticMeshComponent;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)

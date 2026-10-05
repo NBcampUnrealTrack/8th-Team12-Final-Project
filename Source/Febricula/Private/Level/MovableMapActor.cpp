@@ -22,29 +22,34 @@ AMovableMapActor::AMovableMapActor()
 void AMovableMapActor::StartMove(AActor* Interactor, bool bInstant)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AMovableMapActor::StartMove() %d"), bInstant);
-	bNowMove = true;
-	GetWorldTimerManager().ClearTimer(MoveTimer);
-	if (NowState == EMoveState::OPENING)
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
-		CurrentMove = 0.f;
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::OpenActor, Interactor, bInstant);
-
-		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
-		NowState = EMoveState::CLOSING;
-	}
-	else if (NowState == EMoveState::CLOSING)
-	{
-		if (CurrentMove == 0)
+		if (DialogueSubsystem->GetResult())
 		{
-			CurrentMove = MaxMovement;
+			bNowMove = true;
+			GetWorldTimerManager().ClearTimer(MoveTimer);
+			if (NowState == EMoveState::OPENING)
+			{
+				CurrentMove = 0.f;
+				FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::OpenActor, Interactor, bInstant);
+
+				GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
+				NowState = EMoveState::CLOSING;
+			}
+			else if (NowState == EMoveState::CLOSING)
+			{
+				if (CurrentMove == 0)
+				{
+					CurrentMove = MaxMovement;
+				}
+				FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::CloseActor, Interactor, bInstant);
+
+				GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
+				NowState = EMoveState::OPENING;
+			}
+			bNowMove = true;
 		}
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::CloseActor, Interactor, bInstant);
-
-		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
-		NowState = EMoveState::OPENING;
 	}
-	bNowMove = true;
-
 }
 
 void AMovableMapActor::OpenActor(AActor* Interactor, bool bInstant)

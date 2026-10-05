@@ -174,7 +174,7 @@ class Node:
             "Text": self.text,
             "OnEnterActions": [a.to_json() for a in self.actions],
             "Choices": [c.to_json() for c in self.choices],
-            "YesNo": self.choice_yes_or_no,
+            "bYesNo": self.choice_yes_or_no,
             "Branches": [b.to_json() for b in self.branches],
             "NextNodeId": self.next_id or EMPTY,
             "AutoAdvance": self.auto,

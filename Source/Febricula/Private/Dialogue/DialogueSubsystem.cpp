@@ -434,7 +434,7 @@ void UDialogueSubsystem::SetFastForward(bool bEnable)
 	FastForwardElapsed = 0.f;
 }
 
-void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex, bool YesNo)
+void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex, bool bYesNo)
 {
 	if (!bDialogueActive || !bWaitingForChoice)
 	{
@@ -465,12 +465,7 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex, bool YesNo)
 		return;
 	}
 
-	PendingChoices.Reset();
-	bWaitingForChoice = false;
-
-	ExecuteActions(Chosen.Actions);
-	
-	if (YesNo == true)
+	if (bYesNo == true)
 	{
 		if (ChoiceIndex == PendingChoices.Num() - 1)
 		{
@@ -478,12 +473,15 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex, bool YesNo)
 		}
 		else
 		{
-			RecentDialogueResult = true
-			;
+			RecentDialogueResult = true;
 		}
 	}
 
+	PendingChoices.Reset();
+	bWaitingForChoice = false;
 	
+	ExecuteActions(Chosen.Actions);
+		
 	if (Chosen.NextNodeId.IsNone())
 	{
 		if (Chosen.bFreeActivity)
@@ -664,7 +662,7 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	// 질문을 읽은 플레이어는 선택지가 바로 나올 거라고 기대하기 때문이다.
 	if (Row->Choices.Num() > 0)
 	{
-		PresentChoices(Row->Choices, Row->YesNo);
+		PresentChoices(Row->Choices, Row->bYesNo);
 	}
 }
 
@@ -688,7 +686,7 @@ void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
 	}
 }
 
-void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices, bool YesNo)
+void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices, bool bYesNo)
 {
 	const UGameProgressSubsystem* Progress = GetProgress();
 
@@ -712,7 +710,7 @@ void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices
 		UE_LOG(LogTemp, Warning, TEXT("View Name2: %s"), *Choice.Text.ToString());		
 	}
 	HoldingChoices = Views;
-	OnDialogueChoices.Broadcast(Views, YesNo);
+	OnDialogueChoices.Broadcast(Views, bYesNo);
 	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueChoices.IsBound());
 	bWaitingForChoice = true;
 }

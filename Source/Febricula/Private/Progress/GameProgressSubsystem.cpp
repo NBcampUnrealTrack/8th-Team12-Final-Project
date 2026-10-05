@@ -111,6 +111,12 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		}
 		return Time->GetNowScheduleTag() == Required;
 	}
+		
+	case EGameConditionType::ScheduleAfter:
+	{
+		const UTimeSubsystem* TimeSubsystem = GetTime();
+			
+	}
 
 	case EGameConditionType::ScheduleIsChildOf:
 	{

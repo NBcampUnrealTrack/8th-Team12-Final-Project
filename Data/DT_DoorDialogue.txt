@@ -57,3 +57,10 @@
 @hide
 @wait .1
 @end
+
+@label HallwayBlock_Root
+어디로 갈까?
+@menu YesNo
+- 학교 밖으로 @if   
+- 운동장으로 
+- 그만둔다
