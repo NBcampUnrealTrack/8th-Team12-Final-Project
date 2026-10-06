@@ -1220,6 +1220,8 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			}
 			break;
 		}
+	}
+
 	case EGameActionType::Interact:
 		{
 			TArray<AActor*> Founds;
@@ -1252,7 +1254,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 				MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, false);
 			}
 			break;
-		}
+		
 	}
 
 	case EGameActionType::ConsumeAP:
