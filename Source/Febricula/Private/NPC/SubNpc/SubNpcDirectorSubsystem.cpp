@@ -746,7 +746,7 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 					// 플레이어가 뛰어와 부딪힐 때도 NotifyHit보다 먼저 걸리는 경우가 많아서,
 					// 쿨다운에 막혀 속도와 상관없이 가벼운 반응만 나왔다.
 					// NotifyHit과 같은 입구로 보내 속도에 따라 반응을 고르게 한다.
-					Npc->ReactToPlayerBump(PlayerPawn, PlayerPawn->GetVelocity().Size2D());
+					Npc->ReactToPlayerBump(PlayerPawn, ASubNpcCharacter::GetPlayerBumpSpeed(PlayerPawn));
 					if (!Npc->IsWalkingOnPath())
 					{
 						continue;   // 반응에 들어갔으면 이번 회피는 건너뛴다

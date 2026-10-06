@@ -5,7 +5,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Dialogue/DialogueSubsystem.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -110,6 +112,51 @@ namespace SubNpcLightBump
 	 * 길면 가볍게 스쳤는데도 한참 서 있어서 길을 막는다.
 	 */
 	constexpr float Duration = 1.1f;
+}
+
+namespace SubNpcBumpDebug
+{
+	/**
+	 * 부딪힘 반응을 화면과 출력 로그에 찍는다. 속도 구간(BumpTiers) 튜닝용.
+	 *
+	 * 반응이 났을 때: 속도 → 뽑힌 구간 → 반응 → 애니메이션 키 → 재생 성공 여부
+	 * 반응이 안 났을 때: 왜 무시됐는지 (쿨다운 / 이미 반응 중 / 해당 구간 없음)
+	 *
+	 * 튜닝이 끝나면 crowd.DebugBump 0 으로 끈다.
+	 */
+	static int32 Enabled = 1;
+	static FAutoConsoleVariableRef CVarDebugBump(
+		TEXT("crowd.DebugBump"),
+		Enabled,
+		TEXT("행인 부딪힘 반응(속도·구간·애니메이션·재생 결과)을 화면과 로그에 표시한다. 0이면 끈다."),
+		ECVF_Cheat);
+
+	static void Print(const AActor* Npc, const FString& Msg, const FColor& Color)
+	{
+		if (Enabled == 0)
+		{
+			return;
+		}
+
+		const FString Line = FString::Printf(TEXT("[Bump] %s: %s"), *GetNameSafe(Npc), *Msg);
+		UE_LOG(LogTemp, Log, TEXT("%s"), *Line);
+
+#if !UE_BUILD_SHIPPING
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 4.f, Color, Line);
+		}
+#endif
+	}
+}
+
+namespace SubNpcTalk
+{
+	/**
+	 * 대화 중 멈춰 있는 최대 시간 (초). 대화가 끝나면 그 즉시 풀리므로 보통은 닿지 않는다.
+	 * 대화 종료 신호를 놓쳐도 행인이 영원히 서 있지 않게 하는 안전장치다.
+	 */
+	constexpr float MaxDuration = 60.f;
 }
 
 namespace SubNpcGroupTuning
@@ -526,7 +573,16 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 		return;
 
 	case ESubNpcActivity::Reacting:
-		if (Now >= ActivityEndTime)
+		if (CurrentReaction == ESubNpcReaction::Talking)
+		{
+			// 대화창이 닫히면 다시 걷는다. 시간은 안전장치일 뿐, 보통은 대화 종료로 끝난다.
+			const UDialogueSubsystem* Dialogue = World ? World->GetSubsystem<UDialogueSubsystem>() : nullptr;
+			if (!Dialogue || !Dialogue->IsDialogueActive() || Now >= ActivityEndTime)
+			{
+				EndReaction();
+			}
+		}
+		else if (Now >= ActivityEndTime)
 		{
 			EndReaction();
 		}
@@ -925,12 +981,13 @@ void ASubNpcCharacter::RollForActivitySpot()
 		}
 
 		FNpcActivityOption Option;
-		if (!Spot->PickActivity(Option))
+		int32 ActivityIndex = INDEX_NONE;
+		if (!Spot->PickActivity(Option, ActivityIndex))
 		{
 			continue;
 		}
 
-		if (!Spot->TryOccupy(this))
+		if (!Spot->TryOccupy(this, ActivityIndex))
 		{
 			continue;
 		}
@@ -954,12 +1011,13 @@ bool ASubNpcCharacter::TryEnterSpot(ANpcActivitySpot* Spot)
 	}
 
 	FNpcActivityOption Option;
-	if (!Spot->PickActivity(Option))
+	int32 ActivityIndex = INDEX_NONE;
+	if (!Spot->PickActivity(Option, ActivityIndex))
 	{
 		return false;
 	}
 
-	if (!Spot->TryOccupy(this))
+	if (!Spot->TryOccupy(this, ActivityIndex))
 	{
 		return false;
 	}
@@ -1069,7 +1127,29 @@ void ASubNpcCharacter::NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPr
 		return;
 	}
 
-	ReactToPlayerBump(Other, OtherPawn->GetVelocity().Size2D());
+	ReactToPlayerBump(Other, GetPlayerBumpSpeed(OtherPawn));
+}
+
+float ASubNpcCharacter::GetPlayerBumpSpeed(const APawn* Player)
+{
+	if (!Player)
+	{
+		return 0.f;
+	}
+
+	float Speed = Player->GetVelocity().Size2D();
+
+	const ACharacter* PlayerCharacter = Cast<ACharacter>(Player);
+	const UCharacterMovementComponent* Movement = PlayerCharacter ? PlayerCharacter->GetCharacterMovement() : nullptr;
+	if (Movement && Movement->GetMaxAcceleration() > KINDA_SMALL_NUMBER)
+	{
+		// 입력 세기(0~1). 아날로그 스틱을 살짝 밀면 그만큼만 친다.
+		const float InputRatio = FMath::Clamp(
+			Movement->GetCurrentAcceleration().Size2D() / Movement->GetMaxAcceleration(), 0.f, 1.f);
+		Speed = FMath::Max(Speed, Movement->GetMaxSpeed() * InputRatio);
+	}
+
+	return Speed;
 }
 
 void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
@@ -1080,30 +1160,37 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 		return;
 	}
 
-	// 천천히 닿은 건 화낼 일이 아니다. 잠깐 멈칫하는 가벼운 반응으로 돌린다.
-	// (예전에는 그냥 무시해서, 살살 밀면 아무 반응 없이 몸이 겹쳐 보였다)
-	if (ImpactSpeed < BumpSpeedThreshold)
+	// 걷거나 스팟에서 뭔가 하던 중일 때만. 풀에 있거나 이미 반응·대화 중이면 무시한다.
+	if (CurrentActivity != ESubNpcActivity::Walking && CurrentActivity != ESubNpcActivity::AtSpot)
 	{
-		ReactToLightBump(Player);
+		// 반응 중에는 매 프레임 닿으므로 여기서 찍으면 도배된다. 조용히 넘긴다.
 		return;
 	}
 
+	// 붙어 선 채로 매 프레임 반응하면 안 된다.
 	const float Now = World->GetTimeSeconds();
-	if (Now - LastReactionTime < ReactionCooldown || CurrentActivity == ESubNpcActivity::Reacting)
+	if (Now - LastReactionTime < ReactionCooldown)
 	{
 		return;
 	}
 
-	// 반응 종류를 아키타입 가중치로 고른다. 같은 상황에서도 사람마다 다르게 반응해야 재밌다.
-	const TArray<float> Weights = { Archetype.DodgeWeight, Archetype.AngryWeight, Archetype.SurprisedWeight };
-	const int32 Picked = NpcWeightedPick::PickIndex(Weights);
-	if (Picked == INDEX_NONE)
+	// [설계] 반응은 **부딪힌 속도만으로** 고른다. 랜덤도, 무게·에너지 같은 다른 값도 없다.
+	//
+	// 예전에는 기준 속도를 넘으면 피하기/화내기/놀라기를 가중치 랜덤으로 뽑았다.
+	// 그래서 같은 속도로 부딪혀도 매번 달랐고, 절반은 걸을 때와 거의 같은 가벼운
+	// 모션(피하기)이 나와서 "빨리 달려도 똑같다"로 보였다.
+	// 이제 아키타입 테이블의 BumpTiers(속도 구간 → 반응·애니메이션)가 전부 정한다.
+	const FSubNpcBumpTier* Tier = Archetype.FindBumpTier(ImpactSpeed);
+	if (!Tier || Tier->Reaction == ESubNpcReaction::None)
 	{
+		SubNpcBumpDebug::Print(this,
+			FString::Printf(TEXT("속도 %.0f → 해당 구간 없음 (BumpTiers %d개). 반응 안 함"),
+				ImpactSpeed, Archetype.BumpTiers.Num()),
+			FColor::Red);
 		return;
 	}
 
-	static const ESubNpcReaction ReactionByIndex[] = { ESubNpcReaction::Dodge, ESubNpcReaction::Angry, ESubNpcReaction::Surprised };
-	const ESubNpcReaction Reaction = ReactionByIndex[Picked];
+	const ESubNpcReaction Reaction = Tier->Reaction;
 	CurrentReaction = Reaction;
 
 	LastReactionTime = Now;
@@ -1137,19 +1224,22 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	CurrentActivity = ESubNpcActivity::Reacting;
 	ActivityEndTime = Now + ReactionDuration;
 
-	FName AnimId;
+	FName AnimId = Tier->AnimId;
 	switch (Reaction)
 	{
 	case ESubNpcReaction::Dodge:
 		{
 			// 방향 × 상태(걷는 중/서 있음)로 네 가지 중 하나를 고른다.
-			// 비어 있으면 기존 DodgeAnimId로 대체한다 - 애니메이션을 하나만
+			// 비어 있으면 구간의 AnimId를 쓴다 - 애니메이션을 하나만
 			// 만들어도 동작하고, 나중에 하나씩 채워 넣을 수 있다.
 			const FName Specific = bWasWalking
 				? (bPushedLeft ? Archetype.DodgeLeftAnimId : Archetype.DodgeRightAnimId)
 				: (bPushedLeft ? Archetype.ShoveLeftAnimId : Archetype.ShoveRightAnimId);
 
-			AnimId = Specific.IsNone() ? Archetype.DodgeAnimId : Specific;
+			if (!Specific.IsNone())
+			{
+				AnimId = Specific;
+			}
 
 			// 밀린 쪽으로 실제로 몸을 옮긴다. 애니메이션만 재생하고 제자리면
 			// "맞았는데 안 밀리는" 어색함이 남는다.
@@ -1157,8 +1247,15 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 		}
 		break;
 
+	case ESubNpcReaction::LightBump:
+		// 제자리에서 잠깐 멈칫한다. 옆으로 밀리지 않고, 큰 반응보다 짧게 끝난다.
+		// 길면 가볍게 스쳤는데도 한참 서 있어서 길을 막는다.
+		ActivityEndTime = Now + SubNpcLightBump::Duration;
+		DodgeTargetOffset = LaneOffset;
+		FaceTowards(Player);
+		break;
+
 	case ESubNpcReaction::Angry:
-		AnimId = Archetype.AngryAnimId;
 		// 화를 내도 몸은 부딪힌 만큼 밀린다. 물리적 반응과 감정 반응은 별개다.
 		DodgeTargetOffset = LaneOffset + PushSign * DodgeSideStep * 0.4f;
 		// 화낼 때는 멈춰서 플레이어를 쳐다본다.
@@ -1167,72 +1264,29 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 
 	case ESubNpcReaction::Surprised:
 	default:
-		AnimId = Archetype.SurprisedAnimId;
 		DodgeTargetOffset = LaneOffset + PushSign * DodgeSideStep * 0.6f;
 		FaceTowards(Player);
 		break;
 	}
 
-	if (!AnimId.IsNone())
+	const bool bPlayed = !AnimId.IsNone() && PlayNpcAnim(AnimId, /*bLoop=*/false);
+
 	{
-		PlayNpcAnim(AnimId, /*bLoop=*/false);
+		const FString ReactionName = StaticEnum<ESubNpcReaction>()->GetDisplayNameTextByValue(static_cast<int64>(Reaction)).ToString();
+		const FString Result = AnimId.IsNone()
+			? TEXT("애니메이션 키 비어 있음")
+			: (bPlayed ? TEXT("재생 OK") : TEXT("재생 실패 - BP AnimLibrary에 이 키가 있는지 확인"));
+
+		SubNpcBumpDebug::Print(this,
+			FString::Printf(TEXT("속도 %.0f → 구간 %.0f+ → %s / 애니 '%s' → %s"),
+				ImpactSpeed, Tier->MinSpeed, *ReactionName, *AnimId.ToString(), *Result),
+			bPlayed ? FColor::Green : FColor::Orange);
 	}
 
 	SetMovementState(ENpcMovementState::Interacting);
 
 	// 블루프린트 연출 훅. 몽타주·사운드·이펙트를 붙이고 싶을 때 쓴다.
 	OnBumpReaction(Reaction, bPushedLeft, bWasWalking);
-
-	OnBumped.Broadcast(Player);
-}
-
-void ASubNpcCharacter::ReactToLightBump(AActor* Player)
-{
-	const UWorld* World = GetWorld();
-	if (!World || !Player)
-	{
-		return;
-	}
-
-	// 걷거나 스팟에서 뭔가 하던 중일 때만. 풀에 있거나 이미 반응 중이면 무시한다.
-	if (CurrentActivity != ESubNpcActivity::Walking && CurrentActivity != ESubNpcActivity::AtSpot)
-	{
-		return;
-	}
-
-	// 쿨다운은 큰 반응과 같이 쓴다. 붙어 선 채로 매 프레임 멈칫하면 안 된다.
-	const float Now = World->GetTimeSeconds();
-	if (Now - LastReactionTime < ReactionCooldown)
-	{
-		return;
-	}
-
-	const bool bWasWalking = (CurrentActivity == ESubNpcActivity::Walking);
-	bResumeSpotAfterReaction = (CurrentActivity == ESubNpcActivity::AtSpot && OccupiedSpot != nullptr);
-
-	CurrentReaction = ESubNpcReaction::LightBump;
-	CurrentActivity = ESubNpcActivity::Reacting;
-	ActivityEndTime = Now + SubNpcLightBump::Duration;
-	LastReactionTime = Now;
-	LastBumpTime = Now;
-
-	// 제자리에서 멈칫한다. 옆으로 밀리지 않으므로 차선은 그대로 둔다.
-	DodgeTargetOffset = LaneOffset;
-
-	// 부딪힌 상대를 쳐다본다. "누구지?" 하고 돌아보는 게 반응의 핵심이다.
-	FaceTowards(Player);
-
-	const FName AnimId = Archetype.LightBumpAnimId.IsNone() ? Archetype.SurprisedAnimId : Archetype.LightBumpAnimId;
-	if (!AnimId.IsNone())
-	{
-		PlayNpcAnim(AnimId, /*bLoop=*/false);
-	}
-
-	SetMovementState(ENpcMovementState::Interacting);
-
-	const FVector ToPlayerDir = Player->GetActorLocation() - GetActorLocation();
-	const bool bFromRight = FVector::DotProduct(ToPlayerDir, GetActorRightVector()) > 0.f;
-	OnBumpReaction(ESubNpcReaction::LightBump, /*bPushedLeft=*/bFromRight, bWasWalking);
 
 	OnBumped.Broadcast(Player);
 }
@@ -1341,7 +1395,25 @@ void ASubNpcCharacter::Interact_Implementation(AActor* Interactor)
 		? NSLOCTEXT("Npc", "SubNpcDefaultName", "행인")
 		: Archetype.DisplayName;
 
-	Dialogue->StartSimpleLines(Speaker, { Line }, this);
+	if (!Dialogue->StartSimpleLines(Speaker, { Line }, this))
+	{
+		return;
+	}
+
+	// [버그 수정] 대화창이 떠 있는 동안 멈춰 선다.
+	// 예전에는 말을 걸어도 계속 걸어가서, 대사를 읽는 사이 화면 밖으로 사라졌다.
+	// 대화가 끝났는지는 Tick에서 확인하고, 끝나면 EndReaction이 하던 일로 돌려놓는다.
+	if (CurrentActivity == ESubNpcActivity::Walking || CurrentActivity == ESubNpcActivity::AtSpot)
+	{
+		bResumeSpotAfterReaction = (CurrentActivity == ESubNpcActivity::AtSpot && OccupiedSpot != nullptr);
+	}
+	// 반응 도중에 말을 걸었으면 그 반응이 정해둔 복귀 경로(bResumeSpotAfterReaction)를 그대로 쓴다.
+
+	CurrentActivity = ESubNpcActivity::Reacting;
+	CurrentReaction = ESubNpcReaction::Talking;
+	ActivityEndTime = World->GetTimeSeconds() + SubNpcTalk::MaxDuration;
+	DodgeTargetOffset = LaneOffset;
+	SetMovementState(ENpcMovementState::Interacting);
 }
 
 bool ASubNpcCharacter::PickBarkLine(FText& OutLine) const

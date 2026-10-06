@@ -21,6 +21,21 @@ class UArrowComponent;
 class UBillboardComponent;
 class ASubNpcCharacter;
 
+/** 스팟을 점유 중인 행인 하나와, 그가 하고 있는 행동 */
+USTRUCT()
+struct FNpcSpotOccupant
+{
+	GENERATED_BODY()
+
+	/** 약한 참조로 들고 있어야 스팟이 NPC를 붙잡아 GC를 막는 일이 없다 */
+	UPROPERTY()
+	TWeakObjectPtr<ASubNpcCharacter> Npc;
+
+	/** Activities 배열의 인덱스. 독점 행동 판정에 쓴다 */
+	UPROPERTY()
+	int32 ActivityIndex = INDEX_NONE;
+};
+
 UCLASS()
 class FEBRICULA_API ANpcActivitySpot : public AActor
 {
@@ -44,10 +59,16 @@ public:
 	int32 GetMaxOccupants() const { return MaxOccupants; }
 
 	/**
-	 * 재생할 행동을 가중 랜덤으로 고른다.
-	 * 옵션이 하나도 없으면 false.
+	 * 재생할 행동을 고른다. 고정 확률(Chance) 행동을 먼저 굴리고,
+	 * 안 뽑히면 나머지를 가중 랜덤으로 고른다. 독점 행동 중 누가 하고 있는 건 빠진다.
+	 * 고를 수 있는 행동이 없으면 false.
+	 *
+	 * OutIndex는 TryOccupy에 그대로 넘긴다.
 	 */
-	bool PickActivity(FNpcActivityOption& OutOption) const;
+	bool PickActivity(FNpcActivityOption& OutOption, int32& OutIndex) const;
+
+	/** 이 행동을 지금 고를 수 있는가 (독점 행동이면 아무도 안 하고 있어야 한다) */
+	bool IsActivityAvailable(int32 ActivityIndex) const;
 
 	/** NPC가 실제로 서야 할 위치 (스팟 앞) */
 	UFUNCTION(BlueprintPure, Category = "Crowd|Spot")
@@ -57,8 +78,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Spot")
 	FVector GetLookAtLocation(const FNpcActivityOption& Option) const;
 
-	/** 점유 등록/해제. NPC가 반드시 짝을 맞춰 호출해야 한다 */
-	bool TryOccupy(ASubNpcCharacter* Npc);
+	/**
+	 * 점유 등록/해제. NPC가 반드시 짝을 맞춰 호출해야 한다.
+	 * ActivityIndex는 PickActivity가 준 값. 그 사이 다른 행인이 같은 독점 행동을 잡았으면 실패한다.
+	 */
+	bool TryOccupy(ASubNpcCharacter* Npc, int32 ActivityIndex);
 	void ReleaseOccupancy(ASubNpcCharacter* Npc);
 
 protected:
@@ -101,12 +125,9 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Crowd|Spot")
 	int32 CurrentOccupants = 0;
 
-	/**
-	 * 지금 점유 중인 NPC들. 약한 참조로 들고 있어야
-	 * 스팟이 NPC를 붙잡아 GC를 막는 일이 없다.
-	 */
+	/** 지금 점유 중인 NPC들과 각자 하고 있는 행동 */
 	UPROPERTY(Transient)
-	TArray<TWeakObjectPtr<ASubNpcCharacter>> Occupants;
+	TArray<FNpcSpotOccupant> Occupants;
 
 	/** NPC별 마지막 사용 시각 (재사용 쿨다운 판정용) */
 	TMap<TWeakObjectPtr<ASubNpcCharacter>, float> LastUseTime;

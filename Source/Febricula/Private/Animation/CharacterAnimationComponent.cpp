@@ -32,7 +32,8 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 	{
 		if (USkeletalMeshComponent* MeshComp = Owner->GetMesh())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] AnimMode=%d"), (int32)MeshComp->GetAnimationMode());
+			UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] %s: '%s' (AnimMode=%d)"),
+				*GetNameSafe(Owner), *AnimId.ToString(), (int32)MeshComp->GetAnimationMode());
 			UAnimInstance* AnimInstance = MeshComp->GetAnimInstance();
 			if (AnimInstance && !bPreferSingleNodeAnim)
 			{

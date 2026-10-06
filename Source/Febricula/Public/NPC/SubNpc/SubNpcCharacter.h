@@ -118,22 +118,26 @@ public:
 	// ---- 반응 --------------------------------------------------------------
 
 	/**
-	 * 플레이어와 부딪혔을 때 호출. 아키타입 가중치로 반응을 골라 재생한다.
-	 * 쿨다운 중이거나 이미 반응 중이면 무시한다.
+	 * 플레이어와 부딪혔을 때 호출. **ImpactSpeed(플레이어 수평 속도)만으로**
+	 * 아키타입의 BumpTiers에서 반응과 애니메이션을 골라 재생한다.
+	 * 쿨다운 중이거나 이미 반응·대화 중이면 무시한다.
+	 *
+	 * 두 곳에서 불린다.
+	 *   1) 플레이어가 와서 부딪혔을 때 (NotifyHit)
+	 *   2) 행인이 걸어오다 플레이어와 닿았을 때 (Director의 거리 판정)
+	 *      행인은 스윕 없이 움직이므로 이 경우 NotifyHit이 안 불린다.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Reaction")
 	void ReactToPlayerBump(AActor* Player, float ImpactSpeed);
 
 	/**
-	 * 천천히 부딪혔을 때의 가벼운 반응. 플레이어를 보며 잠깐 멈칫한 뒤 다시 걷는다.
+	 * 부딪힘 판정에 쓸 플레이어 속도 (cm/s). ReactToPlayerBump의 ImpactSpeed로 넘긴다.
 	 *
-	 * 두 경우에 불린다.
-	 *   1) 플레이어가 BumpSpeedThreshold보다 느리게 와서 닿았을 때 (ReactToPlayerBump)
-	 *   2) 행인이 걸어오다 서 있는 플레이어와 닿았을 때 (Director)
-	 *      행인은 스윕 없이 움직이므로 이 경우 NotifyHit이 안 불린다.
+	 * 실제 속도만 보면 안 된다. 뛰어와 행인 몸에 막히는 순간 속도가 뚝 떨어져서,
+	 * 달려서 부딪혀도 걷기 구간으로 판정됐다. 입력을 누르고 있는 동안은
+	 * "내려던 속도"(지금 MaxSpeed × 입력 세기)도 함께 보고 큰 쪽을 쓴다.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Crowd|Reaction")
-	void ReactToLightBump(AActor* Player);
+	static float GetPlayerBumpSpeed(const APawn* Player);
 
 	/**
 	 * 부딪힘 반응이 결정된 순간 블루프린트에 알린다.
@@ -227,13 +231,14 @@ protected:
 	float BumpMemoryDuration = 12.f;
 
 	/**
-	 * 이 속도(cm/s) 이상으로 부딪히면 큰 반응(피하기/화내기/놀라기), 미만이면 살짝 멈칫한다.
+	 * [사용 안 함] 속도 기준은 아키타입 테이블의 BumpTiers로 옮겼다 (DT_SubNpcArchetypes).
 	 *
-	 * 플레이어 걷기(500)와 달리기(1000) 사이에 둔다. 예전 값 300은 걷기보다 낮아서
-	 * 걸어서 닿기만 해도 전부 큰 반응이 나왔다.
+	 * 지우지 않고 남겨둔 이유: 이 클래스의 프로퍼티를 빼면 뒤쪽 WalkSpeed / bIsMoving /
+	 * CurrentSpeed의 오프셋이 밀려 ABP_Passerby의 Property Access가 엉뚱한 값을 읽는다.
+	 * 에디터에서 헷갈리지 않도록 숨겨둔다.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0"))
-	float BumpSpeedThreshold = 700.f;
+	UPROPERTY(meta = (DeprecatedProperty, DeprecationMessage = "DT_SubNpcArchetypes의 BumpTiers를 쓰세요."))
+	float BumpSpeedThreshold_DEPRECATED = 700.f;
 
 	/** 반응 후 다시 반응하기까지의 쿨다운 (초). 없으면 벽에 끼었을 때 무한 반복된다 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0"))
