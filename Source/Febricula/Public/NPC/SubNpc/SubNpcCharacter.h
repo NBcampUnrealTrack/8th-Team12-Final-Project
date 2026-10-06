@@ -140,6 +140,19 @@ public:
 	static float GetPlayerBumpSpeed(const APawn* Player);
 
 	/**
+	 * 플레이어가 Target 쪽으로 다가오는 속도 (cm/s). 멀어지거나 멈춰 있으면 0 이하.
+	 * 누가 누구에게 부딪혔는지 가르는 데 쓴다. 행인이 걸어와 닿은 거면 행인은 반응하지 않고 비켜 간다.
+	 * 막혀서 실제 속도가 떨어져도 밀고 들어오는 중이면 잡히도록 입력 방향도 함께 본다.
+	 */
+	static float GetPlayerClosingSpeed(const APawn* Player, const AActor* Target);
+
+	/**
+	 * 플레이어가 행인 쪽으로 이 속도(cm/s) 이상 다가오고 있어야 "플레이어가 부딪혔다"로 본다.
+	 * 그보다 느리면 행인이 걸어와 닿은 것이므로 반응 없이 비켜 지나간다.
+	 */
+	static constexpr float PlayerBumpMinClosingSpeed = 50.f;
+
+	/**
 	 * 부딪힘 반응이 결정된 순간 블루프린트에 알린다.
 	 *
 	 * C++가 고른 애니메이션으로 충분하면 구현하지 않아도 된다.
@@ -186,12 +199,49 @@ protected:
 	/** 현재 경로가 끝났을 때 다음 경로를 고르거나 회수 요청 */
 	void AdvanceToNextPath();
 
+	/**
+	 * 지금 경로에 들어설 때 다음 경로를 미리 정하고, 어디서 갈아탈지 계산한다.
+	 * 다음 경로의 입구가 지금 경로 끝보다 앞쪽에 있으면 그 지점에서 일찍 갈아탄다.
+	 */
+	void PlanNextPath();
+
+	/**
+	 * 내 차선 기준으로 실제 갈아탈 진행도. 꺾이는 이음매에서 안쪽 차선은 일찍, 바깥쪽은 늦게 갈아타
+	 * 새 경로에서도 같은 쪽 차선에 선다 (모두 한 점에서 갈아타면 한 줄로 합쳐져 뭉친다).
+	 */
+	float GetLaneHandoffDistance() const;
+
 	/** 이 경로 구간의 스팟들에 대해 "들를까" 판정 */
 	void RollForActivitySpot();
 
-	/** 스팟 행동 시작/종료 */
-	void BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option);
+	/** 스팟의 설 자리까지 걸어간다. 도착하면 첫 동작을 시작한다 */
+	void TickApproachSpot(float DeltaTime);
+
+	/**
+	 * From → To로 옮길 때 벽·바닥 같은 지형(WorldStatic/WorldDynamic)에 막히는지 캡슐로 쓸어 본다.
+	 * 막히면 벽면을 따라 미끄러진 위치를 돌려준다. 행인·플레이어(Pawn)는 보지 않는다.
+	 * 가까운(Near/Mid) 개체만 검사한다 - 멀리 있는 사람의 벽 스침은 화면에서 안 보인다.
+	 */
+	FVector ResolveWorldBlocking(const FVector& From, const FVector& To, bool& bOutBlocked) const;
+
+	/** 스팟 행동 시작/종료. SlotIndex는 스팟이 정해준 칸 */
+	void BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option, int32 SlotIndex);
 	void EndSpotActivity();
+
+	/** 자리가 없는 스팟의 줄 끝에 선다 */
+	void BeginSpotQueue(ANpcActivitySpot* Spot);
+
+	/** 줄에서 내 자리로 걸어가 기다리다가, 차례가 오면 들어간다 */
+	void TickSpotQueue(float DeltaTime, float Now);
+
+	/** 줄에서 빠져 다시 길로 돌아간다 (포기·반응·대화·회수). 줄에 없으면 아무 일도 없다 */
+	void LeaveSpotQueue();
+
+	/**
+	 * 차선 밖(스팟·줄·스팟으로 가던 길)에서 걸어서 길로 돌아가기 시작한다.
+	 * 경로 진행 위치를 지금 서 있는 곳에서 가장 가까운 지점으로 다시 잡으므로 길 쪽으로 곧장 나간다.
+	 */
+	void BeginRejoinPath();
 
 	/** 다음 단계로 넘어간다. 남은 단계가 없으면 EndSpotActivity를 부른다 */
 	void AdvanceSpotStep();
@@ -497,6 +547,74 @@ public:
 	bool IsHeldUp() const { return CurrentSpeedScale < 0.6f; }
 
 	/**
+	 * 일행과 걸으면서 이야기한다. Director가 그룹 단위로 같은 시간에 부른다.
+	 * 멈추지 않고, 상체 슬롯(UpperBody)에만 손짓을 얹는다 - 하체는 계속 걷는다.
+	 * 일행이 TurnLength초씩 번갈아 말한다 (MemberIndex 차례에만 손짓).
+	 * 걷는 중이 아니면 아무것도 하지 않고 false.
+	 */
+	bool StartGroupChat(float Duration, FName TalkAnimId, int32 MemberIndex, int32 MemberCount, float TurnLength,
+		ASubNpcCharacter* Partner);
+
+	/** 일행 대화를 끝낸다 (손짓을 거둔다). 대화 중이 아니면 아무 일도 없다 */
+	void StopGroupChat();
+
+	/** 다음에 일행 대화를 굴려볼 시각. 0이면 아직 정하지 않았다 (리더만 쓴다) */
+	float GetNextGroupChatTime() const { return NextGroupChatTime; }
+	void SetNextGroupChatTime(float Time) { NextGroupChatTime = Time; }
+
+	/** 이 개체 고유의 걸음 속도 (cm/s). 감속 전 값이다 */
+	float GetWalkSpeed() const { return WalkSpeed; }
+
+	/** 지금 실제로 걷고 있는 속도 (cm/s). 앞사람 때문에 줄인 것까지 반영한다 */
+	float GetCurrentMoveSpeed() const { return WalkSpeed * CurrentSpeedScale; }
+
+	/** 걷는 중에 앞이 막혀 거의 멈춰 서 있은 시간 (초). 정체를 풀 때 쓴다 */
+	float GetStalledTime() const { return StalledTime; }
+
+	/** 리더 뒤 대열 간격 (cm). 일행이 얼마나 뒤처졌는지 잴 때 쓴다 */
+	float GetGroupFollowGap() const { return GroupFollowGap; }
+
+	/** 일행을 이끄는 리더인가 (Director가 그룹을 만들 때 정한다) */
+	void SetHasGroupFollowers(bool bHas) { bHasGroupFollowers = bHas; }
+
+	/** 스팟·줄에서 나와 길로 돌아오는 중인가 (아직 차선에 합류하지 않음) */
+	bool IsRejoiningPath() const { return bRejoiningPath; }
+
+	/**
+	 * 길에 합류할 자리에 사람이 있으면 Director가 true로 세운다. 길가에 서서 틈을 기다린다.
+	 * 예전에는 돌아오는 사람이 다른 행인을 보지 않고 곧장 걸어 들어가 몸을 뚫었다.
+	 */
+	void SetMergeHold(bool bHold) { bMergeHold = bHold && MergeHoldTime < MaxMergeHoldSeconds; }
+
+	/** 합류 대기 최대 시간 (초). 넘으면 Director가 세워도 무시하고 들어간다 */
+	static constexpr float MaxMergeHoldSeconds = 3.f;
+
+	/**
+	 * 길 밖에서 움직이는 중인가: 스팟으로 가는 중, 줄 자리로 옮기는 중, 길로 돌아오는 중.
+	 * 이때는 경로 차선 계획을 쓰지 않으므로 Director가 서로 겹치지 않게 따로 양보시킨다.
+	 */
+	bool IsMovingOffLane() const
+	{
+		return (CurrentActivity == ESubNpcActivity::AtSpot && (bApproachingSpot || bQueueMoving))
+			|| (CurrentActivity == ESubNpcActivity::Walking && bRejoiningPath);
+	}
+
+	/** 길 밖에서 움직이다 다른 사람과 부딪히겠으면 Director가 true로 세운다. 그 자리에서 잠깐 기다린다 */
+	void SetOffLaneYield(bool bYield) { bOffLaneYield = bYield; }
+
+	/** 리더가 뒤처진 일행을 기다리는 중인가 (Director가 정한다) */
+	bool IsWaitingForGroup() const { return bWaitingForGroup; }
+	float GetGroupWaitStartTime() const { return GroupWaitStartTime; }
+	void SetWaitingForGroup(bool bWaiting, float Now)
+	{
+		if (bWaiting && !bWaitingForGroup)
+		{
+			GroupWaitStartTime = Now;
+		}
+		bWaitingForGroup = bWaiting;
+	}
+
+	/**
 	 * 막힌 앞사람을 추월하려고 옆 차선으로 옮겨 가라는 요청.
 	 *
 	 * 좌우 밀어내기(PendingAvoidNudge)는 한 번 반영하고 사라지는 약한 힘이라
@@ -538,6 +656,89 @@ protected:
 	 * 앉아 있다가 부딪혀 놀란 사람은 다시 앉는 게 자연스럽다.
 	 */
 	bool bResumeSpotAfterReaction = false;
+
+	/**
+	 * 스팟까지 걸어가는 중인가. 도착하면 첫 동작을 재생한다.
+	 * 예전에는 스팟 위치로 순간이동해서, 행동이 시작되는 순간 몇 미터씩 튀어 보였다.
+	 */
+	bool bApproachingSpot = false;
+
+	/** 스팟에서 설 자리와 도착 후 바라볼 방향 */
+	FVector SpotStandLocation = FVector::ZeroVector;
+	FRotator SpotStandRotation = FRotator::ZeroRotator;
+
+	/**
+	 * 스팟에서 나와 차선으로 걸어 돌아가는 중인가.
+	 * 진행도는 평소처럼 오르고, 몸만 차선 위치를 걸음 속도로 따라잡는다.
+	 */
+	bool bRejoiningPath = false;
+
+	/** 다음에 일행 대화를 굴려볼 시각 (리더만 쓴다). 0이면 Director가 처음 볼 때 정한다 */
+	float NextGroupChatTime = 0.f;
+
+	/** 줄을 서 있는 스팟. 줄에 있는 동안 CurrentActivity는 AtSpot이고 OccupiedSpot은 비어 있다 */
+	TWeakObjectPtr<ANpcActivitySpot> QueuedSpot;
+
+	/** 이 시각까지 차례가 안 오면 포기한다 */
+	float QueueGiveUpTime = 0.f;
+
+	/** 줄에서 내 자리로 걸어가는 중인가 (걷기 애니메이션용) */
+	bool bQueueMoving = false;
+
+	// ---- 걸으면서 일행과 대화 ----------------------------------------------------
+
+	/** 대화 중인가 */
+	bool bGroupChatting = false;
+
+	/** 지금 내 차례라 손짓을 재생하고 있는가 */
+	bool bGroupChatGesturing = false;
+
+	float GroupChatStartTime = 0.f;
+	float GroupChatEndTime = 0.f;
+	float GroupChatTurnLength = 2.5f;
+	int32 GroupChatIndex = 0;
+	int32 GroupChatCount = 1;
+	FName GroupChatAnimId;
+
+	/** 이야기 상대. 걸으면서 몸을 이 사람 쪽으로 살짝 돌린다 */
+	TWeakObjectPtr<ASubNpcCharacter> GroupChatPartner;
+
+	/** 걷는 중에 거의 멈춰 서 있은 시간 (초) */
+	float StalledTime = 0.f;
+
+	/** 일행을 이끄는 리더인가. 리더는 스팟에 들르지 않는다 (일행이 길에서 기다리며 길을 막는다) */
+	bool bHasGroupFollowers = false;
+
+	/** 길에 합류할 틈을 기다리는 중인가 (Director가 정한다) */
+	bool bMergeHold = false;
+
+	/** 합류할 틈을 기다린 시간 (초) */
+	float MergeHoldTime = 0.f;
+
+	/** (일행) 리더 차선 기준 좌우 위치 (cm). 리더가 차선을 바꾸면 따라 옮긴다 */
+	float GroupLaneOffset = 0.f;
+
+	/** 길 밖에서 움직이다 다른 사람에게 양보하는 중인가 (Director가 정한다) */
+	bool bOffLaneYield = false;
+
+	/**
+	 * 이번 경로에서 이미 "들를까" 판정을 한 스팟. 경로를 바꾸면 비운다.
+	 * 예전에는 1.5m마다 반경 4m 안의 스팟을 다시 굴려서, 스팟 옆을 지나는 동안 3~4번 판정했다.
+	 * EngageChance가 25%여도 실제로는 절반 넘게 들러서 스팟 주변이 붐볐다.
+	 */
+	TArray<TWeakObjectPtr<ANpcActivitySpot>> RolledSpots;
+
+	/** 미리 정해 둔 다음 경로와 갈아탈 진행 거리 (PlanNextPath). 거리가 음수면 경로 끝에서 갈아탄다 */
+	TWeakObjectPtr<ANpcCrowdPath> PlannedNextPath;
+	bool bPlannedNextReversed = false;
+	float PlannedHandoffDistance = -1.f;
+
+	/** (리더) 뒤처진 일행을 기다리는 중인가, 언제부터 */
+	bool bWaitingForGroup = false;
+	float GroupWaitStartTime = -1000.f;
+
+	/** 대화 중이면 차례에 맞춰 손짓을 켜고 끈다 */
+	void TickGroupChat(float Now);
 
 	/** 다음 스팟 판정을 할 경로 진행 거리. 경로 진입 시 한 번만 보는 문제를 없앤다 */
 	float NextSpotCheckDistance = 0.f;

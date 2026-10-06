@@ -94,8 +94,16 @@ void ANpcCrowdSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+/** crowd.Bench가 측정 중에 정한 목표 인원. -1이면 쓰지 않는다 (SubNpcDirectorSubsystem.cpp) */
+extern int32 GSubNpcBenchTargetOverride;
+
 int32 ANpcCrowdSpawner::GetCurrentTargetCount() const
 {
+	if (GSubNpcBenchTargetOverride >= 0)
+	{
+		return GSubNpcBenchTargetOverride;
+	}
+
 	float Multiplier = 1.f;
 
 	// 시간대 배율. 시간 시스템이 없으면 그냥 기본값을 쓴다.

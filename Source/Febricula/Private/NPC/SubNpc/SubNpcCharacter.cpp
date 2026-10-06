@@ -2,6 +2,7 @@
 
 #include "NPC/SubNpc/SubNpcCharacter.h"
 
+#include "Animation/CharacterAnimationComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Dialogue/DialogueSubsystem.h"
@@ -15,6 +16,7 @@
 #include "NPC/SubNpc/NpcActivitySpot.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
+#include "NPC/SubNpc/SubNpcProfiling.h"
 
 // ---------------------------------------------------------------------------
 // 그룹 추종 튜닝값.
@@ -70,7 +72,14 @@ namespace SubNpcPathHandoff
 	 * 지수 감쇠는 틱 간격이 아무리 커도 0에 닿지 않는다. 프레임률·틱 주기와 무관하게
 	 * 같은 시간 상수를 유지한다.
 	 */
-	constexpr float BlendRate = 4.f;
+	// [튜닝] 4 → 2. 이음매에서 남은 어긋남을 너무 빨리 메워 옆으로 휙 움직이는 것처럼 보였다.
+	constexpr float BlendRate = 2.f;
+
+	/**
+	 * 다음 경로 입구가 이 경로 끝에서 이 거리(cm) 안에 있으면 그 지점에서 일찍 갈아탄다.
+	 * 경로 중간을 지나가는 다른 경로 입구에 걸려 엉뚱한 데서 빠지지 않게 끝 근처로만 한정한다.
+	 */
+	constexpr float MaxEarlyHandoff = 400.f;
 
 	/** 이보다 크게 벌어진 이음매는 흡수를 포기한다 (cm). 레벨 배치가 잘못된 경우다 */
 	constexpr float MaxBlendDistance = 2000.f;
@@ -95,14 +104,33 @@ namespace SubNpcCrowdFlow
 	 */
 	constexpr float SpeedScaleRecoverRate = 1.5f;
 
-	/** 추월할 때 옆 차선으로 옮겨 가는 속도 (1/초). 밀어내기(AvoidInterpSpeed)보다 빨라야 한다 */
-	constexpr float PassLaneInterpRate = 5.f;
+	/**
+	 * 추월할 때 옆 차선으로 옮겨 가는 속도 (1/초). 밀어내기(AvoidInterpSpeed)보다 빨라야 한다.
+	 * [튜닝] 5 → 3. 피할 때 옆으로 휙 꺾여서 부자연스러웠다.
+	 */
+	constexpr float PassLaneInterpRate = 3.f;
 
 	/**
-	 * 전진 1cm당 옆으로 움직일 수 있는 최대 거리. 0.7이면 약 35도로 비스듬히 빠진다.
+	 * 전진 1cm당 옆으로 움직일 수 있는 최대 거리. 0.45면 약 24도로 비스듬히 빠진다.
 	 * 이 값이 없으면 멈춘 채 옆으로만 미끄러지는 게걸음이 된다.
+	 * [튜닝] 0.7(약 35도) → 0.45. 사람은 그렇게 급하게 꺾지 않는다.
 	 */
-	constexpr float MaxSteerRatio = 0.7f;
+	constexpr float MaxSteerRatio = 0.45f;
+
+	/**
+	 * 앞이 막혀 멈춰 있어도 옆으로 비켜설 수 있는 속도 (cm/s).
+	 *
+	 * 옆 이동을 전진 거리에만 묶어두면, 멈춘 사람은 옆으로도 못 움직인다. 그래서 예전에는
+	 * 추월하는 사람을 최소 속도로 계속 걷게 했는데, 옆으로 다 빠지기 전에 앞사람 몸을
+	 * 그대로 뚫고 지나갔다. 서서 반 걸음 옆으로 비켜서는 정도는 허용하고, 전진은 막는다.
+	 */
+	constexpr float SidestepSpeed = 45.f;
+
+	/**
+	 * 추월하는 동안 길 가장자리(LaneHalfWidth)를 넘어갈 수 있는 거리 (cm).
+	 * Director의 SqueezeOverflow와 같거나 커야 비집고 지나가는 차선에 실제로 닿는다.
+	 */
+	constexpr float PassLaneOverflow = 45.f;
 }
 
 namespace SubNpcLightBump
@@ -130,6 +158,26 @@ namespace SubNpcBumpDebug
 		Enabled,
 		TEXT("행인 부딪힘 반응(속도·구간·애니메이션·재생 결과)을 화면과 로그에 표시한다. 0이면 끈다."),
 		ECVF_Cheat);
+
+	/**
+	 * 디버그 출력용 반응 이름.
+	 * StaticEnum<ESubNpcReaction>()을 쓰면 빌드는 되지만, Rider 코드 분석이 생성 헤더의 API 매크로를
+	 * 못 읽어서 "deleted function" 에러로 표시한다. 디버그 문자열 하나라 직접 적는다.
+	 */
+	static const TCHAR* ReactionToString(ESubNpcReaction Reaction)
+	{
+		switch (Reaction)
+		{
+		case ESubNpcReaction::None:      return TEXT("무반응");
+		case ESubNpcReaction::Dodge:     return TEXT("피하기");
+		case ESubNpcReaction::Angry:     return TEXT("화내기");
+		case ESubNpcReaction::Surprised: return TEXT("놀라기");
+		case ESubNpcReaction::LightBump: return TEXT("살짝 부딪힘");
+		case ESubNpcReaction::Talking:   return TEXT("대화 중");
+		case ESubNpcReaction::GroupChat: return TEXT("일행과 대화");
+		default:                         return TEXT("?");
+		}
+	}
 
 	static void Print(const AActor* Npc, const FString& Msg, const FColor& Color)
 	{
@@ -159,6 +207,63 @@ namespace SubNpcTalk
 	constexpr float MaxDuration = 60.f;
 }
 
+namespace SubNpcWorldBlock
+{
+	/**
+	 * 1이면 행인이 벽·지형을 뚫지 않게 이동 전에 캡슐로 쓸어 본다 (가까운 개체만).
+	 * 행인끼리·플레이어와는 막지 않는다 - 서로 막으면 인파가 정체된다.
+	 */
+	static int32 Enabled = 1;
+	static FAutoConsoleVariableRef CVarWorldBlock(
+		TEXT("crowd.WorldBlock"),
+		Enabled,
+		TEXT("행인이 벽·지형에 막히게 한다 (1=켬). 끄면 예전처럼 지형을 통과한다."),
+		ECVF_Cheat);
+
+	/** 이 높이(cm)까지의 턱·계단은 막힌 걸로 보지 않는다 */
+	constexpr float StepHeight = 45.f;
+
+	/** 면의 법선 Z가 이보다 크면(약 45도 이하 경사) 걸을 수 있는 바닥으로 보고 막지 않는다 */
+	constexpr float WalkableNormalZ = 0.7f;
+
+	/** 벽에 막히고 있으면 차선을 이 비율만큼 길 가운데 쪽으로 당긴다 (틱마다). 계속 벽을 긁지 않게 한다 */
+	constexpr float BlockedLanePull = 0.85f;
+}
+
+namespace SubNpcGroupChat
+{
+	/** 걸으면서 손짓을 얹을 상체 슬롯. ABP_Passerby의 Slot 노드 이름과 같아야 한다 */
+	static const FName UpperBodySlot(TEXT("UpperBody"));
+
+	/** 차례가 끝나 손짓을 거둘 때의 블렌드 시간 (초) */
+	constexpr float GestureBlendOut = 0.35f;
+
+	/** 이야기 상대 쪽으로 몸을 돌리는 최대 각도 (진행 방향 기준, 도) */
+	constexpr float MaxFaceTurnDegrees = 35.f;
+}
+
+namespace SubNpcSpotWalk
+{
+	/** 설 자리·차선에 이만큼(cm) 안으로 들어오면 도착으로 본다 */
+	constexpr float ArriveTolerance = 5.f;
+
+	/**
+	 * 스팟에서 차선으로 돌아갈 때의 걸음 속도 배율.
+	 * [튜닝] 1.5 → 1.0. 1.5배로 걸으니 행동을 마친 사람만 뛰듯이 빨라 보였다.
+	 * 평소 속도로 걷고, 대신 아래 RejoinPathProgressScale로 목표점을 늦춰 따라잡는다.
+	 */
+	constexpr float RejoinSpeedScale = 1.f;
+
+	/**
+	 * 차선으로 돌아가는 동안 경로 진행(목표점이 앞으로 가는 속도)의 배율.
+	 * 1보다 작아야 평소 속도로 걷는 몸이 목표점을 따라잡는다. 0.6이면 비스듬히 합류한다.
+	 */
+	constexpr float RejoinPathProgressScale = 0.6f;
+
+	/** 길 가장자리(LaneHalfWidth)에서 이 거리(cm) 안이면 이미 길 위에 있는 것으로 본다 */
+	constexpr float OnPathTolerance = 25.f;
+}
+
 namespace SubNpcGroupTuning
 {
 	/** 이만큼(cm) 벌어지면 최대 속도차를 낸다 */
@@ -167,6 +272,15 @@ namespace SubNpcGroupTuning
 	/** 추종자 속도 배율 범위. 하한이 0보다 커야 뒷걸음질이 없다 */
 	constexpr float SpeedScaleMin = 0.55f;
 	constexpr float SpeedScaleMax = 1.65f;
+
+	/** 일행 걸음 속도를 리더 속도에서 이 비율(±)만큼 다르게 준다. 0.03 = ±3% */
+	constexpr float MemberSpeedJitter = 0.03f;
+
+	/** 자기 자리보다 앞서 있을 때의 최소 속도 배율. 0이면 길 한가운데 서서 정체를 만든다 */
+	constexpr float AheadSpeedScaleMin = 0.3f;
+
+	/** 일행이 리더 옆 자리로 돌아가는 속도 (1/초) */
+	constexpr float LaneFollowRate = 2.f;
 }
 
 ASubNpcCharacter::ASubNpcCharacter()
@@ -250,6 +364,16 @@ void ASubNpcCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// [버그 수정] 카메라가 행인 캡슐에 걸리지 않게 한다.
+	// Pawn 프로필은 Camera 채널을 막는다. 그래서 행인 무리 속으로 들어가면 플레이어
+	// 카메라 붐(SpringArm)이 행인에 막혀 카메라가 앞으로 확 당겨지거나 떨렸다.
+	// BP에 저장된 콜리전 응답이 생성자 값을 덮어쓰므로 런타임에 건다.
+	// 플레이어와의 부딪힘(Pawn 채널)과 E키 상호작용에는 영향이 없다.
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	}
+
 	// 레벨에 직접 배치한 경우에도 Director가 관리하도록 등록한다.
 	if (const UWorld* World = GetWorld())
 	{
@@ -305,6 +429,9 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 
 	const float HalfWidth = StartPath->GetLaneHalfWidth();
 	LaneOffset = FMath::FRandRange(-HalfWidth, HalfWidth);
+
+	// 다음 경로와 갈아탈 지점을 미리 정해 둔다.
+	PlanNextPath();
 
 	// 시작 위치로 순간이동시킨 뒤 보이게 한다 (순서가 반대면 옛 위치에서 한 프레임 깜빡인다).
 	const FVector StartLoc = StartPath->GetLocationAtDistance(PathDistance, LaneOffset);
@@ -411,6 +538,28 @@ void ASubNpcCharacter::ClearRuntimeState()
 	CurrentSpotOption = FNpcActivityOption();
 	CurrentSpotStep = -1;
 	bResumeSpotAfterReaction = false;
+	bApproachingSpot = false;
+	bRejoiningPath = false;
+	NextGroupChatTime = 0.f;
+	StalledTime = 0.f;
+	bWaitingForGroup = false;
+	bHasGroupFollowers = false;
+	bMergeHold = false;
+	MergeHoldTime = 0.f;
+	GroupLaneOffset = 0.f;
+	bOffLaneYield = false;
+	PlannedNextPath = nullptr;
+	bPlannedNextReversed = false;
+	PlannedHandoffDistance = -1.f;
+	RolledSpots.Reset();
+	GroupWaitStartTime = -1000.f;
+	StopGroupChat();
+	if (ANpcActivitySpot* Queued = QueuedSpot.Get())
+	{
+		Queued->LeaveQueue(this);
+	}
+	QueuedSpot = nullptr;
+	bQueueMoving = false;
 	PendingAvoidNudge = 0.f;
 	bPendingRecycle = false;
 	NextSpotCheckDistance = 0.f;
@@ -555,17 +704,47 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 	const UWorld* World = GetWorld();
 	const float Now = World ? World->GetTimeSeconds() : 0.f;
 
+	// 걸으면서 일행과 이야기하는 중이면 차례에 맞춰 상체 손짓을 켜고 끈다.
+	TickGroupChat(Now);
+
 	// ABP가 읽을 값을 갱신한다.
 	// 프로퍼티라 Property Access로 스레드 안전하게 읽힌다.
 	bIsMoving = (CurrentActivity == ESubNpcActivity::Walking) ||
+		(CurrentActivity == ESubNpcActivity::AtSpot && (bApproachingSpot || bQueueMoving)) ||
 		(CurrentActivity == ESubNpcActivity::Reacting && CurrentReaction == ESubNpcReaction::Dodge);
 	// 감속까지 반영해야 걷기 애니메이션 재생 속도가 실제 이동과 맞는다.
-	CurrentSpeed = bIsMoving ? WalkSpeed * CurrentSpeedScale : 0.f;
+	CurrentSpeed = bIsMoving
+		? WalkSpeed * ((CurrentActivity == ESubNpcActivity::AtSpot) ? 1.f : CurrentSpeedScale)
+		: 0.f;
+
+	// [버그 수정] 길로 돌아오는 동안은 몸이 감속과 상관없이 제 속도로 걷는다.
+	// 애니메이션 속도를 감속 값에 맞추면, 몸은 움직이는데 서 있는 자세로 미끄러졌다.
+	// 합류할 틈을 기다리는 중이면 실제로 서 있으므로 0이다.
+	if (CurrentActivity == ESubNpcActivity::Walking && bRejoiningPath)
+	{
+		const bool bHolding = bMergeHold || bOffLaneYield;
+		bIsMoving = !bHolding;
+		CurrentSpeed = bHolding ? 0.f : WalkSpeed * SubNpcSpotWalk::RejoinSpeedScale;
+	}
+	// 스팟·줄로 걸어가다 양보하며 서 있으면 서 있는 자세로 보여야 한다.
+	else if (CurrentActivity == ESubNpcActivity::AtSpot && bOffLaneYield && (bApproachingSpot || bQueueMoving))
+	{
+		bIsMoving = false;
+		CurrentSpeed = 0.f;
+	}
 
 	switch (CurrentActivity)
 	{
 	case ESubNpcActivity::AtSpot:
-		if (Now >= ActivityEndTime)
+		if (QueuedSpot.IsValid() && !OccupiedSpot)
+		{
+			TickSpotQueue(DeltaTime, Now);
+		}
+		else if (bApproachingSpot)
+		{
+			TickApproachSpot(DeltaTime);
+		}
+		else if (Now >= ActivityEndTime)
 		{
 			// 한 동작으로 끝내지 않고 다음 단계가 있으면 이어서 재생한다.
 			AdvanceSpotStep();
@@ -613,6 +792,8 @@ bool ASubNpcCharacter::IsPassing() const
 
 void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 {
+	SUBNPC_PROFILE_SCOPE(PathFollow);
+
 	if (!CurrentPath)
 	{
 		return;
@@ -620,8 +801,19 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 
 	// 앞사람 때문에 걸린 제동을 반영한다. 목표 배율로 곧장 튀면 급브레이크로 보이므로
 	// 부드럽게 따라가고, 요청값은 매 틱 1로 되돌려 Director가 다시 채우게 한다.
-	CurrentSpeedScale = FMath::FInterpTo(
-		CurrentSpeedScale, PendingSpeedScale, DeltaTime, SubNpcCrowdFlow::SpeedScaleInterpRate);
+	// [버그 수정] 멈추라는 요청(0)은 보간하지 않고 바로 따른다.
+	// 보간하면 서서히 감속하는 동안 앞으로 미끄러져, 줄 선 사람끼리 몸이 겹쳤다.
+	// 멈추는 거리(FollowStopDistance)는 캡슐 지름보다 크게 잡혀 있으므로 바로 서면 겹치지 않는다.
+	CurrentSpeedScale = (PendingSpeedScale <= KINDA_SMALL_NUMBER)
+		? 0.f
+		: FMath::FInterpTo(CurrentSpeedScale, PendingSpeedScale, DeltaTime, SubNpcCrowdFlow::SpeedScaleInterpRate);
+
+	// 앞이 막혀 거의 멈춘 시간을 잰다. Director가 오래 막힌 사람부터 정체를 풀어준다.
+	// [버그 수정] 한번 막혀 선 사람은 정체 해소로 천천히 비집고 나가는 동안(배율 0.3)에도 계속 "막힘"으로 센다.
+	// 예전에는 0.08만 넘으면 0으로 돌아가서, 서 있다 → 0.3으로 한 발 → 다시 0부터 세며 정지를
+	// 반복했다. 사람들이 뚝뚝 끊기며 덜컥거리는 걸음으로 보였다.
+	const bool bStillStalled = (CurrentSpeedScale < 0.08f) || (StalledTime > 0.f && CurrentSpeedScale < 0.35f);
+	StalledTime = bStillStalled ? StalledTime + DeltaTime : 0.f;
 
 	// 요청은 회피 갱신 주기마다만 들어온다. 매 틱 1로 되돌리면 그 사이 프레임에서
 	// 다시 가속해버리므로, 천천히 회복시켜 다음 갱신까지 감속을 유지한다.
@@ -654,16 +846,25 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 			// 진행 방향 기준 오차. 양수면 뒤처진 상태다.
 			const float Error = (Desired - PathDistance) * Along;
 
+			// 내 자리보다 앞서 있으면(Error < 0) 천천히 걸으며 리더를 기다린다.
+			// [튜닝] 0(완전 정지)으로 했더니 리더가 멈출 때마다 일행이 길 한가운데 서서 정체를 만들었다.
 			const float SpeedScale = FMath::Clamp(
 				1.f + Error / SubNpcGroupTuning::CatchUpRange,
-				SubNpcGroupTuning::SpeedScaleMin,
+				(Error < 0.f) ? SubNpcGroupTuning::AheadSpeedScaleMin : SubNpcGroupTuning::SpeedScaleMin,
 				SubNpcGroupTuning::SpeedScaleMax);
 
 			PathDistance += WalkSpeed * SpeedScale * CurrentSpeedScale * DeltaTime * Along;
 		}
+		else if (!Leader->IsPooled() && Leader->CurrentPath == PlannedNextPath.Get())
+		{
+			// [그룹핑] 리더가 이음매를 먼저 넘어 내가 갈 다음 경로에 들어섰다. 해산하지 않고 따라간다.
+			// 예전에는 여기서 해산해서, 이음매를 하나 지날 때마다 일행이 남남이 됐다.
+			// 경로가 달라 진행도로 간격을 잴 수 없으니 이음매를 넘을 때까지는 평소 속도로 걷는다.
+			PathDistance += WalkSpeed * CurrentSpeedScale * DeltaTime * Along;
+		}
 		else
 		{
-			// 리더가 다른 경로로 갔거나 회수됐으면 그룹을 해산하고 혼자 걷는다.
+			// 리더가 회수됐거나 엉뚱한 경로로 갔으면 그룹을 해산하고 혼자 걷는다.
 			GroupLeader = nullptr;
 			PathDistance += WalkSpeed * CurrentSpeedScale * DeltaTime * Along;
 		}
@@ -671,6 +872,23 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	else
 	{
 		PathDistance += WalkSpeed * CurrentSpeedScale * DeltaTime * Along;
+	}
+
+	// [정체 해소] 굽은 곳에서도 차선과 상관없이 실제 걸음 속도가 같게 진행도를 보정한다.
+	// 예전에는 중심선 진행도를 걸음 속도로 올려서, 직각에 가까운 모서리 안쪽 차선 사람은
+	// 실제로는 거의 서 있었고(바깥쪽은 뛰듯이 빨랐다) 그 뒤로 줄줄이 막혔다
+	// (로그: B 끝 모서리와 C의 굽은 곳에 정지 인원이 몰림).
+	PathDistance = PathDistanceBefore
+		+ (PathDistance - PathDistanceBefore) * CurrentPath->GetLaneProgressScale(PathDistanceBefore, LaneOffset, Along);
+
+	// 스팟·줄에서 길로 돌아오는 동안은 진행을 늦춘다. 몸은 평소 속도로 걸으면서
+	// 늦게 가는 목표점을 따라잡으므로 서두르는 것처럼 보이지 않는다.
+	// 합류할 틈을 기다리는 중이면 목표점도 멈춰 둔다.
+	if (bRejoiningPath)
+	{
+		PathDistance = bMergeHold
+			? PathDistanceBefore
+			: PathDistanceBefore + (PathDistance - PathDistanceBefore) * SubNpcSpotWalk::RejoinPathProgressScale;
 	}
 
 	const float HalfWidth = CurrentPath->GetLaneHalfWidth();
@@ -692,16 +910,39 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	}
 	PendingAvoidNudge = 0.f;
 
+	// [그룹핑] 일행은 리더 옆 정해진 자리(리더 차선 + GroupLaneOffset)로 계속 돌아간다.
+	// 추월·회피로 잠깐 벌어져도 다시 붙어 걸어야 일행으로 보인다.
+	if (!bPassing)
+	{
+		if (const ASubNpcCharacter* Leader = GroupLeader.Get())
+		{
+			if (Leader->CurrentPath == CurrentPath)
+			{
+				const float Desired = FMath::Clamp(Leader->LaneOffset + GroupLaneOffset, -HalfWidth, HalfWidth);
+				LaneOffset = FMath::FInterpTo(LaneOffset, Desired, DeltaTime, SubNpcGroupTuning::LaneFollowRate);
+			}
+		}
+	}
+
 	// [게걸음 방지] 옆으로는 앞으로 나간 만큼만 움직인다.
 	//
 	// 예전에는 차선 이동이 전진과 무관했다. 앞이 막혀 거의 멈춘 사람이 옆으로만
 	// 미끄러지고, 이웃끼리 서로 밀어내며 좌우로 흔들렸다. 사람은 피할 때
 	// 앞으로 걸으면서 비스듬히 빠진다. 옆 이동을 전진 거리에 묶으면 그 그림이 된다.
 	const float ForwardStep = FMath::Abs(PathDistance - PathDistanceBefore);
-	const float MaxLateral = ForwardStep * SubNpcCrowdFlow::MaxSteerRatio;
+	// 멈춰 있어도 반 걸음 옆으로 비켜설 수는 있다 (SidestepSpeed 참고).
+	const float MaxLateral = FMath::Max(
+		ForwardStep * SubNpcCrowdFlow::MaxSteerRatio,
+		SubNpcCrowdFlow::SidestepSpeed * DeltaTime);
+
+	// 병목에서 비집고 추월할 때는 길 가장자리를 조금 넘어가도 된다 (Director의 SqueezeOverflow).
+	// 추월이 끝나면 한 번에 튀어 들어오지 않고, 옆 이동 속도만큼 천천히 길 안으로 돌아온다.
+	const float LaneLimit = bPassing
+		? HalfWidth + SubNpcCrowdFlow::PassLaneOverflow
+		: FMath::Max(HalfWidth, FMath::Abs(LaneBefore) - MaxLateral);
 	LaneOffset = FMath::Clamp(
 		LaneBefore + FMath::Clamp(LaneOffset - LaneBefore, -MaxLateral, MaxLateral),
-		-HalfWidth, HalfWidth);
+		-LaneLimit, LaneLimit);
 	const float LateralStep = LaneOffset - LaneBefore;
 
 	// 스팟 판정은 일정 거리마다 다시 굴린다 (경로 진입 시 1회 판정의 부작용 제거).
@@ -718,7 +959,13 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	const float Length = CurrentPath->GetPathLength();
 
 	// 경로 끝(또는 역방향이면 시작)에 닿았으면 다음 경로로.
-	if ((!bReversedOnPath && PathDistance >= Length) || (bReversedOnPath && PathDistance <= 0.f))
+	// [버그 수정] 다음 경로 입구가 이 경로 끝보다 앞에 있으면 거기서 일찍 갈아탄다 (PlanNextPath).
+	// 예전에는 끝까지 걸은 뒤에 갈아타서, 끝이 다음 경로 입구를 지나 뻗어 있으면(B 끝이 C 시작보다
+	// 95cm 더 감) 다들 끝까지 갔다가 되돌아오며 이음매에 뭉쳤다.
+	const float HandoffAt = (PlannedHandoffDistance >= 0.f)
+		? GetLaneHandoffDistance()
+		: (bReversedOnPath ? 0.f : Length);
+	if ((!bReversedOnPath && PathDistance >= HandoffAt) || (bReversedOnPath && PathDistance <= HandoffAt))
 	{
 		AdvanceToNextPath();
 		return;
@@ -729,9 +976,11 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 
 	// 지면에 붙여 세운다. 경로 높이를 대충 그려도 계단·경사로 위에 제대로 선다.
 	// 가까운 개체만 한다 - 멀리 있는 사람의 발밑 몇 cm는 화면에서 안 보인다.
+	bool bGroundSnapped = false;
 	if (SubNpcGroundSnap::Enabled != 0 &&
 		(CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid))
 	{
+		SUBNPC_PROFILE_SCOPE(GroundSnap);
 		if (const UWorld* World = GetWorld())
 		{
 			const float HalfHeight = GetCapsuleComponent()
@@ -748,6 +997,7 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 			if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
 			{
 				Target.Z = Hit.ImpactPoint.Z + HalfHeight;
+				bGroundSnapped = true;
 			}
 		}
 	}
@@ -764,7 +1014,49 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 			PathHandoffOffset = FVector::ZeroVector;
 		}
 
-		Target += PathHandoffOffset;
+		// [버그 수정] 지면에 붙였으면 높이 어긋남은 더하지 않는다.
+		// 어긋남은 스냅 전 경로 높이로 잰 값이라, 경로끼리 높이가 다르면(B 88 → C 158) 스냅한
+		// 바닥 높이에 -70cm가 더해져 이음매를 지나는 순간 몸이 바닥 속으로 꺼졌다가 천천히 올라왔다.
+		Target += bGroundSnapped ? FVector(PathHandoffOffset.X, PathHandoffOffset.Y, 0.f) : PathHandoffOffset;
+	}
+
+	// 스팟에서 나오는 중이면 차선 위치를 걸음 속도로 따라잡는다.
+	// 진행도는 평소대로 오르므로, 차선으로 돌아오면서 자연스럽게 앞으로도 걷는다.
+	if (bRejoiningPath)
+	{
+		const FVector Location = GetActorLocation();
+		const FVector ToTarget = Target - Location;
+		const float Remaining = ToTarget.Size2D();
+		const float Step = WalkSpeed * SubNpcSpotWalk::RejoinSpeedScale * DeltaTime;
+
+		if (Remaining <= FMath::Max(Step, SubNpcSpotWalk::ArriveTolerance))
+		{
+			bRejoiningPath = false;
+			bMergeHold = false;
+		}
+		else if (bMergeHold || bOffLaneYield)
+		{
+			// 합류할 자리에 사람이 있거나 다른 사람이 앞을 지나가는 중이다. 서서 기다린다.
+			// 오래 기다리면 SetMergeHold가 더는 세우지 않는다 (MaxMergeHoldSeconds).
+			if (bMergeHold)
+			{
+				MergeHoldTime += DeltaTime;
+			}
+			const FVector Dir2D = FVector(ToTarget.X, ToTarget.Y, 0.f) / Remaining;
+			SetActorRotation(FMath::RInterpTo(GetActorRotation(), Dir2D.Rotation(), DeltaTime, 6.f));
+			return;
+		}
+		else
+		{
+			const FVector Dir2D = FVector(ToTarget.X, ToTarget.Y, 0.f) / Remaining;
+			FVector Next = Location + Dir2D * Step;
+			Next.Z = FMath::FInterpConstantTo(Location.Z, Target.Z, DeltaTime, WalkSpeed);
+
+			const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Dir2D.Rotation(), DeltaTime, 8.f);
+			bool bBlockedByWorld = false;
+			SetActorLocationAndRotation(ResolveWorldBlocking(Location, Next, bBlockedByWorld), NewRot, /*bSweep=*/false);
+			return;
+		}
 	}
 
 	// [설계] 행인은 CharacterMovement를 쓰지 않고 위치를 직접 세팅한다.
@@ -795,6 +1087,26 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 			FacingDir = Dir;
 		}
 	}
+	// 걸으면서 일행과 이야기하는 중이면 상대 쪽으로 몸을 살짝 돌린다.
+	// 손짓만으로는 멀리서 대화로 안 읽힌다. 서로를 향해 몸이 기울어 있어야 "같이 이야기하며 걷는" 그림이 된다.
+	// 너무 돌리면 앞으로 걷는 다리와 어긋나므로 진행 방향 기준 일정 각도까지만 돌린다.
+	if (bGroupChatting && bIsClose)
+	{
+		if (const ASubNpcCharacter* Partner = GroupChatPartner.Get())
+		{
+			FVector ToPartner = Partner->GetActorLocation() - GetActorLocation();
+			ToPartner.Z = 0.f;
+			if (ToPartner.Normalize())
+			{
+				const float WalkYaw = FacingDir.Rotation().Yaw;
+				const float Delta = FMath::Clamp(
+					FMath::FindDeltaAngleDegrees(WalkYaw, ToPartner.Rotation().Yaw),
+					-SubNpcGroupChat::MaxFaceTurnDegrees, SubNpcGroupChat::MaxFaceTurnDegrees);
+				FacingDir = FRotator(0.f, WalkYaw + Delta, 0.f).Vector();
+			}
+		}
+	}
+
 	const FRotator TargetRot = FacingDir.Rotation();
 	const FRotator NewRot = bIsClose
 		? FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 8.f)
@@ -812,7 +1124,28 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	//
 	// 잃는 건 "행인이 벽을 뚫을 수 있다" 하나뿐인데, 경로는 어차피 사람이 그리는 것이라
 	// 벽을 통과하는 선을 안 그리면 그만이다. (레퍼런스 영상의 군중도 서로 통과한다)
-	SetActorLocationAndRotation(Target, NewRot, /*bSweep=*/bSweepWhileMoving);
+	//
+	// [추가] 그런데 추월·비집기로 길 가장자리를 넘거나 경로가 지형에 붙어 있으면 벽을 뚫었다.
+	// 그래서 캡슐 스윕 대신 지형(WorldStatic/WorldDynamic)만 따로 쓸어 본다 (ResolveWorldBlocking).
+	// 행인끼리는 여전히 막지 않으므로 위의 정체 문제는 생기지 않는다.
+	bool bBlockedByWorld = false;
+	const FVector Resolved = ResolveWorldBlocking(GetActorLocation(), Target, bBlockedByWorld);
+	if (bBlockedByWorld)
+	{
+		// 벽에 막혔으면 차선을 길 가운데 쪽으로 당긴다. 그대로 두면 계속 벽을 긁으며 걷는다.
+		LaneOffset *= SubNpcWorldBlock::BlockedLanePull;
+
+		// [버그 수정] 막혀 있는 동안은 진행도도 올리지 않는다.
+		// 예전에는 몸은 벽(경사로 옆면 등)에 막혀 서 있는데 진행도만 계속 올라 목표점이 멀리 달아났다.
+		// 차선이 안쪽으로 당겨져 벽에서 빠지는 순간 그 먼 목표점으로 한 번에 옮겨져 순간이동처럼 보였다
+		// (오르막 가장자리 차선 행인이 못 오르다가 휙 올라감).
+		// 길 한가운데까지 당겨졌는데도 막히면 경로 자체가 벽을 지나는 배치 문제다. 그때는 영영 서 있지 않게 진행시킨다.
+		if (FMath::Abs(LaneOffset) > 10.f)
+		{
+			PathDistance = PathDistanceBefore;
+		}
+	}
+	SetActorLocationAndRotation(Resolved, NewRot, /*bSweep=*/bSweepWhileMoving);
 }
 
 void ASubNpcCharacter::AdvanceToNextPath()
@@ -839,8 +1172,13 @@ void ASubNpcCharacter::AdvanceToNextPath()
 		return;
 	}
 
-	bool bNextReversed = false;
-	ANpcCrowdPath* Next = CurrentPath->PickNextPath(bNextReversed);
+	// 들어설 때 미리 정해 둔 다음 경로를 쓴다 (갈아탈 지점이 그 경로 기준으로 계산돼 있다).
+	bool bNextReversed = bPlannedNextReversed;
+	ANpcCrowdPath* Next = PlannedNextPath.Get();
+	if (!Next)
+	{
+		Next = CurrentPath->PickNextPath(bNextReversed);
+	}
 
 	if (!Next)
 	{
@@ -859,6 +1197,10 @@ void ASubNpcCharacter::AdvanceToNextPath()
 			(CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid))
 		{
 			bReversedOnPath = !bReversedOnPath;
+
+			// 방향을 돌렸으니 앞서 정한 다음 경로·갈아탈 지점은 더 이상 맞지 않는다. 끝까지 간다.
+			PlannedNextPath = nullptr;
+			PlannedHandoffDistance = -1.f;
 
 			// 끝점에 딱 붙어 있으면 다음 틱에 또 도착 판정이 나므로 살짝 안쪽으로 밀어준다.
 			PathDistance = FMath::Clamp(PathDistance, 0.f, PathLength);
@@ -910,9 +1252,17 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	}
 #endif
 
-	// 새 구간마다 차선을 조금 다시 굴린다. 계속 같은 오프셋이면 대열이 너무 반듯하다.
+	// [버그 수정] 차선은 지금 몸이 서 있는 자리를 새 경로 기준으로 다시 잰다.
+	// 경로가 꺾이면 "오른쪽"의 방향이 바뀌어서, 예전처럼 차선 값을 그대로 가져가면 새 경로에서 설 자리가
+	// 실제 몸과 1m 가까이 어긋났고, 그걸 짧은 시간에 따라잡느라 이음매에서 옆으로 휙 미끄러졌다.
+	// 몸 위치 그대로 이어 받으면 어긋남이 거의 없다. 예전 ±30cm 재추첨도 엉킴만 만들어서 뺐다.
 	const float HalfWidth = Next->GetLaneHalfWidth();
-	LaneOffset = FMath::Clamp(LaneOffset + FMath::FRandRange(-30.f, 30.f), -HalfWidth, HalfWidth);
+	{
+		const FVector Base = Next->GetLocationAtDistance(PathDistance, 0.f);
+		const FVector Right = (Next->GetLocationAtDistance(PathDistance, 1.f) - Base).GetSafeNormal2D();
+		LaneOffset = FMath::Clamp(FVector::DotProduct(HandoffLocation - Base, Right), -HalfWidth, HalfWidth);
+	}
+	DodgeTargetOffset = LaneOffset;
 
 	// [부드러운 전환] 새 경로에서의 첫 위치와 지금 서 있는 자리의 차이를 기억해둔다.
 	//
@@ -926,7 +1276,103 @@ void ASubNpcCharacter::AdvanceToNextPath()
 		? Gap
 		: FVector::ZeroVector;   // 너무 멀면 흡수를 포기한다 (위 경고 로그가 이미 알려준다)
 
+	// 새 경로의 스팟은 처음 보는 것이므로 판정 기록을 비운다.
+	RolledSpots.Reset();
+
+	PlanNextPath();
 	RollForActivitySpot();
+}
+
+float ASubNpcCharacter::GetLaneHandoffDistance() const
+{
+	// [정체 해소] 갈아타는 지점을 차선마다 다르게 잡는다.
+	//
+	// 예전에는 모두 같은 진행도(다음 경로 입구에서 가장 가까운 점)에서 갈아탔다. 직각으로 꺾이는
+	// 이음매(B→C)에서는 B의 좌우 폭이 C의 앞뒤 방향이라, 같은 지점에서 갈아탄 사람들은 C 기준으로
+	// 전부 차선 0 근처를 받았다 - 넓게 퍼져 오던 사람들이 모서리에서 한 줄로 합쳐지며 뭉쳤다.
+	//
+	// 지금은 "B의 내 차선 선"이 "C의 같은 쪽 차선 선"과 만나는 지점에서 갈아탄다.
+	// 안쪽 사람은 일찍 안쪽 차선으로, 바깥쪽 사람은 늦게 바깥쪽 차선으로 꺾는다 (차가 모서리를 도는 것처럼).
+	const ANpcCrowdPath* Next = PlannedNextPath.Get();
+	if (!CurrentPath || !Next)
+	{
+		return PlannedHandoffDistance;
+	}
+
+	const float OldAlong = bReversedOnPath ? -1.f : 1.f;
+	const float NewAlong = bPlannedNextReversed ? -1.f : 1.f;
+	const float EntryDist = bPlannedNextReversed ? Next->GetPathLength() : 0.f;
+
+	const FVector MyDir = (CurrentPath->GetDirectionAtDistance(PlannedHandoffDistance) * OldAlong).GetSafeNormal2D();
+	const FVector EntryBase = Next->GetLocationAtDistance(EntryDist, 0.f);
+	const FVector NextRight = (Next->GetLocationAtDistance(EntryDist, 1.f) - EntryBase).GetSafeNormal2D();
+
+	// 거의 같은 방향으로 이어지는 이음매면 보정할 게 없다.
+	const float Denom = FVector::DotProduct(MyDir, NextRight);
+	if (FMath::Abs(Denom) < 0.2f)
+	{
+		return PlannedHandoffDistance;
+	}
+
+	// 진행 방향 기준 같은 쪽(안쪽은 안쪽, 바깥쪽은 바깥쪽)을 유지한 새 경로 차선.
+	const float NextLane = FMath::Clamp(LaneOffset * OldAlong * NewAlong, -Next->GetLaneHalfWidth(), Next->GetLaneHalfWidth());
+	const FVector NextLanePoint = EntryBase + NextRight * NextLane;
+	const FVector MyLanePoint = CurrentPath->GetLocationAtDistance(PlannedHandoffDistance, LaneOffset);
+
+	const float Shift = FVector::DotProduct(NextLanePoint - MyLanePoint, NextRight) / Denom;
+	const float Clamped = FMath::Clamp(Shift, -SubNpcPathHandoff::MaxEarlyHandoff, SubNpcPathHandoff::MaxEarlyHandoff);
+	return FMath::Clamp(PlannedHandoffDistance + Clamped * OldAlong, 0.f, CurrentPath->GetPathLength());
+}
+
+void ASubNpcCharacter::PlanNextPath()
+{
+	PlannedNextPath = nullptr;
+	bPlannedNextReversed = false;
+	PlannedHandoffDistance = -1.f;
+
+	if (!CurrentPath)
+	{
+		return;
+	}
+
+	// 일행은 리더와 같은 길로 간다. 갈림길에서 따로 고르면 그룹이 찢어진다.
+	bool bNextReversed = false;
+	ANpcCrowdPath* Next = nullptr;
+	if (const ASubNpcCharacter* Leader = GroupLeader.Get())
+	{
+		if (Leader->CurrentPath == CurrentPath && Leader->PlannedNextPath.IsValid())
+		{
+			Next = Leader->PlannedNextPath.Get();
+			bNextReversed = Leader->bPlannedNextReversed;
+		}
+	}
+	if (!Next)
+	{
+		Next = CurrentPath->PickNextPath(bNextReversed);
+	}
+	if (!Next)
+	{
+		return;   // 막다른 길: 끝까지 간다
+	}
+
+	PlannedNextPath = Next;
+	bPlannedNextReversed = bNextReversed;
+
+	// 다음 경로 입구가 이 경로의 어디쯤인지 잰다. 입구가 끝 근처(진행 방향 기준 마지막 몇 m)에 있을 때만
+	// 그 지점에서 갈아탄다. 경로 중간을 지나가는 다른 경로 입구에 걸려 일찍 빠지면 안 된다.
+	const FVector Entry = Next->GetLocationAtDistance(bNextReversed ? Next->GetPathLength() : 0.f, 0.f);
+	float EntryDist = 0.f;
+	CurrentPath->FindClosestPointOnPath(Entry, EntryDist);
+
+	const float Length = CurrentPath->GetPathLength();
+	if (!bReversedOnPath)
+	{
+		PlannedHandoffDistance = (EntryDist >= Length - SubNpcPathHandoff::MaxEarlyHandoff) ? EntryDist : Length;
+	}
+	else
+	{
+		PlannedHandoffDistance = (EntryDist <= SubNpcPathHandoff::MaxEarlyHandoff) ? EntryDist : 0.f;
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -935,7 +1381,9 @@ void ASubNpcCharacter::AdvanceToNextPath()
 
 void ASubNpcCharacter::RollForActivitySpot()
 {
-	if (!CurrentPath || OccupiedSpot || GroupLeader.IsValid())
+	// [버그 수정] 일행을 이끄는 리더도 스팟에 들르지 않는다. 리더가 스팟·줄에서 수십 초를 보내는 동안
+	// 일행은 길 한가운데서 리더를 기다리고, 그 뒤로 정체가 생겼다 (측정: 스팟 옆에 20명 넘게 정지).
+	if (!CurrentPath || OccupiedSpot || QueuedSpot.IsValid() || GroupLeader.IsValid() || bHasGroupFollowers)
 	{
 		// 그룹 추종 중인 개체는 멈추지 않는다 (리더만 멈추면 대열이 깨진다).
 		return;
@@ -963,37 +1411,39 @@ void ASubNpcCharacter::RollForActivitySpot()
 
 	for (ANpcActivitySpot* Spot : Candidates)
 	{
-		if (!Spot->HasRoom())
+		// [버그 수정] 거리 조건이 없으면 이미 지나쳐 온 스팟에도 당첨돼서
+		// 뒤로 순간이동하는 것처럼 보인다.
+		if (FVector::DistSquared(Spot->GetActorLocation(), MyLocation) > EngageRadiusSq)
 		{
 			continue;
 		}
 
-		// [버그 수정] 거리 조건이 없으면 이미 지나쳐 온 스팟에도 당첨돼서
-		// 뒤로 순간이동하는 것처럼 보인다.
-		if (FVector::DistSquared(Spot->GetStandLocation(), MyLocation) > EngageRadiusSq)
+		// 이번 경로에서 이 스팟은 한 번만 굴린다 (RolledSpots 참고). 반경 안에 들어온 첫 판정이 그 스팟의 운명이다.
+		if (RolledSpots.Contains(Spot))
 		{
 			continue;
 		}
+		RolledSpots.Add(Spot);
 
 		if (FMath::FRand() > Spot->GetEngageChance())
 		{
 			continue;
 		}
 
-		FNpcActivityOption Option;
-		int32 ActivityIndex = INDEX_NONE;
-		if (!Spot->PickActivity(Option, ActivityIndex))
+		// 자리가 있고 기다리는 사람도 없으면 바로 들어간다.
+		if (TryEnterSpot(Spot))
 		{
-			continue;
+			return;
 		}
 
-		if (!Spot->TryOccupy(this, ActivityIndex))
+		// [줄 서기] 자리가 없거나 먼저 기다리는 사람이 있으면 줄 끝에 선다.
+		// 예전에는 그냥 지나갔다가 다음 판정에서 운 좋게 걸린 사람이 들어가서,
+		// 먼저 와 있던 사람보다 뒤에 온 사람이 먼저 하는 일이 생겼다.
+		if (Spot->TryJoinQueue(this))
 		{
-			continue;
+			BeginSpotQueue(Spot);
+			return;
 		}
-
-		BeginSpotActivity(Spot, Option);
-		return;
 	}
 }
 
@@ -1005,7 +1455,7 @@ bool ASubNpcCharacter::TryEnterNearbySpot()
 
 bool ASubNpcCharacter::TryEnterSpot(ANpcActivitySpot* Spot)
 {
-	if (!Spot || OccupiedSpot || !Spot->HasRoom())
+	if (!Spot || OccupiedSpot || !Spot->CanEnterNow(this))
 	{
 		return false;
 	}
@@ -1017,13 +1467,156 @@ bool ASubNpcCharacter::TryEnterSpot(ANpcActivitySpot* Spot)
 		return false;
 	}
 
-	if (!Spot->TryOccupy(this, ActivityIndex))
+	int32 SlotIndex = 0;
+	if (!Spot->TryOccupy(this, ActivityIndex, SlotIndex))
 	{
 		return false;
 	}
 
-	BeginSpotActivity(Spot, Option);
+	// 줄에서 차례가 와서 들어가는 경우. 스팟이 줄에서는 이미 뺐다.
+	QueuedSpot = nullptr;
+	bQueueMoving = false;
+
+	BeginSpotActivity(Spot, Option, SlotIndex);
 	return true;
+}
+
+void ASubNpcCharacter::BeginSpotQueue(ANpcActivitySpot* Spot)
+{
+	const UWorld* World = GetWorld();
+	QueuedSpot = Spot;
+	QueueGiveUpTime = (World ? World->GetTimeSeconds() : 0.f) + Spot->GetMaxQueueWait();
+	CurrentActivity = ESubNpcActivity::AtSpot;
+	bApproachingSpot = false;
+	bRejoiningPath = false;
+	bQueueMoving = true;
+	SetMovementState(ENpcMovementState::Walk);
+}
+
+void ASubNpcCharacter::TickSpotQueue(float DeltaTime, float Now)
+{
+	ANpcActivitySpot* Spot = QueuedSpot.Get();
+	if (!Spot)
+	{
+		LeaveSpotQueue();
+		return;
+	}
+
+	// 차례가 왔으면 들어간다. 줄의 맨 앞만 통과하므로 순서가 지켜진다.
+	if (TryEnterSpot(Spot))
+	{
+		return;
+	}
+
+	const int32 Index = Spot->GetQueueIndex(this);
+	if (Index == INDEX_NONE || Now >= QueueGiveUpTime)
+	{
+		LeaveSpotQueue();
+		return;
+	}
+
+	// 줄에서 내 자리로 걸어간다. 앞사람이 빠지면 한 칸씩 당겨 선다.
+	const FVector Target = Spot->GetQueueLocation(Index);
+	const FVector Location = GetActorLocation();
+	FVector ToTarget = Target - Location;
+	ToTarget.Z = 0.f;
+	const float Remaining = ToTarget.Size();
+	const float Step = WalkSpeed * DeltaTime;
+
+	if (Remaining <= FMath::Max(Step, SubNpcSpotWalk::ArriveTolerance))
+	{
+		if (bQueueMoving)
+		{
+			// 도착하면 스팟 쪽을 보고 선다.
+			bQueueMoving = false;
+			FVector ToSpot = Spot->GetActorLocation() - Target;
+			ToSpot.Z = 0.f;
+			const FRotator Facing = ToSpot.IsNearlyZero() ? GetActorRotation() : ToSpot.Rotation();
+			SetActorLocationAndRotation(FVector(Target.X, Target.Y, Location.Z), Facing, /*bSweep=*/false);
+			SetMovementState(ENpcMovementState::Idle);
+		}
+		return;
+	}
+
+	if (!bQueueMoving)
+	{
+		bQueueMoving = true;
+		SetMovementState(ENpcMovementState::Walk);
+	}
+
+	// 다른 사람이 앞을 지나가는 중이면 잠깐 기다린다 (Director의 길 밖 양보).
+	if (bOffLaneYield)
+	{
+		return;
+	}
+
+	const FVector Dir = ToTarget / Remaining;
+	FVector Next = Location + Dir * Step;
+	Next.Z = FMath::FInterpConstantTo(Location.Z, Target.Z, DeltaTime, WalkSpeed);
+	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Dir.Rotation(), DeltaTime, 8.f);
+	bool bBlockedByWorld = false;
+	SetActorLocationAndRotation(ResolveWorldBlocking(Location, Next, bBlockedByWorld), NewRot, /*bSweep=*/false);
+}
+
+void ASubNpcCharacter::LeaveSpotQueue()
+{
+	if (ANpcActivitySpot* Spot = QueuedSpot.Get())
+	{
+		Spot->LeaveQueue(this);
+	}
+	const bool bWasQueued = QueuedSpot.IsValid() || bQueueMoving;
+	QueuedSpot = nullptr;
+	bQueueMoving = false;
+
+	// 줄에만 서 있던 경우(아직 스팟을 차지하지 않음) 길로 걸어서 돌아간다.
+	if (CurrentActivity == ESubNpcActivity::AtSpot && !OccupiedSpot)
+	{
+		CurrentActivity = ESubNpcActivity::Walking;
+		SetMovementState(ENpcMovementState::Walk);
+		BeginRejoinPath();
+	}
+	else if (bWasQueued)
+	{
+		BeginRejoinPath();
+	}
+}
+
+void ASubNpcCharacter::BeginRejoinPath()
+{
+	bRejoiningPath = true;
+
+	// [버그 수정] 예전에는 길을 벗어났던 지점(최대 SpotEngageRadius 앞)으로 돌아갔다.
+	// 줄은 행인이 걸어오는 쪽으로 늘어서므로, 스팟에서 나온 사람이 그 대각선 위의
+	// 줄 선 사람들을 그대로 뚫고 지나갔다. 줄 선 사람은 회피 계산에서도 빠져 있다.
+	// 진행 위치를 지금 자리에서 가장 가까운 경로 지점으로 옮기면, 칸에서 길 쪽으로
+	// 곧장 걸어 나가므로 옆으로 늘어선 줄을 가로지르지 않는다.
+	if (CurrentPath)
+	{
+		float Closest = PathDistance;
+		CurrentPath->FindClosestPointOnPath(GetActorLocation(), Closest);
+		PathDistance = Closest;
+
+		// [버그 수정] 가까운 쪽 길 가장자리 차선으로 합류한다.
+		// 예전에는 원래 걷던 차선으로 돌아가서, 그게 길 건너편이면 걷는 사람들 사이를 가로질렀다.
+		const FVector Base = CurrentPath->GetLocationAtDistance(PathDistance, 0.f);
+		const FVector Right = (CurrentPath->GetLocationAtDistance(PathDistance, 1.f) - Base).GetSafeNormal2D();
+		const float HalfWidth = CurrentPath->GetLaneHalfWidth();
+		const float Lateral = FVector::DotProduct(GetActorLocation() - Base, Right);
+		LaneOffset = FMath::Clamp(Lateral, -HalfWidth, HalfWidth);
+		DodgeTargetOffset = LaneOffset;
+		PassLaneUntil = -1.f;
+
+		// [버그 수정] 이미 길 위에 서 있으면 합류할 필요가 없다.
+		// 예전에는 부딪힘 반응이 끝난 사람처럼 원래 길 위에 있던 사람까지 "합류 중"이 되어
+		// 합류할 틈을 기다리며 길 한가운데 서 있었고, 그 뒤로 정체가 생겼다.
+		if (FMath::Abs(Lateral) <= HalfWidth + SubNpcSpotWalk::OnPathTolerance)
+		{
+			bRejoiningPath = false;
+		}
+	}
+	NextSpotCheckDistance = PathDistance;
+	bMergeHold = false;
+	MergeHoldTime = 0.f;
 }
 
 void ASubNpcCharacter::LeaveSpotIfAny()
@@ -1034,7 +1627,7 @@ void ASubNpcCharacter::LeaveSpotIfAny()
 	}
 }
 
-void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option)
+void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option, int32 SlotIndex)
 {
 	OccupiedSpot = Spot;
 	CurrentActivity = ESubNpcActivity::AtSpot;
@@ -1045,7 +1638,7 @@ void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActiv
 
 	// 스팟 앞에 세우고, 그 행동이 바라봐야 할 지점을 향하게 한다.
 	// "무슨 애니메이션 + 어디를 보는가" 이 두 개가 스팟 연출의 전부다.
-	const FVector Stand = Spot->GetStandLocation();
+	const FVector Stand = Spot->GetStandLocation(SlotIndex);
 	const FVector LookAt = Spot->GetLookAtLocation(Option);
 
 	FVector Facing = LookAt - Stand;
@@ -1055,11 +1648,50 @@ void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActiv
 		Facing = GetActorForwardVector();
 	}
 
-	SetActorLocationAndRotation(Stand, Facing.Rotation(), /*bSweep=*/false);
+	// [버그 수정] 설 자리로 순간이동하지 않고 걸어간다.
+	// 행인은 반경 SpotEngageRadius 안에서 스팟을 잡으므로, 예전에는 행동이 시작되는
+	// 순간 몇 미터를 한 프레임에 튀었다. 도착하면 TickApproachSpot이 첫 동작을 시작한다.
+	SpotStandLocation = Stand;
+	SpotStandRotation = Facing.Rotation();
+	bApproachingSpot = true;
+	bRejoiningPath = false;
 
-	SetMovementState(ENpcMovementState::Interacting);
+	SetMovementState(ENpcMovementState::Walk);
+}
 
-	PlaySpotStep(Option.AnimId, Option.MinDuration, Option.MaxDuration, Option.bLoop);
+void ASubNpcCharacter::TickApproachSpot(float DeltaTime)
+{
+	const FVector Location = GetActorLocation();
+	FVector ToStand = SpotStandLocation - Location;
+	ToStand.Z = 0.f;
+	const float Remaining = ToStand.Size();
+	const float Step = WalkSpeed * DeltaTime;
+
+	if (Remaining <= FMath::Max(Step, SubNpcSpotWalk::ArriveTolerance))
+	{
+		// 도착. 행동 방향으로 돌아서 첫 동작을 시작한다.
+		bApproachingSpot = false;
+		SetActorLocationAndRotation(SpotStandLocation, SpotStandRotation, /*bSweep=*/false);
+		SetMovementState(ENpcMovementState::Interacting);
+		PlaySpotStep(CurrentSpotOption.AnimId, CurrentSpotOption.MinDuration,
+			CurrentSpotOption.MaxDuration, CurrentSpotOption.bLoop);
+		return;
+	}
+
+	// 다른 사람이 앞을 지나가는 중이면 잠깐 기다린다 (Director의 길 밖 양보).
+	if (bOffLaneYield)
+	{
+		return;
+	}
+
+	// 걸어가는 방향을 본다. 높이는 설 자리 쪽으로 같이 맞춰 간다.
+	const FVector Dir = ToStand / Remaining;
+	FVector Next = Location + Dir * Step;
+	Next.Z = FMath::FInterpConstantTo(Location.Z, SpotStandLocation.Z, DeltaTime, WalkSpeed);
+
+	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Dir.Rotation(), DeltaTime, 8.f);
+	bool bBlockedByWorld = false;
+	SetActorLocationAndRotation(ResolveWorldBlocking(Location, Next, bBlockedByWorld), NewRot, /*bSweep=*/false);
 }
 
 void ASubNpcCharacter::PlaySpotStep(FName AnimId, float MinDuration, float MaxDuration, bool bLoop)
@@ -1095,6 +1727,13 @@ void ASubNpcCharacter::AdvanceSpotStep()
 
 void ASubNpcCharacter::EndSpotActivity()
 {
+	if (ANpcActivitySpot* Queued = QueuedSpot.Get())
+	{
+		Queued->LeaveQueue(this);
+	}
+	QueuedSpot = nullptr;
+	bQueueMoving = false;
+
 	if (OccupiedSpot)
 	{
 		OccupiedSpot->ReleaseOccupancy(this);
@@ -1103,6 +1742,11 @@ void ASubNpcCharacter::EndSpotActivity()
 
 	CurrentSpotOption = FNpcActivityOption();
 	CurrentSpotStep = -1;
+
+	// 스팟 자리에서 차선으로 순간이동하지 않고 걸어서 돌아간다 (TickPathFollow 참고).
+	// 걸어가던 도중 취소된 경우도 몸이 차선 밖에 있으므로 똑같이 처리한다.
+	bApproachingSpot = false;
+	BeginRejoinPath();
 
 	StopNpcAnim();
 	CurrentActivity = ESubNpcActivity::Walking;
@@ -1127,7 +1771,34 @@ void ASubNpcCharacter::NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPr
 		return;
 	}
 
+	// 플레이어가 나에게 밀고 들어온 경우만 반응한다. 내가 걸어가 닿은 거면 비켜 갈 일이다.
+	if (GetPlayerClosingSpeed(OtherPawn, this) < PlayerBumpMinClosingSpeed)
+	{
+		return;
+	}
+
 	ReactToPlayerBump(Other, GetPlayerBumpSpeed(OtherPawn));
+}
+
+float ASubNpcCharacter::GetPlayerClosingSpeed(const APawn* Player, const AActor* Target)
+{
+	if (!Player || !Target)
+	{
+		return 0.f;
+	}
+
+	const FVector ToTarget = (Target->GetActorLocation() - Player->GetActorLocation()).GetSafeNormal2D();
+	float Closing = FVector::DotProduct(Player->GetVelocity(), ToTarget);
+
+	const ACharacter* PlayerCharacter = Cast<ACharacter>(Player);
+	const UCharacterMovementComponent* Movement = PlayerCharacter ? PlayerCharacter->GetCharacterMovement() : nullptr;
+	if (Movement && Movement->GetMaxAcceleration() > KINDA_SMALL_NUMBER)
+	{
+		const FVector Intended = Movement->GetCurrentAcceleration() / Movement->GetMaxAcceleration() * Movement->GetMaxSpeed();
+		Closing = FMath::Max(Closing, FVector::DotProduct(Intended, ToTarget));
+	}
+
+	return Closing;
 }
 
 float ASubNpcCharacter::GetPlayerBumpSpeed(const APawn* Player)
@@ -1172,6 +1843,12 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	if (Now - LastReactionTime < ReactionCooldown)
 	{
 		return;
+	}
+
+	// 줄 서서 기다리던 중에 부딪혔으면 줄에서 빠진다. 반응이 끝나면 길로 돌아간다.
+	if (QueuedSpot.IsValid() && !OccupiedSpot)
+	{
+		LeaveSpotQueue();
 	}
 
 	// [설계] 반응은 **부딪힌 속도만으로** 고른다. 랜덤도, 무게·에너지 같은 다른 값도 없다.
@@ -1272,7 +1949,7 @@ void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 	const bool bPlayed = !AnimId.IsNone() && PlayNpcAnim(AnimId, /*bLoop=*/false);
 
 	{
-		const FString ReactionName = StaticEnum<ESubNpcReaction>()->GetDisplayNameTextByValue(static_cast<int64>(Reaction)).ToString();
+		const FString ReactionName = SubNpcBumpDebug::ReactionToString(Reaction);
 		const FString Result = AnimId.IsNone()
 			? TEXT("애니메이션 키 비어 있음")
 			: (bPlayed ? TEXT("재생 OK") : TEXT("재생 실패 - BP AnimLibrary에 이 키가 있는지 확인"));
@@ -1302,6 +1979,14 @@ void ASubNpcCharacter::EndReaction()
 	{
 		bResumeSpotAfterReaction = false;
 		CurrentActivity = ESubNpcActivity::AtSpot;
+
+		// 아직 설 자리로 걸어가던 중이었으면 마저 걸어간다. 동작은 도착해서 시작한다.
+		if (bApproachingSpot)
+		{
+			SetMovementState(ENpcMovementState::Walk);
+			return;
+		}
+
 		SetMovementState(ENpcMovementState::Interacting);
 
 		// 처음부터 다시 하지 않고 하던 단계를 이어서 재생한다.
@@ -1326,6 +2011,11 @@ void ASubNpcCharacter::EndReaction()
 	bResumeSpotAfterReaction = false;
 	CurrentActivity = ESubNpcActivity::Walking;
 	SetMovementState(ENpcMovementState::Walk);
+
+	// 차선 밖(줄 자리·스팟으로 가던 길)에서 반응했을 수 있으므로 걸어서 차선으로 돌아간다.
+	// 이미 차선 위에 있었다면 첫 틱에 바로 끝난다.
+	bApproachingSpot = false;
+	BeginRejoinPath();
 
 	// 비켰던 차선은 그대로 두고 계속 걷는다 (원래 자리로 홱 돌아오면 어색하다).
 	DodgeTargetOffset = LaneOffset;
@@ -1400,6 +2090,12 @@ void ASubNpcCharacter::Interact_Implementation(AActor* Interactor)
 		return;
 	}
 
+	// 줄 서서 기다리던 사람에게 말을 걸었으면 줄에서 빠진다. 대화가 끝나면 길로 돌아간다.
+	if (QueuedSpot.IsValid() && !OccupiedSpot)
+	{
+		LeaveSpotQueue();
+	}
+
 	// [버그 수정] 대화창이 떠 있는 동안 멈춰 선다.
 	// 예전에는 말을 걸어도 계속 걸어가서, 대사를 읽는 사이 화면 밖으로 사라졌다.
 	// 대화가 끝났는지는 Tick에서 확인하고, 끝나면 EndReaction이 하던 일로 돌려놓는다.
@@ -1441,11 +2137,188 @@ bool ASubNpcCharacter::PickBarkLine(FText& OutLine) const
 // 그룹
 // ---------------------------------------------------------------------------
 
+FVector ASubNpcCharacter::ResolveWorldBlocking(const FVector& From, const FVector& To, bool& bOutBlocked) const
+{
+	SUBNPC_PROFILE_SCOPE(WorldBlock);
+
+	bOutBlocked = false;
+
+	const UWorld* World = GetWorld();
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (SubNpcWorldBlock::Enabled == 0 || !World || !Capsule
+		|| (CurrentLodBand != ESubNpcLodBand::Near && CurrentLodBand != ESubNpcLodBand::Mid))
+	{
+		return To;
+	}
+
+	const FVector Delta = To - From;
+	if (Delta.SizeSquared2D() < FMath::Square(0.1f))
+	{
+		return To;
+	}
+
+	// 발밑의 계단·턱·바닥에 걸리지 않게 캡슐 아래쪽을 StepHeight만큼 들어 올려서 쓸어 본다.
+	// 높이는 지면 스냅이 따로 맞추므로 여기서는 수평으로 막히는지만 본다.
+	const float Radius = Capsule->GetScaledCapsuleRadius() * 0.9f;
+	const float HalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	const float SweepHalfHeight = FMath::Max(Radius, HalfHeight - SubNpcWorldBlock::StepHeight * 0.5f);
+	const FVector Lift(0.f, 0.f, SubNpcWorldBlock::StepHeight * 0.5f);
+	const FVector Start = FVector(From.X, From.Y, To.Z) + Lift;
+	const FVector End = To + Lift;
+
+	FCollisionObjectQueryParams Objects;
+	Objects.AddObjectTypesToQuery(ECC_WorldStatic);
+	Objects.AddObjectTypesToQuery(ECC_WorldDynamic);
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(SubNpcWorldBlock), /*bTraceComplex=*/false, this);
+	const FCollisionShape Shape = FCollisionShape::MakeCapsule(Radius, SweepHalfHeight);
+
+	// 오브젝트 타입 검사는 충돌 응답을 보지 않아서 트리거 박스 같은 겹침 전용 볼륨에도 걸린다.
+	// 걸린 것들 중 사람(Pawn)을 실제로 막는 것만 벽으로 친다.
+	auto SweepBlocking = [&](const FVector& A, const FVector& B, FHitResult& OutHit)
+	{
+		TArray<FHitResult> Hits;
+		World->SweepMultiByObjectType(Hits, A, B, FQuat::Identity, Objects, Shape, Params);
+		const FHitResult* Best = nullptr;
+		for (const FHitResult& H : Hits)
+		{
+			const UPrimitiveComponent* Comp = H.GetComponent();
+			if (!Comp || Comp->GetCollisionResponseToChannel(ECC_Pawn) != ECR_Block)
+			{
+				continue;
+			}
+			// 위를 향한 면은 걸을 수 있는 바닥·경사로다. 높이는 지면 스냅이 맞추므로 벽으로 치지 않는다.
+			if (H.ImpactNormal.Z > SubNpcWorldBlock::WalkableNormalZ)
+			{
+				continue;
+			}
+			if (!Best || H.Time < Best->Time)
+			{
+				Best = &H;
+			}
+		}
+		if (Best)
+		{
+			OutHit = *Best;
+			return true;
+		}
+		return false;
+	};
+
+	FHitResult Hit;
+	if (!SweepBlocking(Start, End, Hit))
+	{
+		return To;
+	}
+
+	// 이미 벽 안에 끼어 있으면 막지 않는다. 막으면 영영 못 빠져나온다.
+	if (Hit.bStartPenetrating)
+	{
+		return To;
+	}
+
+	bOutBlocked = true;
+
+	// 벽까지 가고, 남은 이동은 벽면을 따라 미끄러진다 (벽을 따라 걷는 그림).
+	const FVector HitPoint = Start + (End - Start) * Hit.Time - Lift;
+	const FVector Remaining = (End - Start) * (1.f - Hit.Time);
+	FVector Normal2D = Hit.ImpactNormal;
+	Normal2D.Z = 0.f;
+	if (!Normal2D.Normalize())
+	{
+		return HitPoint;
+	}
+	const FVector Slide = FVector::VectorPlaneProject(Remaining, Normal2D);
+
+	FHitResult SlideHit;
+	const FVector SlideStart = HitPoint + Lift + Normal2D * 0.5f;
+	if (SweepBlocking(SlideStart, SlideStart + Slide, SlideHit) && !SlideHit.bStartPenetrating)
+	{
+		return SlideStart + Slide * SlideHit.Time - Lift;
+	}
+	return SlideStart + Slide - Lift;
+}
+
+bool ASubNpcCharacter::StartGroupChat(float Duration, FName TalkAnimId, int32 MemberIndex, int32 MemberCount, float TurnLength,
+	ASubNpcCharacter* Partner)
+{
+	const UWorld* World = GetWorld();
+	if (!World || !IsWalkingOnPath() || TalkAnimId.IsNone())
+	{
+		return false;
+	}
+
+	// [변경] 예전에는 길에서 멈춰 서로 마주 보고 이야기했다. 걸음을 멈추면 뒤가 막히고
+	// 대화로도 잘 안 읽혀서, 이제는 걸으면서 이야기한다. 상체 슬롯에만 손짓을 얹으므로
+	// 하체는 그대로 걷는다 (ABP_Passerby의 본별 레이어 블렌딩, spine_01부터 위).
+	const float Now = World->GetTimeSeconds();
+	bGroupChatting = true;
+	bGroupChatGesturing = false;
+	GroupChatStartTime = Now;
+	GroupChatEndTime = Now + Duration;
+	GroupChatTurnLength = FMath::Max(0.5f, TurnLength);
+	GroupChatIndex = MemberIndex;
+	GroupChatCount = FMath::Max(1, MemberCount);
+	GroupChatAnimId = TalkAnimId;
+	GroupChatPartner = Partner;
+
+	TickGroupChat(Now);
+	return true;
+}
+
+void ASubNpcCharacter::TickGroupChat(float Now)
+{
+	if (!bGroupChatting)
+	{
+		return;
+	}
+
+	// 걷기를 그만뒀으면(스팟·반응·대화창) 일행 대화도 끝낸다. 상체 손짓이 그 동작 위에 얹히면 어색하다.
+	if (Now >= GroupChatEndTime || CurrentActivity != ESubNpcActivity::Walking)
+	{
+		StopGroupChat();
+		return;
+	}
+
+	// 번갈아 말한다. 한 사람씩 TurnLength초 동안 손짓하고 다음 사람에게 넘긴다.
+	// 모두 동시에 손짓하면 대화가 아니라 단체 체조처럼 보인다.
+	const int32 Turn = FMath::FloorToInt((Now - GroupChatStartTime) / GroupChatTurnLength);
+	const bool bMyTurn = (Turn % GroupChatCount) == GroupChatIndex;
+
+	if (bMyTurn && !bGroupChatGesturing)
+	{
+		bGroupChatGesturing = CharacterAnimationComponent
+			&& CharacterAnimationComponent->PlayAnimOnSlot(GroupChatAnimId, SubNpcGroupChat::UpperBodySlot, /*bLoop=*/true);
+	}
+	else if (!bMyTurn && bGroupChatGesturing)
+	{
+		bGroupChatGesturing = false;
+		if (CharacterAnimationComponent)
+		{
+			CharacterAnimationComponent->StopAnimOnSlot(SubNpcGroupChat::UpperBodySlot, SubNpcGroupChat::GestureBlendOut);
+		}
+	}
+}
+
+void ASubNpcCharacter::StopGroupChat()
+{
+	if (bGroupChatGesturing && CharacterAnimationComponent)
+	{
+		CharacterAnimationComponent->StopAnimOnSlot(SubNpcGroupChat::UpperBodySlot, SubNpcGroupChat::GestureBlendOut);
+	}
+	bGroupChatting = false;
+	bGroupChatGesturing = false;
+	GroupChatPartner = nullptr;
+}
+
 void ASubNpcCharacter::SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap, float InLaneOffset)
 {
 	GroupLeader = Leader;
 	GroupFollowGap = FollowGap;
-	LaneOffset = InLaneOffset;
+
+	// [변경] 차선 오프셋은 리더 기준 상대값이다. 예전에는 길 기준 절대값이라, 리더가 길 한쪽 끝에
+	// 있으면 일행이 반대쪽 끝에 배정돼 150cm씩 떨어져 걸었다 (일행으로 안 보였다).
+	GroupLaneOffset = InLaneOffset;
+	LaneOffset = Leader ? Leader->LaneOffset + InLaneOffset : InLaneOffset;
 
 	if (Leader)
 	{
@@ -1453,6 +2326,13 @@ void ASubNpcCharacter::SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap,
 		CurrentPath = Leader->CurrentPath;
 		bReversedOnPath = Leader->bReversedOnPath;
 		PathDistance = Leader->PathDistance - FollowGap;
-		WalkSpeed = Leader->WalkSpeed;
+
+		// 일행은 리더와 거의 같은 속도로 걷되 아주 조금씩 다르게 한다.
+		// 완전히 같으면 발걸음까지 똑같아 행진처럼 보인다. 벌어지는 건 위의 간격 보정이 잡아준다.
+		WalkSpeed = Leader->WalkSpeed * FMath::FRandRange(
+			1.f - SubNpcGroupTuning::MemberSpeedJitter, 1.f + SubNpcGroupTuning::MemberSpeedJitter);
+
+		// 리더와 같은 다음 경로·갈아탈 지점을 쓴다.
+		PlanNextPath();
 	}
 }

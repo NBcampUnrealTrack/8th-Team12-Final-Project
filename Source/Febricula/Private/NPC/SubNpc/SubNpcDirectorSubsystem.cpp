@@ -10,8 +10,17 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/NPCSetting.h"
+#include "HAL/FileManager.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/App.h"
+#include "Misc/DateTime.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
+#include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
+#include "NPC/SubNpc/SubNpcProfiling.h"
+#include "ProfilingDebugging/MiscTrace.h"
 
 // ---------------------------------------------------------------------------
 // 측정용 콘솔 변수
@@ -104,6 +113,177 @@ namespace SubNpcCrowdCVars
 	constexpr float PassHoldTime = 0.4f;
 
 	/**
+	 * 앞사람 실제 속도가 내 걸음의 이 비율보다 느리면 추월한다.
+	 * 0.95면 앞사람 때문에 5%만 느려져도 비켜 간다. 1에 바짝 붙이면 거의 같은 속도끼리도 차선을 바꿔 흔들린다.
+	 */
+	constexpr float OvertakeSlowerRatio = 0.95f;
+
+	/**
+	 * 1이면 앞사람 때문에 속도를 줄인 행인마다, 누구 때문에 줄였는지 선을 긋는다.
+	 *   빨강  = 빈 차선이 없어 뒤에서 기다리는 중 (병목)
+	 *   노랑  = 비켜서 추월하는 중
+	 *   흰색  = 앞사람이 충분히 빨라 그냥 따라가는 중
+	 *   하늘  = 같은 일행이라 대열 유지
+	 *   자홍  = 오래 막혀서 천천히 스치며 지나가는 중 (정체 해소)
+	 * 선 끝이 플레이어면 플레이어가 길을 막고 있는 것이다.
+	 */
+	/**
+	 * 1이면 PIE·게임 중에도 행인 경로를 그린다. 경로 스플라인과 방향 화살표는 에디터 전용이라
+	 * 게임 중에는 숨겨져서, 행인이 왜 그쪽으로 걷는지·길 폭이 어디까지인지 볼 수 없었다.
+	 *   흰색 = 경로 중심선, 초록 = 걸을 수 있는 폭(LaneHalfWidth), 회색 = 추월할 때 비집을 수 있는 최대 폭
+	 *   하늘 화살표 = 진행 방향, 빨간 X = 퇴장구(여기서 사라진다)
+	 */
+	static int32 DrawPaths = 0;
+	static FAutoConsoleVariableRef CVarDrawPaths(
+		TEXT("crowd.DrawPaths"),
+		DrawPaths,
+		TEXT("PIE·게임 중에도 행인 경로를 그린다. 흰색=중심선, 초록=걷는 폭, 회색=추월 최대 폭, 하늘=방향, 빨간 X=퇴장구."),
+		ECVF_Cheat);
+
+	/** 1이면 2초마다 정체 요약(감속 이유별 인원, 가장 많이 막는 상대)을 로그로 남긴다. 튜닝 중이라 기본으로 켜 둔다 */
+	static int32 LogBlock = 1;
+	static FAutoConsoleVariableRef CVarLogBlock(
+		TEXT("crowd.LogBlock"),
+		LogBlock,
+		TEXT("2초마다 정체 요약을 로그로 남긴다 (감속 이유별 인원, 가장 많이 막는 상대). 0이면 끈다."),
+		ECVF_Cheat);
+
+	static int32 DebugBlock = 0;
+	static FAutoConsoleVariableRef CVarDebugBlock(
+		TEXT("crowd.DebugBlock"),
+		DebugBlock,
+		TEXT("행인이 누구 때문에 느려졌는지 선으로 보여준다. 빨강=막혀서 대기, 노랑=추월 중, 흰색=따라감, 하늘=일행, 자홍=정체라 스치며 통과."),
+		ECVF_Cheat);
+
+	/**
+	 * 마주 오는 사람을 이 거리(cm) 앞에서부터 알아보고 각자 오른쪽으로 비킨다.
+	 * 옆 이동이 전진 거리에 묶여 있으므로, 붙은 뒤에 보면 비킬 틈이 없다.
+	 */
+	constexpr float HeadOnLookAhead = 400.f;
+
+	/**
+	 * 두 사람이 나란히 설 수 있는 최소 차선 간격 (cm). 캡슐 지름(약 68cm)보다 약간 크다.
+	 * 이보다 가까운 차선은 "같은 줄"로 보고, 비켜 갈 차선도 이만큼 떨어진 곳을 찾는다.
+	 */
+	constexpr float LaneClearance = 75.f;
+
+	/**
+	 * 비켜 갈 차선이 비었는지 볼 때, 내 바로 뒤(cm)에 있는 사람도 센다.
+	 * 옆이나 살짝 뒤에 붙어 걷는 사람 자리로 끼어들면 그 사람 몸을 뚫는다.
+	 */
+	constexpr float PassBehindWindow = 80.f;
+
+	/**
+	 * 병목에서 비집고 지나갈 때의 최소 차선 간격 (cm). 캡슐 지름(약 68cm)을 살짝 넘겨
+	 * 어깨가 닿을 듯 말 듯한 정도다. 이보다 좁으면 몸이 겹쳐 보인다.
+	 */
+	// [튜닝] 64 → 72. 캡슐 지름(약 68cm)보다 작으면 비집는 순간 몸이 겹쳤다. 겹침은 허용하지 않는다.
+	constexpr float SqueezeClearance = 72.f;
+
+	/** 비집고 지나갈 때 길 가장자리(LaneHalfWidth)를 넘어가도 되는 거리 (cm) */
+	constexpr float SqueezeOverflow = 45.f;
+
+	/** 플레이어와 몸이 닿았다고 보는 여유 (cm). 캡슐 반지름 합에 이만큼 더한 차선 간격 안이면 막힌 것 */
+	constexpr float PlayerBodyMargin = 8.f;
+
+	/** 이만큼(초) 거의 멈춰 서 있었으면 비킬 차선을 더 좁게(StallClearance)까지 찾는다 */
+	constexpr float StallRelaxTime = 1.5f;
+
+	/** 오래 막혔을 때 허용하는 최소 차선 간격 (cm) */
+	// [튜닝] 52 → 70. 오래 막혀도 몸이 겹치는 차선으로는 들어가지 않는다 (겹침 금지).
+	constexpr float StallClearance = 70.f;
+
+	/** 이만큼(초) 서 있었는데도 비킬 곳이 없으면 행인끼리는 천천히 스치며 지나간다 */
+	// [튜닝] 4 → 2. 4초씩 서 있으면 군중이 아니라 멈춘 것처럼 보였다.
+	constexpr float StallGiveUpTime = 2.f;
+
+	/** 그때의 걸음 배율. 빠르게 뚫으면 티가 나므로 아주 천천히 비집는다 */
+	constexpr float StallCreepScale = 0.3f;
+
+	/**
+	 * 다른 경로의 사람이 내 진행 방향과 이 내적보다 다르게 향하면(약 60도 이상) "가로질러 가는 사람"으로 보고
+	 * 바로 앞에서 부딪히기 직전일 때만 피한다. 모서리에서 꺾어 나가는 사람이 여기에 해당한다.
+	 */
+	constexpr float CrossingHeadingDot = 0.5f;
+
+	/**
+	 * 길로 합류할 때 비어 있어야 하는 구간 (cm). 합류 지점 기준으로,
+	 * 다가오는 사람이 이만큼 뒤(MergeClearAhead)에 있거나 이만큼 앞(MergeClearBehind)에 있으면 기다린다.
+	 */
+	constexpr float MergeClearAhead = 220.f;
+	constexpr float MergeClearBehind = 90.f;
+
+	/** 몸이 길 가장자리에서 이 거리(cm) 안으로 들어왔으면 이미 길 위로 보고 합류를 기다리지 않는다 */
+	constexpr float MergeOnPathTolerance = 25.f;
+
+	/** 길 밖에서 움직이는 사람이 이 거리(cm) 안, 앞쪽에 움직이는 사람이 있으면 잠깐 양보한다 */
+	constexpr float OffLaneYieldDistance = 85.f;
+
+	/** "앞쪽"으로 보는 각도 (진행 방향과의 내적). 0.4면 약 66도 안쪽 */
+	constexpr float OffLaneYieldFrontDot = 0.4f;
+
+	/** 일행 대화를 굴려보는 간격 (초). 리더마다 이 사이에서 랜덤 */
+	// [튜닝] 대화가 잘 안 보인다는 피드백으로 크게 늘렸다. 걸으면서 하므로 길을 막지 않는다.
+	constexpr float GroupChatIntervalMin = 2.f;
+	constexpr float GroupChatIntervalMax = 5.f;
+
+	/** 굴렸을 때 실제로 이야기를 시작할 확률 */
+	constexpr float GroupChatChance = 1.f;
+
+	/** 이야기하는 시간 (초) */
+	constexpr float GroupChatDurationMin = 6.f;
+	constexpr float GroupChatDurationMax = 10.f;
+
+	/** 리더에게서 이 거리(cm) 안에 있는 일행만 대화에 낀다. 떨어져 있는 사람까지 멈추면 어색하다 */
+	constexpr float GroupChatRadius = 300.f;
+
+	/**
+	 * 대화 손짓 애니메이션 (NPC 블루프린트 AnimLibrary 키). 상체 슬롯에만 얹으므로
+	 * 전신 동작이라도 걸으면서 팔·몸통만 움직인다.
+	 */
+	static const FName GroupTalkAnimId(TEXT("Group_Talk"));
+
+	/** 한 사람이 말하는(손짓하는) 시간 (초). 이만큼씩 번갈아 말한다 */
+	constexpr float GroupChatTurnLength = 2.5f;
+
+	/** 일행이 리더 옆에 서는 거리 (cm, 리더 차선 기준 좌우). 캡슐 지름(약 68cm)보다 작으면 어깨가 겹친다 */
+	// [튜닝] 45~55 → 72~80. 캡슐 지름보다 작아서 일행끼리 어깨가 파묻혀 보였다.
+	constexpr float GroupSideMin = 72.f;
+	constexpr float GroupSideMax = 80.f;
+
+	/** 첫 번째 일행의 앞뒤 간격 (cm). 0이면 리더와 완전히 나란히 걷는다 */
+	constexpr float GroupAbreastGapMax = 30.f;
+
+	/** 두 번째 이후 일행의 앞뒤 간격 (cm, 한 사람당) */
+	// [튜닝] 50~80 → 80~100. 같은 쪽 앞사람과 앞뒤로 겹치지 않게 캡슐 지름보다 크게 둔다.
+	constexpr float GroupBehindGapMin = 80.f;
+	constexpr float GroupBehindGapMax = 100.f;
+
+	/** 같은 일행 앞사람이 이 거리(cm) 안이면 몸이 닿는 것으로 보고 살짝 늦춘다. 대열 간격(50~80)보다 작아야 한다 */
+	constexpr float GroupBodyTouchDistance = 40.f;
+
+	/** 몸이 닿을 때의 걸음 배율. 세우지 않고 늦추기만 해서 대열이 끊기지 않게 한다 */
+	constexpr float GroupTouchSpeedScale = 0.6f;
+
+	/** 일행이 대열 간격보다 이만큼(cm) 더 뒤처지면 리더가 멈춰서 기다린다 */
+	constexpr float GroupWaitStartLag = 300.f;
+
+	/** 이만큼(cm) 안으로 따라오면 다시 걷는다. 시작 기준보다 작아야 서다 가다를 반복하지 않는다 */
+	constexpr float GroupWaitResumeLag = 100.f;
+
+	/** 이보다 오래(초) 기다렸는데도 안 오면 포기하고 걷는다 (일행이 스팟에 오래 머무는 경우 등) */
+	constexpr float GroupWaitMaxTime = 8.f;
+
+	/** 포기한 뒤 이만큼(초)은 다시 기다리지 않는다 */
+	constexpr float GroupWaitCooldown = 6.f;
+
+	/**
+	 * 기다리는 동안 리더의 걸음 배율. 0이면 길 한가운데 서서 정체를 만든다.
+	 * [튜닝] 0.2 → 0.6. 너무 느리면 뒤 인파가 리더 뒤로 몰려 정체가 번졌다. 늦춰 걷는 정도로만 기다린다.
+	 */
+	constexpr float GroupWaitWalkScale = 0.6f;
+
+	/**
 	 * 플레이어를 이 거리(cm) 안에서 인지하고 피한다.
 	 *
 	 * [왜 따로 필요한가] 회피 계산은 ASubNpcCharacter끼리만 돈다. 플레이어는
@@ -149,10 +329,844 @@ namespace SubNpcCrowdCVars
 		ECVF_Cheat);
 }
 
+/**
+ * 몸 겹침 금지 (최종 안전장치).
+ *
+ * 차선 계획은 "앞이 막히면 기다리거나 비켜 간다"를 정할 뿐이고, 정체 해소(스치며 통과)·비집기·
+ * 일행 대열은 일부러 캡슐 지름(약 68cm)보다 가까이 붙는 걸 허용했다. 오르막처럼 다 같이
+ * 느려지는 곳에서 이게 한꺼번에 발동해 사람들이 서로 몸을 뚫고 뭉쳐 보였다.
+ *
+ * 여기서는 이유를 따지지 않는다. 두 몸이 닿을 거리면 경로상 뒤에 있는 쪽을 세운다.
+ * 옆으로 비켜서는 것(추월 차선·밀어내기)은 그대로 허용하므로 비킬 자리가 있으면 비켜서 빠진다.
+ * 감속 요청은 최솟값을 따르므로 다른 어떤 요청(스치며 통과 등)보다 이 정지가 우선한다.
+ */
+/**
+ * 겹침 검사 (crowd.CheckOverlap).
+ *
+ * 몸 겹침 금지가 제대로 동작하는지 눈 대신 숫자로 확인한다. 인원을 0 → 100으로 늘리면서
+ * 가까운(Near/Mid) 행인·플레이어끼리 캡슐이 실제로 파고든 쌍을 세고, 2초마다 로그로 남긴다.
+ * 걷는 사람만이 아니라 스팟에 서 있는 사람·반응 중인 사람도 센다 - 어디서 겹치든 화면에서는 똑같이 보인다.
+ *
+ *   [CrowdOverlap] 활성 60명 | 2초 중 12% 프레임에서 겹침, 최대 동시 2쌍 | 가장 깊은 겹침 18cm: A[...] <-> B[...]
+ *
+ * crowd.DebugOverlap 1이면 겹친 쌍을 빨간 선으로 그린다.
+ */
+namespace SubNpcOverlapCheck
+{
+	static int32 Enabled = 1;
+	static FAutoConsoleVariableRef CVarCheckOverlap(
+		TEXT("crowd.CheckOverlap"),
+		Enabled,
+		TEXT("행인끼리(플레이어 포함) 몸이 겹치는지 매 프레임 검사해서 2초마다 [CrowdOverlap] 로그로 남긴다. 0이면 끈다."),
+		ECVF_Cheat);
+
+	static int32 DebugDraw = 0;
+	static FAutoConsoleVariableRef CVarDebugOverlap(
+		TEXT("crowd.DebugOverlap"),
+		DebugDraw,
+		TEXT("겹친 쌍을 빨간 선으로 그린다."),
+		ECVF_Cheat);
+
+	/** 이만큼(cm) 이상 파고들어야 겹침으로 센다. 프레임 사이 오차로 살짝 닿는 건 보이지 않는다 */
+	constexpr float Tolerance = 3.f;
+
+	constexpr float LogInterval = 2.f;
+
+	struct FWindow
+	{
+		float StartTime = -1.f;
+		int32 Frames = 0;
+		int32 OverlapFrames = 0;
+		int32 MaxPairs = 0;
+		float WorstDepth = 0.f;
+		FString WorstDesc;
+	};
+	static FWindow Window;
+
+	/** crowd.Bench 단계 요약용 (측정 구간 동안 누적) */
+	struct FTotals
+	{
+		int32 Frames = 0;
+		int32 OverlapFrames = 0;
+		int32 MaxPairs = 0;
+		float WorstDepth = 0.f;
+	};
+	static FTotals Totals;
+
+	static FString Describe(const ASubNpcCharacter* Npc)
+	{
+		if (!Npc)
+		{
+			return TEXT("플레이어");
+		}
+		const TCHAR* State =
+			Npc->IsRejoiningPath() ? TEXT("길로합류중") :
+			Npc->IsWalkingOnPath() ? TEXT("걷기") :
+			Npc->IsMovingOffLane() ? TEXT("스팟·줄로이동") :
+			Npc->GetActivity() == ESubNpcActivity::AtSpot ? TEXT("스팟") :
+			Npc->GetActivity() == ESubNpcActivity::Reacting ? TEXT("반응") : TEXT("기타");
+		return FString::Printf(TEXT("%s[%s %s%s 차선%.0f 속도%.0f%%%s]"),
+			*GetNameSafe(Npc), State, *GetNameSafe(Npc->GetCurrentPath()).Right(10),
+			Npc->IsReversedOnPath() ? TEXT("/역") : TEXT(""), Npc->GetLaneOffset(),
+			Npc->GetCurrentMoveSpeed() / FMath::Max(1.f, Npc->GetWalkSpeed()) * 100.f,
+			Npc->GetGroupLeader() ? TEXT("/일행") : TEXT(""));
+	}
+
+	static void Run(const UWorld* World, const TArray<TObjectPtr<ASubNpcCharacter>>& Npcs)
+	{
+		if (Enabled == 0 || !World)
+		{
+			return;
+		}
+		const float Now = World->GetTimeSeconds();
+		if (Window.StartTime < 0.f || Now < Window.StartTime)
+		{
+			Window = FWindow();
+			Window.StartTime = Now;
+		}
+
+		struct FBody
+		{
+			const ASubNpcCharacter* Npc = nullptr;
+			FVector Loc = FVector::ZeroVector;
+			float Radius = 0.f;
+		};
+		TArray<FBody, TInlineAllocator<128>> Bodies;
+		for (const ASubNpcCharacter* Npc : Npcs)
+		{
+			if (!IsValid(Npc) || Npc->IsPooled() || Npc->IsHidden())
+			{
+				continue;
+			}
+			const ESubNpcLodBand Band = Npc->GetLodBand();
+			if (Band != ESubNpcLodBand::Near && Band != ESubNpcLodBand::Mid)
+			{
+				continue;
+			}
+			Bodies.Add({ Npc, Npc->GetActorLocation(), Npc->GetSimpleCollisionRadius() });
+		}
+		if (const APlayerController* PC = World->GetFirstPlayerController())
+		{
+			if (const APawn* Player = PC->GetPawn())
+			{
+				Bodies.Add({ nullptr, Player->GetActorLocation(), Player->GetSimpleCollisionRadius() });
+			}
+		}
+
+		int32 Pairs = 0;
+		for (int32 i = 0; i < Bodies.Num(); ++i)
+		{
+			for (int32 j = i + 1; j < Bodies.Num(); ++j)
+			{
+				const FBody& A = Bodies[i];
+				const FBody& B = Bodies[j];
+				if (FMath::Abs(A.Loc.Z - B.Loc.Z) > 150.f)
+				{
+					continue;   // 경사로 위·아래, 다른 층
+				}
+				const float Depth = A.Radius + B.Radius - FVector::Dist2D(A.Loc, B.Loc);
+				if (Depth < Tolerance)
+				{
+					continue;
+				}
+				++Pairs;
+				if (Depth > Window.WorstDepth)
+				{
+					Window.WorstDepth = Depth;
+					Window.WorstDesc = FString::Printf(TEXT("%s <-> %s @(%.0f,%.0f,%.0f)"),
+						*Describe(A.Npc), *Describe(B.Npc), A.Loc.X, A.Loc.Y, A.Loc.Z);
+				}
+				Totals.WorstDepth = FMath::Max(Totals.WorstDepth, Depth);
+#if !UE_BUILD_SHIPPING
+				if (DebugDraw != 0)
+				{
+					const FVector Up(0.f, 0.f, 120.f);
+					DrawDebugLine(World, A.Loc + Up, B.Loc + Up, FColor::Red, false, 0.f, 0, 4.f);
+					DrawDebugSphere(World, (A.Loc + B.Loc) * 0.5f + Up, 15.f, 8, FColor::Red, false, 0.f);
+				}
+#endif
+			}
+		}
+
+		++Window.Frames;
+		++Totals.Frames;
+		if (Pairs > 0)
+		{
+			++Window.OverlapFrames;
+			++Totals.OverlapFrames;
+		}
+		Window.MaxPairs = FMath::Max(Window.MaxPairs, Pairs);
+		Totals.MaxPairs = FMath::Max(Totals.MaxPairs, Pairs);
+
+		if (Now - Window.StartTime >= LogInterval)
+		{
+			if (Window.OverlapFrames > 0)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | %.1f초 중 %.0f%% 프레임에서 겹침, 최대 동시 %d쌍 | 가장 깊은 겹침 %.0fcm: %s"),
+					Npcs.Num(), Bodies.Num(), Now - Window.StartTime,
+					100.f * Window.OverlapFrames / FMath::Max(1, Window.Frames), Window.MaxPairs,
+					Window.WorstDepth, *Window.WorstDesc);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Log, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | 겹침 없음"), Npcs.Num(), Bodies.Num());
+			}
+			Window = FWindow();
+			Window.StartTime = Now;
+		}
+	}
+}
+
+namespace SubNpcBodySeparation
+{
+	/** 캡슐 반지름 합에 더하는 여유 (cm) */
+	constexpr float Margin = 4.f;
+
+	/** 내 진행 방향 기준 이 내적보다 앞에 있으면 "앞사람"이다 (약 72도 안쪽) */
+	constexpr float FrontDot = 0.3f;
+
+	/** 같은 길에서 겹쳤을 때 옆으로 떼어내는 세기 (cm, 회피 밀어내기에 더한다) */
+	constexpr float AbreastPush = 30.f;
+
+	static void Enforce(const UWorld* World, const TArray<TObjectPtr<ASubNpcCharacter>>& Npcs)
+	{
+		struct FBody
+		{
+			ASubNpcCharacter* Npc = nullptr;   // nullptr이면 플레이어
+			FVector Loc = FVector::ZeroVector;
+			FVector Fwd = FVector::ZeroVector;
+			float Radius = 0.f;
+			bool bCanMove = false;
+		};
+
+		TArray<FBody, TInlineAllocator<64>> Bodies;
+		for (ASubNpcCharacter* Npc : Npcs)
+		{
+			if (!IsValid(Npc) || !(Npc->IsBlockingOnPath() || Npc->IsMovingOffLane()))
+			{
+				continue;
+			}
+			const ESubNpcLodBand Band = Npc->GetLodBand();
+			if (Band != ESubNpcLodBand::Near && Band != ESubNpcLodBand::Mid)
+			{
+				continue;
+			}
+			FBody& Body = Bodies.AddDefaulted_GetRef();
+			Body.Npc = Npc;
+			Body.Loc = Npc->GetActorLocation();
+			Body.Fwd = Npc->GetActorForwardVector().GetSafeNormal2D();
+			Body.Radius = Npc->GetSimpleCollisionRadius();
+			Body.bCanMove = Npc->IsWalkingOnPath();
+		}
+
+		if (const APlayerController* PC = World ? World->GetFirstPlayerController() : nullptr)
+		{
+			if (const APawn* Player = PC->GetPawn())
+			{
+				FBody& Body = Bodies.AddDefaulted_GetRef();
+				Body.Loc = Player->GetActorLocation();
+				Body.Radius = Player->GetSimpleCollisionRadius();
+			}
+		}
+
+		for (int32 i = 0; i < Bodies.Num(); ++i)
+		{
+			const FBody& A = Bodies[i];
+			for (int32 j = i + 1; j < Bodies.Num(); ++j)
+			{
+				const FBody& B = Bodies[j];
+				const float MinSep = A.Radius + B.Radius + Margin;
+
+				// 높이 차가 크면(경사로 위·아래) 다른 층이다.
+				if (FMath::Abs(A.Loc.Z - B.Loc.Z) > 150.f)
+				{
+					continue;
+				}
+				const FVector AB = FVector(B.Loc.X - A.Loc.X, B.Loc.Y - A.Loc.Y, 0.f);
+				const float DistSq = AB.SizeSquared();
+				if (DistSq >= FMath::Square(MinSep) || DistSq < KINDA_SMALL_NUMBER)
+				{
+					continue;
+				}
+				const FVector Dir = AB / FMath::Sqrt(DistSq);
+
+				// 누가 양보할지는 "경로상 누가 뒤에 있나"로 정한다.
+				// [버그 수정] 예전에는 몸이 향한 방향으로 앞사람을 정했다. 굽은 곳에서는 서로 몸이 향한 쪽에
+				// 다른 사람이 있어 A→B→C→A 순환으로 다 같이 멈췄고, 영영 풀리지 않았다
+				// (로그: C 경로 굽은 곳에서 50명 넘게 10~28초 정지, 이유는 "정체스침"인데 속도 0%).
+				// 경로 진행 순서는 순환이 없다 - 맨 앞사람은 절대 멈추지 않으니 줄은 반드시 풀린다.
+				int32 Order = 0;   // -1: A가 뒤 (A 양보), +1: B가 뒤 (B 양보), 0: 순서를 정할 수 없음
+				if (A.Npc && B.Npc && A.bCanMove && B.bCanMove)
+				{
+					const ANpcCrowdPath* PathA = A.Npc->GetCurrentPath();
+					const ANpcCrowdPath* PathB = B.Npc->GetCurrentPath();
+					auto FeedsInto = [](const ANpcCrowdPath* From, const ANpcCrowdPath* To)
+					{
+						for (const FNpcPathExit& Exit : From->GetExits())
+						{
+							if (Exit.NextPath == To)
+							{
+								return true;
+							}
+						}
+						return false;
+					};
+					if (PathA && PathA == PathB && A.Npc->IsReversedOnPath() == B.Npc->IsReversedOnPath())
+					{
+						const float Along = A.Npc->IsReversedOnPath() ? -1.f : 1.f;
+						const float Lead = (B.Npc->GetPathDistance() - A.Npc->GetPathDistance()) * Along;
+						Order = (FMath::Abs(Lead) > KINDA_SMALL_NUMBER)
+							? (Lead > 0.f ? -1 : 1)
+							: ((GetTypeHash(A.Npc->GetFName()) < GetTypeHash(B.Npc->GetFName())) ? -1 : 1);
+					}
+					else if (PathA && PathB && FeedsInto(PathA, PathB))
+					{
+						Order = -1;
+					}
+					else if (PathA && PathB && FeedsInto(PathB, PathA))
+					{
+						Order = 1;
+					}
+				}
+
+				if (Order != 0)
+				{
+					// 일행이 길 폭에 눌려 나란히 겹쳤을 때도 이 규칙으로 뒤쪽이 물러나 한 줄이 된다.
+					(Order < 0 ? A.Npc : B.Npc)->RequestSlowDown(0.f);
+				}
+				else
+				{
+					// 순서를 정할 수 없는 상대(플레이어, 마주 오는 사람, 스팟으로 가는 사람)는
+					// 그쪽을 향해 걷고 있는 쪽이 선다. 마주 오면 둘 다 서서 옆으로 비켜 간다.
+					if (A.bCanMove && FVector::DotProduct(A.Fwd, Dir) > FrontDot)
+					{
+						A.Npc->RequestSlowDown(0.f);
+					}
+					if (B.bCanMove && FVector::DotProduct(B.Fwd, -Dir) > FrontDot)
+					{
+						B.Npc->RequestSlowDown(0.f);
+					}
+				}
+
+				if (A.Npc && B.Npc && A.Npc->GetCurrentPath() == B.Npc->GetCurrentPath() && A.Npc->GetCurrentPath())
+				{
+					const float Sign = (A.Npc->GetLaneOffset() <= B.Npc->GetLaneOffset()) ? -1.f : 1.f;
+					A.Npc->AddAvoidanceNudge(Sign * AbreastPush);
+					B.Npc->AddAvoidanceNudge(-Sign * AbreastPush);
+				}
+			}
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 성능 측정 (crowd.Bench)
+//
+// Mass로 옮기기 전후를 같은 방식으로 비교하려고 만든 자동 측정이다.
+// 인원을 단계별로 바꿔 가며, 각 단계마다 안정될 때까지 기다린 뒤 일정 시간 동안
+//   - 프레임 시간 (평균 / p95 / p99)
+//   - 군중 구간별 시간 (SubNpcProfiling의 구간들)
+// 을 모아서 요약 CSV와 로그로 남긴다. 단계마다 CSV 프로파일러 캡처도 따로 남기므로
+// 게임/렌더/GPU 스레드 시간은 그 파일에서 본다 (Saved/Profiling/CSV).
+//
+//   crowd.Bench 0 30 60 100 150          인원별로 차례대로 측정
+//   crowd.Bench 60 100 secs=30 warmup=8 label=LodOff
+//   crowd.BenchStop                      중단 (인원 설정을 원래대로 되돌린다)
+//
+// [측정할 때] PIE보다 Standalone(-game)이 정확하다. 카메라를 고정하고, stat 명령은 끈다
+// (stat 표시 자체가 비용이라 결과를 흐린다).
+// ---------------------------------------------------------------------------
+
+CSV_DEFINE_CATEGORY(Crowd, true);
+
+namespace SubNpcProfiling
+{
+	bool bRecording = false;
+	uint64 SectionCycles[static_cast<int32>(ESection::Count)] = {};
+
+	const TCHAR* GetSectionName(ESection Section)
+	{
+		switch (Section)
+		{
+		case ESection::PathFollow:     return TEXT("PathFollow");
+		case ESection::GroundSnap:     return TEXT("GroundSnap");
+		case ESection::WorldBlock:     return TEXT("WorldBlock");
+		case ESection::Avoidance:      return TEXT("Avoidance");
+		case ESection::BodySeparation: return TEXT("BodySeparation");
+		case ESection::GroupLogic:     return TEXT("GroupLogic");
+		case ESection::LodSlice:       return TEXT("LodSlice");
+		default:                       return TEXT("?");
+		}
+	}
+}
+
+/** 측정 중 스포너 목표 인원 덮어쓰기. -1이면 스포너 설정대로 (NpcCrowdSpawner.cpp가 읽는다) */
+int32 GSubNpcBenchTargetOverride = -1;
+
+namespace SubNpcBench
+{
+	using SubNpcProfiling::ESection;
+	constexpr int32 NumSections = static_cast<int32>(ESection::Count);
+
+	enum class EPhase : uint8 { Idle, Settling, Recording };
+
+	struct FResult
+	{
+		int32 Requested = 0;
+		float AvgActive = 0.f;
+		float AvgNear = 0.f;
+		int32 Frames = 0;
+		float AvgMs = 0.f;
+		float P95Ms = 0.f;
+		float P99Ms = 0.f;
+		float SectionMs[NumSections] = {};
+	};
+
+	struct FState
+	{
+		EPhase Phase = EPhase::Idle;
+		TWeakObjectPtr<UWorld> World;
+		TArray<int32> Counts;
+		int32 Step = -1;
+		float PhaseTime = 0.f;
+		float LastApplyTime = 0.f;
+		float WarmupSeconds = 5.f;
+		float RecordSeconds = 20.f;
+		FString Label = TEXT("Base");
+		FString Stamp;
+		int32 SavedMaxActive = -1;
+
+		/** 측정 동안 끈 프레임 제한 (끝나면 되돌린다) */
+		FString SavedMaxFPS;
+		FString SavedVSync;
+		FString SavedVSyncEditor;
+		FString SavedSmoothFrameRate;
+
+		TArray<float> FrameMs;
+		double ActiveSum = 0.0;
+		double NearSum = 0.0;
+		TArray<FResult> Results;
+	};
+	static FState State;
+
+	static float Percentile(TArray<float> Values, float P)
+	{
+		if (Values.Num() == 0)
+		{
+			return 0.f;
+		}
+		Values.Sort();
+		const int32 Index = FMath::Clamp(FMath::CeilToInt(P * Values.Num()) - 1, 0, Values.Num() - 1);
+		return Values[Index];
+	}
+
+	/**
+	 * 프레임 제한을 끈다. 첫 측정에서 100명일 때 프레임이 정확히 16.67ms(60 FPS)로 나왔다 -
+	 * 수직동기·프레임 제한에 걸리면 여유가 얼마나 남았는지 알 수 없다.
+	 */
+	static void DisableFrameLimit()
+	{
+		IConsoleManager& Console = IConsoleManager::Get();
+		auto Override = [&Console](const TCHAR* Name, FString& OutSaved, const TCHAR* Value)
+		{
+			if (IConsoleVariable* Var = Console.FindConsoleVariable(Name))
+			{
+				OutSaved = Var->GetString();
+				Var->Set(Value, ECVF_SetByConsole);
+			}
+		};
+		Override(TEXT("t.MaxFPS"), State.SavedMaxFPS, TEXT("0"));
+		Override(TEXT("r.VSync"), State.SavedVSync, TEXT("0"));
+		// PIE는 에디터 뷰포트에서 돌아서 r.VSync가 아니라 이 값을 따른다 (두 번째 측정도 60 FPS에 묶였다).
+		Override(TEXT("r.VSyncEditor"), State.SavedVSyncEditor, TEXT("0"));
+		Override(TEXT("r.SmoothFrameRate"), State.SavedSmoothFrameRate, TEXT("0"));
+	}
+
+	static void RestoreFrameLimit()
+	{
+		IConsoleManager& Console = IConsoleManager::Get();
+		auto Restore = [&Console](const TCHAR* Name, const FString& Saved)
+		{
+			IConsoleVariable* Var = Console.FindConsoleVariable(Name);
+			if (Var && !Saved.IsEmpty())
+			{
+				Var->Set(*Saved, ECVF_SetByConsole);
+			}
+		};
+		Restore(TEXT("t.MaxFPS"), State.SavedMaxFPS);
+		Restore(TEXT("r.VSync"), State.SavedVSync);
+		Restore(TEXT("r.VSyncEditor"), State.SavedVSyncEditor);
+		Restore(TEXT("r.SmoothFrameRate"), State.SavedSmoothFrameRate);
+	}
+
+	/** 인원을 N명으로 맞춘다. 풀이 모자라면 늘리고, 넘치면 바로 회수하고, 모자라면 바로 채운다 */
+	static void ApplyCount(USubNpcDirectorSubsystem* Director, UWorld* World, int32 N)
+	{
+		GSubNpcBenchTargetOverride = N;
+		Director->SetMaxActiveNpcs(N);
+
+		TArray<ASubNpcCharacter*> Active;
+		UClass* NpcClass = nullptr;
+		for (TActorIterator<ASubNpcCharacter> It(World); It; ++It)
+		{
+			NpcClass = NpcClass ? NpcClass : It->GetClass();
+			if (!It->IsPooled())
+			{
+				Active.Add(*It);
+			}
+		}
+
+		const int32 Have = Director->GetActiveCount() + Director->GetPooledCount();
+		if (Have < N && NpcClass)
+		{
+			Director->PrewarmPool(NpcClass, N - Have);
+		}
+
+		for (int32 i = N; i < Active.Num(); ++i)
+		{
+			Director->ReturnToPool(Active[i]);
+		}
+
+		for (TActorIterator<ANpcCrowdSpawner> It(World); It; ++It)
+		{
+			It->FillImmediately();
+			break;
+		}
+	}
+
+	static void BeginRecord(int32 N)
+	{
+		State.FrameMs.Reset();
+		State.ActiveSum = 0.0;
+		State.NearSum = 0.0;
+		FMemory::Memzero(SubNpcProfiling::SectionCycles, sizeof(SubNpcProfiling::SectionCycles));
+		SubNpcOverlapCheck::Totals = SubNpcOverlapCheck::FTotals();
+		SubNpcProfiling::bRecording = true;
+
+		TRACE_BOOKMARK(TEXT("CrowdBench %s N=%d 시작"), *State.Label, N);
+		CSV_EVENT(Crowd, TEXT("Bench N=%d"), N);
+#if CSV_PROFILER
+		FCsvProfiler::Get()->BeginCapture(-1, FString(),
+			FString::Printf(TEXT("CrowdBench_%s_%s_N%03d.csv"), *State.Label, *State.Stamp, N));
+#endif
+	}
+
+	static void EndRecord(int32 N)
+	{
+		// 캡처는 여기서 끝낸다. Finish가 다시 끝내지 않게 단계를 먼저 바꿔 둔다.
+		State.Phase = EPhase::Settling;
+		SubNpcProfiling::bRecording = false;
+#if CSV_PROFILER
+		FCsvProfiler::Get()->EndCapture();
+#endif
+		TRACE_BOOKMARK(TEXT("CrowdBench %s N=%d 끝"), *State.Label, N);
+
+		FResult& R = State.Results.AddDefaulted_GetRef();
+		R.Requested = N;
+		R.Frames = State.FrameMs.Num();
+		if (R.Frames > 0)
+		{
+			float Sum = 0.f;
+			for (float Ms : State.FrameMs)
+			{
+				Sum += Ms;
+			}
+			R.AvgMs = Sum / R.Frames;
+			R.P95Ms = Percentile(State.FrameMs, 0.95f);
+			R.P99Ms = Percentile(State.FrameMs, 0.99f);
+			R.AvgActive = static_cast<float>(State.ActiveSum / R.Frames);
+			R.AvgNear = static_cast<float>(State.NearSum / R.Frames);
+			for (int32 s = 0; s < NumSections; ++s)
+			{
+				R.SectionMs[s] = static_cast<float>(FPlatformTime::ToMilliseconds64(SubNpcProfiling::SectionCycles[s]) / R.Frames);
+			}
+		}
+
+		// 에디터 창이 포커스를 잃으면 "백그라운드에서 CPU 덜 쓰기"로 3 FPS(333ms)에 묶인다.
+		// 첫 측정의 0명·30명 단계가 이것 때문에 쓸 수 없는 값이 됐다.
+		if (R.P95Ms > 250.f)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[CrowdBench] N=%d 측정 중 프레임이 3 FPS 근처로 묶였습니다 - 창이 포커스를 잃은 것 같습니다. ")
+				TEXT("이 단계 값은 버리고, 측정 중에는 게임 창을 클릭해 둔 채 두세요 ")
+				TEXT("(또는 에디터 환경설정 > 일반 > 성능 > '백그라운드에 있을 때 CPU 사용량 줄이기'를 끄세요)."), N);
+		}
+
+		FString Sections;
+		for (int32 s = 0; s < NumSections; ++s)
+		{
+			Sections += FString::Printf(TEXT(" %s=%.3f"), SubNpcProfiling::GetSectionName(static_cast<ESection>(s)), R.SectionMs[s]);
+		}
+		UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %s N=%d (실제 평균 %.0f명, 가까움 %.0f명, %d프레임) | 프레임 평균 %.2fms p95 %.2fms p99 %.2fms (%.0f FPS) | 군중 구간(ms/프레임):%s"),
+			*State.Label, N, R.AvgActive, R.AvgNear, R.Frames, R.AvgMs, R.P95Ms, R.P99Ms,
+			R.AvgMs > 0.f ? 1000.f / R.AvgMs : 0.f, *Sections);
+
+		const SubNpcOverlapCheck::FTotals& Overlap = SubNpcOverlapCheck::Totals;
+		if (SubNpcOverlapCheck::Enabled != 0)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %s N=%d 겹침: %s (겹친 프레임 %.1f%%, 최대 동시 %d쌍, 가장 깊은 %.0fcm)"),
+				*State.Label, N, Overlap.OverlapFrames > 0 ? TEXT("있음") : TEXT("없음"),
+				100.f * Overlap.OverlapFrames / FMath::Max(1, Overlap.Frames), Overlap.MaxPairs, Overlap.WorstDepth);
+		}
+	}
+
+	static void Finish(USubNpcDirectorSubsystem* Director, bool bAborted)
+	{
+		if (State.Phase == EPhase::Recording)
+		{
+			SubNpcProfiling::bRecording = false;
+#if CSV_PROFILER
+			FCsvProfiler::Get()->EndCapture();
+#endif
+		}
+
+		GSubNpcBenchTargetOverride = -1;
+		if (Director && State.SavedMaxActive >= 0)
+		{
+			Director->SetMaxActiveNpcs(State.SavedMaxActive);
+		}
+
+		if (State.Results.Num() > 0)
+		{
+			FString Csv = TEXT("Label,N,AvgActive,AvgNear,Frames,AvgMs,P95Ms,P99Ms,FPS");
+			for (int32 s = 0; s < NumSections; ++s)
+			{
+				Csv += FString::Printf(TEXT(",%sMs"), SubNpcProfiling::GetSectionName(static_cast<ESection>(s)));
+			}
+			Csv += TEXT("\n");
+
+			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] ===== 요약 (%s) ====="), *State.Label);
+			UE_LOG(LogTemp, Log, TEXT("[CrowdBench]    N | 평균ms |  p95ms |  p99ms |   FPS | 군중합계ms | 경로이동 | 회피 | 겹침금지"));
+			for (const FResult& R : State.Results)
+			{
+				Csv += FString::Printf(TEXT("%s,%d,%.1f,%.1f,%d,%.3f,%.3f,%.3f,%.1f"),
+					*State.Label, R.Requested, R.AvgActive, R.AvgNear, R.Frames, R.AvgMs, R.P95Ms, R.P99Ms,
+					R.AvgMs > 0.f ? 1000.f / R.AvgMs : 0.f);
+				for (int32 s = 0; s < NumSections; ++s)
+				{
+					Csv += FString::Printf(TEXT(",%.4f"), R.SectionMs[s]);
+				}
+				Csv += TEXT("\n");
+
+				// PathFollow가 GroundSnap·WorldBlock을 포함하므로 합계에서는 빼고 더한다.
+				const float CrowdTotal = R.SectionMs[static_cast<int32>(ESection::PathFollow)]
+					+ R.SectionMs[static_cast<int32>(ESection::Avoidance)]
+					+ R.SectionMs[static_cast<int32>(ESection::BodySeparation)]
+					+ R.SectionMs[static_cast<int32>(ESection::GroupLogic)]
+					+ R.SectionMs[static_cast<int32>(ESection::LodSlice)];
+				UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %4d | %6.2f | %6.2f | %6.2f | %5.0f | %10.3f | %8.3f | %4.3f | %8.3f"),
+					R.Requested, R.AvgMs, R.P95Ms, R.P99Ms, R.AvgMs > 0.f ? 1000.f / R.AvgMs : 0.f, CrowdTotal,
+					R.SectionMs[static_cast<int32>(ESection::PathFollow)],
+					R.SectionMs[static_cast<int32>(ESection::Avoidance)],
+					R.SectionMs[static_cast<int32>(ESection::BodySeparation)]);
+			}
+
+			const FString Path = FPaths::ProjectSavedDir() / TEXT("Profiling/CrowdBench")
+				/ FString::Printf(TEXT("Summary_%s_%s.csv"), *State.Label, *State.Stamp);
+			FFileHelper::SaveStringToFile(Csv, *Path, FFileHelper::EEncodingOptions::ForceUTF8);
+			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] 요약 파일: %s"), *FPaths::ConvertRelativePathToFull(Path));
+			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] 단계별 CSV 캡처(게임/렌더/GPU 스레드 포함): %s"),
+				*FPaths::ConvertRelativePathToFull(FPaths::ProfilingDir() / TEXT("CSV")));
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %s"), bAborted ? TEXT("중단했습니다.") : TEXT("측정을 마쳤습니다."));
+		RestoreFrameLimit();
+		State = FState();
+	}
+
+	/** Director가 매 프레임 부른다 */
+	static void Tick(USubNpcDirectorSubsystem* Director, const TArray<TObjectPtr<ASubNpcCharacter>>& ActiveNpcs)
+	{
+		if (State.Phase == EPhase::Idle)
+		{
+			return;
+		}
+		UWorld* World = State.World.Get();
+		if (!World || World != Director->GetWorld())
+		{
+			return;
+		}
+
+		// 실제 프레임 간격 (타임 딜레이션·일시정지와 무관하게 벽시계 기준).
+		const float FrameSeconds = static_cast<float>(FApp::GetDeltaTime());
+		State.PhaseTime += FrameSeconds;
+		const int32 N = State.Counts[State.Step];
+
+		if (State.Phase == EPhase::Settling)
+		{
+			// 회수가 늦게 끝나거나 풀에서 덜 나왔으면 다시 맞춘다 (스포너는 타이머로만 채운다).
+			// 매 프레임 하면 그 자체가 비용이라 0.5초에 한 번만 본다.
+			if (Director->GetActiveCount() != N && State.PhaseTime - State.LastApplyTime >= 0.5f)
+			{
+				State.LastApplyTime = State.PhaseTime;
+				ApplyCount(Director, World, N);
+			}
+			if (State.PhaseTime >= State.WarmupSeconds)
+			{
+				State.Phase = EPhase::Recording;
+				State.PhaseTime = 0.f;
+				BeginRecord(N);
+			}
+			return;
+		}
+
+		State.FrameMs.Add(FrameSeconds * 1000.f);
+		State.ActiveSum += ActiveNpcs.Num();
+		int32 Near = 0;
+		for (const ASubNpcCharacter* Npc : ActiveNpcs)
+		{
+			Near += (IsValid(Npc) && Npc->GetLodBand() == ESubNpcLodBand::Near) ? 1 : 0;
+		}
+		State.NearSum += Near;
+
+		if (State.PhaseTime >= State.RecordSeconds)
+		{
+			EndRecord(N);
+			if (++State.Step >= State.Counts.Num())
+			{
+				Finish(Director, false);
+				return;
+			}
+			State.Phase = EPhase::Settling;
+			State.PhaseTime = 0.f;
+			State.LastApplyTime = 0.f;
+			ApplyCount(Director, World, State.Counts[State.Step]);
+		}
+	}
+
+	static void Start(const TArray<FString>& Args, UWorld* World)
+	{
+		USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
+		if (!Director)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[CrowdBench] 게임 월드에서 실행하세요 (PIE 또는 Standalone)."));
+			return;
+		}
+		if (State.Phase != EPhase::Idle)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[CrowdBench] 이미 측정 중입니다. crowd.BenchStop으로 멈춘 뒤 다시 실행하세요."));
+			return;
+		}
+
+		FState NewState;
+		for (const FString& Arg : Args)
+		{
+			FString Key, Value;
+			if (Arg.Split(TEXT("="), &Key, &Value))
+			{
+				if (Key.Equals(TEXT("secs"), ESearchCase::IgnoreCase))
+				{
+					NewState.RecordSeconds = FMath::Max(1.f, FCString::Atof(*Value));
+				}
+				else if (Key.Equals(TEXT("warmup"), ESearchCase::IgnoreCase))
+				{
+					NewState.WarmupSeconds = FMath::Max(0.f, FCString::Atof(*Value));
+				}
+				else if (Key.Equals(TEXT("label"), ESearchCase::IgnoreCase))
+				{
+					NewState.Label = Value;
+				}
+			}
+			else if (Arg.IsNumeric())
+			{
+				NewState.Counts.Add(FMath::Max(0, FCString::Atoi(*Arg)));
+			}
+		}
+		if (NewState.Counts.Num() == 0)
+		{
+			NewState.Counts = { 0, 30, 60, 100 };
+		}
+
+		NewState.World = World;
+		NewState.Stamp = FDateTime::Now().ToString(TEXT("%m%d_%H%M%S"));
+		NewState.SavedMaxActive = Director->GetMaxActiveNpcs();
+		NewState.Step = 0;
+		NewState.Phase = EPhase::Settling;
+		State = MoveTemp(NewState);
+		DisableFrameLimit();
+
+		FString CountList;
+		for (int32 C : State.Counts)
+		{
+			CountList += FString::Printf(TEXT(" %d"), C);
+		}
+		UE_LOG(LogTemp, Log, TEXT("[CrowdBench] 시작 (%s): 인원%s / 단계마다 안정화 %.0f초 + 측정 %.0f초. 카메라를 움직이지 마세요."),
+			*State.Label, *CountList, State.WarmupSeconds, State.RecordSeconds);
+
+		ApplyCount(Director, World, State.Counts[0]);
+	}
+
+	static FAutoConsoleCommandWithWorldAndArgs CmdBench(
+		TEXT("crowd.Bench"),
+		TEXT("군중 성능을 인원별로 자동 측정한다. 예) crowd.Bench 0 30 60 100 secs=20 warmup=5 label=Base\n")
+		TEXT("결과: 로그 [CrowdBench], Saved/Profiling/CrowdBench/Summary_*.csv, 단계별 CSV 캡처(Saved/Profiling/CSV)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			Start(Args, World);
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs CmdCount(
+		TEXT("crowd.Count"),
+		TEXT("행인 수를 바로 N명으로 맞추고 유지한다 (측정 없이 눈으로 볼 때). crowd.Count -1이면 스포너 설정으로 되돌린다."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
+			if (!Director || Args.Num() == 0 || State.Phase != EPhase::Idle)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[Crowd] crowd.Count <인원> - 게임 중에, crowd.Bench가 돌고 있지 않을 때 쓰세요."));
+				return;
+			}
+			const int32 N = FCString::Atoi(*Args[0]);
+			if (N < 0)
+			{
+				GSubNpcBenchTargetOverride = -1;
+				Director->SetMaxActiveNpcs(Director->GetActiveCount() + Director->GetPooledCount());
+				UE_LOG(LogTemp, Log, TEXT("[Crowd] 인원 덮어쓰기 해제 - 스포너 설정을 따릅니다."));
+				return;
+			}
+			ApplyCount(Director, World, N);
+			UE_LOG(LogTemp, Log, TEXT("[Crowd] 인원을 %d명으로 맞춥니다 (해제: crowd.Count -1)."), N);
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs CmdBenchStop(
+		TEXT("crowd.BenchStop"),
+		TEXT("crowd.Bench 측정을 멈추고 인원 설정을 되돌린다. 그때까지 측정한 단계는 요약에 남긴다."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>&, UWorld* World)
+		{
+			if (State.Phase == EPhase::Idle)
+			{
+				return;
+			}
+			UWorld* BenchWorld = State.World.Get();
+			Finish(BenchWorld ? BenchWorld->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr, true);
+		}));
+}
+
+#if !UE_BUILD_SHIPPING
+namespace SubNpcPathDebug
+{
+	/** crowd.DrawPaths: 레벨의 모든 행인 경로를 이번 프레임에만 그린다 (그리는 방식은 경로 액터가 갖고 있다) */
+	static void DrawAllPaths(UWorld* World)
+	{
+		for (TActorIterator<ANpcCrowdPath> It(World); It; ++It)
+		{
+			It->DrawLaneDebug(SubNpcCrowdCVars::SqueezeOverflow);
+		}
+	}
+}
+#endif
+
 
 void USubNpcDirectorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+
+	// crowd.Count로 정한 인원은 전역이라 PIE를 다시 켜도 남는다. 새 판은 스포너 설정으로 시작한다.
+	// 미리보기 월드 같은 다른 월드가 생길 때 돌고 있는 측정을 끊지 않도록 게임 월드에서만 한다.
+	if (const UWorld* World = GetWorld(); World && World->IsGameWorld() && SubNpcBench::State.Phase == SubNpcBench::EPhase::Idle)
+	{
+		GSubNpcBenchTargetOverride = -1;
+	}
+
 	LodCursor = 0;
 	LodTimer = 0.f;
 }
@@ -198,6 +1212,10 @@ void USubNpcDirectorSubsystem::Tick(float DeltaTime)
 	{
 		DrawDebugMarkers();
 	}
+	if (SubNpcCrowdCVars::DrawPaths != 0)
+	{
+		SubNpcPathDebug::DrawAllPaths(GetWorld());
+	}
 #endif
 
 	if (SubNpcCrowdCVars::PrintStats != 0)
@@ -213,13 +1231,32 @@ void USubNpcDirectorSubsystem::Tick(float DeltaTime)
 
 	if (bEnableAvoidance && SubNpcCrowdCVars::EnableAvoidance != 0)
 	{
+		// 몸 겹침 금지는 매 프레임 본다. 회피 계산(0.1초 간격)만으로는 그 사이에 파고든다.
+		{
+			SUBNPC_PROFILE_SCOPE(BodySeparation);
+			SubNpcBodySeparation::Enforce(GetWorld(), ActiveNpcs);
+		}
+
 		AvoidTimer += DeltaTime;
 		if (AvoidTimer >= AvoidUpdateInterval)
 		{
 			AvoidTimer = 0.f;
-			UpdateAvoidance();
+			{
+				SUBNPC_PROFILE_SCOPE(Avoidance);
+				UpdateAvoidance();
+			}
+			{
+				SUBNPC_PROFILE_SCOPE(GroupLogic);
+				UpdateGroupChats();
+				UpdateGroupCohesion();
+				UpdateOffLaneYield();
+			}
 		}
 	}
+
+	CSV_CUSTOM_STAT(Crowd, ActiveNpcs, ActiveNpcs.Num(), ECsvCustomStatOp::Set);
+	SubNpcOverlapCheck::Run(GetWorld(), ActiveNpcs);
+	SubNpcBench::Tick(this, ActiveNpcs);
 
 	LodTimer += DeltaTime;
 	if (LodTimer < LodUpdateInterval)
@@ -228,6 +1265,7 @@ void USubNpcDirectorSubsystem::Tick(float DeltaTime)
 	}
 	LodTimer = 0.f;
 
+	SUBNPC_PROFILE_SCOPE(LodSlice);
 	UpdateLodSlice();
 }
 
@@ -384,12 +1422,13 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 		const float Step = EffectiveSpacing;
 		const float SpacingSq = FMath::Square(EffectiveSpacing);
 
-		// 최대 8칸까지만 밀어본다. 그래도 자리가 없으면 이번 등장은 포기한다.
-		// 자리를 못 찾아도 등장 자체를 막지는 않는다.
+		// 최대 8칸까지만 밀어본다. 그래도 자리가 없으면 이번 등장은 포기하고 풀에 되돌린다.
 		//
-		// 처음에는 실패 시 풀에 되돌렸는데, 등장구가 적으면 입구가 금방 차서
-		// 그 뒤로 계속 실패하고 목표 인원에 영영 도달하지 못했다.
-		// 간격은 "겹쳐 보이지 않게" 하려는 편의 기능이지 인원을 제한하는 규칙이 아니다.
+		// [변경] 예전에는 자리를 못 찾아도 원래 자리에 그냥 세웠다 (입구가 차서 목표 인원에 못 닿는 걸 피하려고).
+		// 그 결과 인원을 한 번에 늘리면 사람 위에 사람이 겹쳐 등장했다 (로그: 100명으로 올린 직후 44쌍 겹침).
+		// 겹침은 허용하지 않는다. 자리가 없으면 스포너가 다음 주기에 다시 시도한다 - 입구가 막혀 있으면
+		// 인원이 천천히 차는 게 맞는 그림이다.
+		bool bFoundSpot = false;
 		for (int32 Attempt = 0; Attempt < 8; ++Attempt)
 		{
 			const float Candidate = FMath::Clamp(
@@ -411,8 +1450,19 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 			if (!bBlocked)
 			{
 				StartDistance = Candidate;
+				bFoundSpot = true;
 				break;
 			}
+		}
+
+		if (!bFoundSpot)
+		{
+			PooledNpcs.Add(Npc);
+			if (SubNpcCrowdCVars::TraceSpawn != 0)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[Crowd] 등장 보류: %s 근처에 빈자리가 없다 (겹쳐 세우지 않는다)."), *GetNameSafe(Path));
+			}
+			return nullptr;
 		}
 	}
 
@@ -420,6 +1470,24 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 	PickArchetype(Archetype);
 
 	Npc->ActivateFromPool(Archetype, Path, StartDistance, bReversed);
+
+	// 위의 빈자리 검사는 경로 중심선으로 봤다. 실제로 선 자리(차선)에서 누군가와 몸이 닿으면 되돌린다.
+	{
+		const FVector MyLoc = Npc->GetActorLocation();
+		const float MyRadius = Npc->GetSimpleCollisionRadius();
+		for (const ASubNpcCharacter* Other : ActiveNpcs)
+		{
+			if (IsValid(Other) && !Other->IsPooled()
+				&& FMath::Abs(Other->GetActorLocation().Z - MyLoc.Z) < 150.f
+				&& FVector::DistSquared2D(Other->GetActorLocation(), MyLoc) < FMath::Square(MyRadius + Other->GetSimpleCollisionRadius() + 4.f))
+			{
+				Npc->DeactivateToPool();
+				PooledNpcs.Add(Npc);
+				return nullptr;
+			}
+		}
+	}
+
 	ActiveNpcs.Add(Npc);
 
 	return Npc;
@@ -484,7 +1552,6 @@ TArray<ASubNpcCharacter*> USubNpcDirectorSubsystem::SpawnGroupOnPath(ANpcCrowdPa
 	}
 	Group.Add(Leader);
 
-	const float HalfWidth = Path->GetLaneHalfWidth();
 
 	const float Length = FMath::Max(1.f, Path->GetPathLength());
 
@@ -503,14 +1570,22 @@ TArray<ASubNpcCharacter*> USubNpcDirectorSubsystem::SpawnGroupOnPath(ANpcCrowdPa
 			break;
 		}
 
-		// 나란히 걷되 살짝 어긋나게. 완전히 일직선이면 행진처럼 보인다.
-		const float SideOffset = FMath::Clamp(
-			(i % 2 == 0 ? 1.f : -1.f) * FMath::FRandRange(50.f, 90.f), -HalfWidth, HalfWidth);
-		const float Gap = FMath::FRandRange(60.f, 140.f) * i;
+		// [그룹핑] 리더 옆에 붙어 걷는다. 좌우 위치는 리더 기준 상대값이다 (SetGroupLeader).
+		// 첫 번째 일행은 거의 나란히, 두 번째 일행은 반대쪽 살짝 뒤. 완전히 일직선이면 행진처럼 보인다.
+		// 예전 값(옆 50~90, 앞뒤 60~140 x 순번)은 너무 벌어져서 일행으로 안 보였다.
+		const float Side = (i % 2 == 1) ? -1.f : 1.f;
+		const float SideOffset = Side * FMath::FRandRange(
+			SubNpcCrowdCVars::GroupSideMin, SubNpcCrowdCVars::GroupSideMax);
+		const float Gap = (i == 1)
+			? FMath::FRandRange(0.f, SubNpcCrowdCVars::GroupAbreastGapMax)
+			: FMath::FRandRange(SubNpcCrowdCVars::GroupBehindGapMin, SubNpcCrowdCVars::GroupBehindGapMax) * (i - 1);
 
 		Member->SetGroupLeader(Leader, Gap, SideOffset);
 		Group.Add(Member);
 	}
+
+	// 일행이 생겼으면 리더로 표시한다. 리더는 스팟에 들르지 않는다 (RollForActivitySpot).
+	Leader->SetHasGroupFollowers(Group.Num() > 1);
 
 	return Group;
 }
@@ -670,7 +1745,9 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		// [버그 수정] 예전에는 걷는 사람만 모았다. 플레이어에게 부딪혀 멈춘(Reacting)
 		// 앞사람이 목록에서 빠지니, 뒷사람은 제동을 못 걸고 그대로 뚫고 지나갔다.
 		// 멈춘 사람도 장애물로는 넣고, 감속·밀어내기는 걷는 사람에게만 건다.
-		if (!IsValid(Npc) || !Npc->IsBlockingOnPath())
+		// [추가] 스팟으로 가거나 줄 자리로 옮기는 사람(길 밖으로 움직이는 사람)도 장애물로 넣는다.
+		// 이들은 길을 가로질러 가는데, 예전에는 목록에서 빠져 있어서 길 위 행인이 못 보고 엉켰다.
+		if (!IsValid(Npc) || !(Npc->IsBlockingOnPath() || Npc->IsMovingOffLane()))
 		{
 			continue;
 		}
@@ -688,90 +1765,672 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		}
 	}
 
-	// ---- 플레이어 회피 --------------------------------------------------------
+	// ---- 플레이어 접촉 ---------------------------------------------------------
 	//
-	// 행인끼리의 회피와 별개로, 앞을 막고 선 플레이어를 피해 비켜 간다.
-	// 옆으로 밀어내고, 그래도 정면이면 속도를 줄인다. 둘을 같이 해야
-	// "사람을 보고 비켜 간다"로 읽힌다 - 옆으로만 밀면 좁은 길에서 그냥 통과한다.
+	// 행인은 스윕 없이 움직이므로 서 있는 플레이어에게 걸어 들어가도 NotifyHit이 안 불린다.
+	// 그래서 몸이 닿았는지 여기서 거리로 직접 본다. 비켜 가는 건 아래 차선 계획이 맡는다.
+	const APlayerController* PC = World ? World->GetFirstPlayerController() : nullptr;
+	APawn* PlayerPawn = PC ? PC->GetPawn() : nullptr;
+	const float PlayerRadius = PlayerPawn ? PlayerPawn->GetSimpleCollisionRadius() : 0.f;
+
+	if (PlayerPawn)
 	{
-		const float PlayerAvoidSq = FMath::Square(SubNpcCrowdCVars::PlayerAvoidDistance);
-
-		const APlayerController* PC = World ? World->GetFirstPlayerController() : nullptr;
-		APawn* PlayerPawn = PC ? PC->GetPawn() : nullptr;
-		const float PlayerRadius = PlayerPawn ? PlayerPawn->GetSimpleCollisionRadius() : 0.f;
-
+		const FVector PlayerLoc = PlayerPawn->GetActorLocation();
 		for (ASubNpcCharacter* Npc : Nearby)
 		{
-			// 멈춰서 반응 중인 사람은 비켜 갈 필요가 없다.
 			if (!Npc->IsWalkingOnPath())
 			{
 				continue;
 			}
 
-			const FVector ToPlayer = ViewerLocation - Npc->GetActorLocation();
-
-			// 높이 차이는 무시한다. 위층에 있는 플레이어를 피할 이유는 없다.
-			const float DistSq = ToPlayer.SizeSquared2D();
-			if (DistSq >= PlayerAvoidSq || DistSq < KINDA_SMALL_NUMBER)
+			const float ContactDist = Npc->GetSimpleCollisionRadius() + PlayerRadius
+				+ SubNpcCrowdCVars::LightBumpContactSlack;
+			if (FVector::DistSquared2D(PlayerLoc, Npc->GetActorLocation()) >= FMath::Square(ContactDist))
 			{
 				continue;
 			}
 
-			// 진행 방향 기준으로 앞에 있을 때만 피한다. 이미 지나친 사람을
-			// 계속 피하면 뒤를 힐끔거리며 걷는 것처럼 보인다.
-			const float Forward = FVector::DotProduct(ToPlayer, Npc->GetActorForwardVector());
-			if (Forward <= 0.f)
+			// 누가 부딪혔는지 가른다. 플레이어가 밀고 들어온 경우만 반응하고,
+			// 행인이 걸어와 닿은 거면 반응 없이 비켜 지나간다 (아래 차선 계획).
+			if (ASubNpcCharacter::GetPlayerClosingSpeed(PlayerPawn, Npc) >= ASubNpcCharacter::PlayerBumpMinClosingSpeed)
 			{
-				continue;
-			}
-
-			const float Dist = FMath::Sqrt(DistSq);
-			const float Overlap = 1.f - (Dist / SubNpcCrowdCVars::PlayerAvoidDistance);
-
-			// 플레이어가 오른쪽에 있으면 왼쪽으로 비킨다. 정확히 정면이면
-			// 개체 이름 해시로 방향을 갈라서, 마주친 사람들이 같은 쪽으로만
-			// 쏠리지 않게 한다.
-			const float Side = FVector::DotProduct(ToPlayer, Npc->GetActorRightVector());
-
-			// [살짝 부딪힘] 걸어오다 플레이어 몸에 닿았으면 멈칫하고 쳐다본다.
-			// 행인은 스윕 없이 움직이므로 서 있는 플레이어에게 걸어 들어가도
-			// NotifyHit이 안 불린다. 그래서 여기서 거리로 직접 판정한다.
-			if (PlayerPawn)
-			{
-				const float ContactDist = Npc->GetSimpleCollisionRadius() + PlayerRadius
-					+ SubNpcCrowdCVars::LightBumpContactSlack;
-				if (Dist < ContactDist && FMath::Abs(Side) < ContactDist)
-				{
-					// [버그 수정] 예전에는 여기서 무조건 가벼운 반응을 냈다. 그런데 이 판정은
-					// 플레이어가 뛰어와 부딪힐 때도 NotifyHit보다 먼저 걸리는 경우가 많아서,
-					// 쿨다운에 막혀 속도와 상관없이 가벼운 반응만 나왔다.
-					// NotifyHit과 같은 입구로 보내 속도에 따라 반응을 고르게 한다.
-					Npc->ReactToPlayerBump(PlayerPawn, ASubNpcCharacter::GetPlayerBumpSpeed(PlayerPawn));
-					if (!Npc->IsWalkingOnPath())
-					{
-						continue;   // 반응에 들어갔으면 이번 회피는 건너뛴다
-					}
-				}
-			}
-
-			const float Sign = (FMath::Abs(Side) > 1.f)
-				? (Side > 0.f ? -1.f : 1.f)
-				: ((GetTypeHash(Npc->GetFName()) & 1) ? -1.f : 1.f);
-
-			Npc->AddAvoidanceNudge(
-				Sign * Overlap * SubNpcCrowdCVars::PlayerAvoidDistance * SubNpcCrowdCVars::PlayerAvoidStrength);
-
-			// 정면으로 바짝 막혔으면 감속한다. 옆으로 비킬 공간이 생기면
-			// 위의 밀어내기가 먼저 풀어주므로 영원히 멈춰 있지는 않는다.
-			const float BlockDist = SubNpcCrowdCVars::PlayerAvoidDistance * SubNpcCrowdCVars::PlayerBlockRatio;
-			if (Dist < BlockDist && FMath::Abs(Side) < BlockDist * 0.5f)
-			{
-				Npc->RequestSlowDown(FMath::Clamp(Dist / BlockDist, 0.1f, 1.f));
+				Npc->ReactToPlayerBump(PlayerPawn, ASubNpcCharacter::GetPlayerBumpSpeed(PlayerPawn));
 			}
 		}
 	}
 
-	const float AvoidSq = FMath::Square(AvoidDistance);
+	// ---- 차선 계획 (앞이 막혔을 때 기다릴지, 어느 쪽으로 비켜 갈지) --------------
+	//
+	// [재설계] 예전에는 행인 두 명씩 짝을 지어 판정했다. 병목에서 세 가지가 깨졌다.
+	//   1) 추월할 차선이 비어 있는지 보지 않았다. 옆에 다른 사람이나 플레이어가 있어도
+	//      그쪽으로 들어갔고, 추월 중인 쌍은 밀어내기도 꺼져 있어서 그대로 뚫고 지나갔다.
+	//   2) 앞사람 여럿과 짝마다 서로 다른 추월 목표를 덮어써서 좌우로 왔다 갔다 했다.
+	//   3) 플레이어를 피하는 방향을 "내 몸의 오른쪽" 기준으로 정해서, 비켜 가며 몸이 돌면
+	//      방향이 뒤집혀 다시 반대로 갔다 (와리가리).
+	//
+	// 이제 행인마다 한 번만 결정한다. 같은 경로 위의 사람(+플레이어)을 차선 좌표로 모으고,
+	// 내 앞을 막는 가장 가까운 상대를 찾은 뒤, 실제로 비어 있는 차선이 있을 때만 그쪽으로
+	// 비켜 간다. 빈 차선이 없으면 뒤에서 줄 서서 기다린다. 방향은 경로 기준이라 몸이 돌아도
+	// 뒤집히지 않고, 한번 고른 쪽은 끝까지 유지한다.
+	struct FLaneAgent
+	{
+		ASubNpcCharacter* Npc = nullptr;   // nullptr이면 플레이어
+		float Dist = 0.f;                  // 경로 진행 거리
+		float Lane = 0.f;                  // 경로 오른쪽 기준 좌우 오프셋
+		float Along = 1.f;                 // 진행 부호 (+1 정방향, -1 역방향, 0 = 서 있는 플레이어)
+		float Speed = 0.f;                 // 실제 걷는 속도
+		bool bWalking = false;
+		bool bForeign = false;             // 다른 경로 위의 사람을 이 경로 좌표로 옮겨 넣은 것 (장애물로만 쓴다)
+		bool bMerging = false;             // 스팟·줄에서 나와 길로 합류하는 중 (실제 위치로 넣는다)
+		bool bUpstream = false;            // (bForeign) 이 경로로 들어오기 전 경로 위의 사람. 모서리에서는 이 사람이 양보한다
+		float TargetLane = 0.f;            // 합류할 차선
+		FVector Loc = FVector::ZeroVector; // 실제 위치. 모서리에서 앞뒤 간격을 잴 때 쓴다
+		FVector Fwd = FVector::ZeroVector; // 실제로 향한 방향 (수평). 가로질러 가는 사람을 가릴 때 쓴다
+	};
+
+	TMap<ANpcCrowdPath*, TArray<FLaneAgent>> AgentsByPath;
+	for (ASubNpcCharacter* Npc : Nearby)
+	{
+		ANpcCrowdPath* Path = Npc->GetCurrentPath();
+		if (!Path)
+		{
+			continue;
+		}
+
+		FLaneAgent& Agent = AgentsByPath.FindOrAdd(Path).AddDefaulted_GetRef();
+		Agent.Npc = Npc;
+		Agent.Loc = Npc->GetActorLocation();
+		Agent.Fwd = Npc->GetActorForwardVector().GetSafeNormal2D();
+		Agent.Dist = Npc->GetPathDistance();
+		Agent.Lane = Npc->GetLaneOffset();
+		Agent.Along = Npc->IsReversedOnPath() ? -1.f : 1.f;
+		Agent.Speed = Npc->IsWalkingOnPath() ? Npc->GetCurrentMoveSpeed() : 0.f;
+		Agent.bWalking = Npc->IsWalkingOnPath();
+
+		// [버그 수정] 길로 돌아오는 사람은 몸이 아직 길 밖(또는 길가)에 있다.
+		// 예전에는 목표 차선 값으로 넣어서, 실제로는 3m 떨어져 걷는 사람을 길 위의 장애물로
+		// 보고 뒷사람들이 섰다. 실제 위치를 경로 좌표로 옮겨 넣는다.
+		// 스팟으로 가거나 줄 자리로 옮기는 사람: 실제 위치를 경로 좌표로 옮겨 장애물로만 쓴다.
+		// 이 사람들의 움직임은 스팟 쪽 로직이 정하므로 차선 계획을 하지 않는다 (bForeign).
+		if (Npc->IsMovingOffLane() && !Npc->IsRejoiningPath())
+		{
+			const FVector Loc = Npc->GetActorLocation();
+			float Dist = Agent.Dist;
+			Path->FindClosestPointOnPath(Loc, Dist);
+			const FVector Base = Path->GetLocationAtDistance(Dist, 0.f);
+			const FVector Right = (Path->GetLocationAtDistance(Dist, 1.f) - Base).GetSafeNormal2D();
+			Agent.Dist = Dist;
+			Agent.Lane = FVector::DotProduct(Loc - Base, Right);
+			Agent.bForeign = true;
+			Agent.bWalking = true;
+			Agent.Speed = Npc->GetWalkSpeed();
+		}
+
+		if (Npc->IsRejoiningPath())
+		{
+			const FVector Loc = Npc->GetActorLocation();
+			float Dist = Agent.Dist;
+			Path->FindClosestPointOnPath(Loc, Dist);
+			const FVector Base = Path->GetLocationAtDistance(Dist, 0.f);
+			const FVector Right = (Path->GetLocationAtDistance(Dist, 1.f) - Base).GetSafeNormal2D();
+			Agent.Dist = Dist;
+			Agent.Lane = FVector::DotProduct(Loc - Base, Right);
+			Agent.bMerging = true;
+			Agent.TargetLane = Npc->GetLaneOffset();
+		}
+	}
+
+	// [정체 해소] 경로 이음매 근처에서는 다른 경로 위의 사람도 이 경로의 차선 좌표로 옮겨 넣는다.
+	// 예전에는 같은 경로끼리만 계획해서, 앞사람이 다음 경로로 넘어가 있으면 뒷사람은 비켜 갈
+	// 생각 없이 속도만 줄였다(파란 선). 측정해 보니 정체가 거의 다 이음매에 몰려 있었다.
+	// 옮겨 넣은 사람은 장애물로만 쓰고, 그 사람의 계획은 원래 경로에서 한다.
+	{
+		TArray<ANpcCrowdPath*> Paths;
+		AgentsByPath.GetKeys(Paths);
+		for (ANpcCrowdPath* Path : Paths)
+		{
+			const float Reach = Path->GetLaneHalfWidth() + SubNpcCrowdCVars::LaneClearance;
+			for (ASubNpcCharacter* Npc : Nearby)
+			{
+				if (Npc->GetCurrentPath() == Path)
+				{
+					continue;
+				}
+
+				const FVector Loc = Npc->GetActorLocation();
+				float Dist = 0.f;
+				if (Path->FindClosestPointOnPath(Loc, Dist) > FMath::Square(Reach))
+				{
+					continue;
+				}
+
+				const FVector Base = Path->GetLocationAtDistance(Dist, 0.f);
+				const FVector Right = (Path->GetLocationAtDistance(Dist, 1.f) - Base).GetSafeNormal2D();
+				const FVector PathDir = Path->GetDirectionAtDistance(Dist);
+
+				// [버그 수정] 경로 끝점 바깥에 있는 사람을 끝점에 붙여 계산하지 않는다.
+				// 가장 가까운 점이 시작점·끝점에 걸리면 그 사람은 경로 바깥(이음매 너머)에 있다.
+				// 예전에는 끝점 위치로 붙여서, B에서 C로 꺾어 나가 멀어지는 사람이 B 기준으로는
+				// 계속 "B 끝점 바로 앞에 서 있는 사람"이 되어 B를 걷는 사람들이 이음매 앞에서 멈췄다.
+				// 끝점 너머로 경로를 곧게 연장한 좌표로 계산하면, 옆으로 꺾어 나간 사람은
+				// 곧 길 폭을 벗어나 장애물 계산에서 빠진다.
+				const float PathLength = Path->GetPathLength();
+				const bool bBeyondEnd = Dist >= PathLength - 1.f;
+				const bool bBeforeStart = Dist <= 1.f;
+				float AlongDist = Dist;
+				if (bBeyondEnd || bBeforeStart)
+				{
+					AlongDist += FVector::DotProduct(Loc - Base, PathDir.GetSafeNormal2D());
+				}
+				const float Lane = FVector::DotProduct(Loc - Base, Right);
+				if ((bBeyondEnd || bBeforeStart) && FMath::Abs(Lane) > Path->GetLaneHalfWidth() + SubNpcCrowdCVars::LaneClearance)
+				{
+					continue;
+				}
+
+				FLaneAgent& Agent = AgentsByPath.FindChecked(Path).AddDefaulted_GetRef();
+				Agent.Npc = Npc;
+				Agent.Loc = Loc;
+				Agent.Fwd = Npc->GetActorForwardVector().GetSafeNormal2D();
+				Agent.Dist = AlongDist;
+				Agent.Lane = Lane;
+				Agent.Along = (FVector::DotProduct(Npc->GetActorForwardVector(), PathDir) >= 0.f) ? 1.f : -1.f;
+				Agent.Speed = Npc->IsWalkingOnPath() ? Npc->GetCurrentMoveSpeed() : 0.f;
+				Agent.bWalking = Npc->IsWalkingOnPath();
+				Agent.bForeign = true;
+				if (const ANpcCrowdPath* OtherPath = Npc->GetCurrentPath())
+				{
+					for (const FNpcPathExit& Exit : OtherPath->GetExits())
+					{
+						if (Exit.NextPath == Path)
+						{
+							Agent.bUpstream = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 플레이어를 각 경로의 차선 좌표로 옮겨 넣는다. 길 위(차선 폭 + 여유) 안에 있을 때만.
+	if (PlayerPawn)
+	{
+		const FVector PlayerLoc = PlayerPawn->GetActorLocation();
+		for (TPair<ANpcCrowdPath*, TArray<FLaneAgent>>& Pair : AgentsByPath)
+		{
+			ANpcCrowdPath* Path = Pair.Key;
+			float PlayerDist = 0.f;
+			const float DistSq = Path->FindClosestPointOnPath(PlayerLoc, PlayerDist);
+			const float Reach = Path->GetLaneHalfWidth() + PlayerRadius + SubNpcCrowdCVars::LaneClearance;
+			if (DistSq > FMath::Square(Reach))
+			{
+				continue;
+			}
+
+			const FVector Base = Path->GetLocationAtDistance(PlayerDist, 0.f);
+			const FVector Right = (Path->GetLocationAtDistance(PlayerDist, 1.f) - Base).GetSafeNormal2D();
+
+			// 경로 끝점 바깥이면 끝점에 붙이지 않고 연장선 좌표로 계산한다 (위의 다른 경로 사람과 같은 이유).
+			float AlongDist = PlayerDist;
+			if (PlayerDist <= 1.f || PlayerDist >= Path->GetPathLength() - 1.f)
+			{
+				AlongDist += FVector::DotProduct(PlayerLoc - Base, Path->GetDirectionAtDistance(PlayerDist).GetSafeNormal2D());
+			}
+
+			FLaneAgent& Agent = Pair.Value.AddDefaulted_GetRef();
+			Agent.Npc = nullptr;
+			Agent.Loc = PlayerLoc;
+			Agent.Dist = AlongDist;
+			Agent.Lane = FVector::DotProduct(PlayerLoc - Base, Right);
+			Agent.Along = 0.f;
+			Agent.Speed = PlayerPawn->GetVelocity().Size2D();
+			Agent.bWalking = false;
+		}
+	}
+
+	const float LaneClear = SubNpcCrowdCVars::LaneClearance;
+	const float PassUntil = Now + SubNpcCrowdCVars::PassHoldTime;
+
+	// crowd.LogBlock용 집계: 감속 이유별 인원, 남을 가장 많이 막은 상대.
+	TMap<FString, int32> ReasonCounts;
+	TMap<const AActor*, int32> BlockerCounts;
+	static TArray<FString> StallChainLog;   // 2초 로그 사이에 모은 "누가 누구 때문에 오래 서 있나"
+
+	// crowd.DebugBlock 1: 누가 누구 때문에 느려졌는지 머리 위에 선을 긋는다. 다음 갱신까지만 보인다.
+	auto DrawBlockDebug = [&](const ASubNpcCharacter* From, const ASubNpcCharacter* To, const APawn* Player, const FColor& Color)
+	{
+#if !UE_BUILD_SHIPPING
+		if (SubNpcCrowdCVars::LogBlock != 0)
+		{
+			const TCHAR* Reason =
+				(Color == FColor::Red) ? TEXT("대기(빈차선없음)") :
+				(Color == FColor::Yellow) ? TEXT("추월중") :
+				(Color == FColor::White) ? TEXT("따라감") :
+				(Color == FColor::Cyan) ? TEXT("일행대열") :
+				(Color == FColor::Magenta) ? TEXT("정체스침") :
+				(Color == FColor::Orange) ? TEXT("합류대기") : TEXT("기타");
+			ReasonCounts.FindOrAdd(Reason)++;
+			if (const AActor* Target = To ? static_cast<const AActor*>(To) : static_cast<const AActor*>(Player))
+			{
+				BlockerCounts.FindOrAdd(Target)++;
+			}
+
+			// 오래 서 있는 사람이 누구 때문에 서 있는지 한 줄씩 남긴다 (경로·방향·차선 포함).
+			// 모서리 정체가 마주 오는 사람 때문인지, 다른 경로 사람 때문인지, 같은 줄 앞사람 때문인지 가린다.
+			if (From && From->GetStalledTime() > 1.5f && StallChainLog.Num() < 8)
+			{
+				auto Describe = [](const ASubNpcCharacter* Npc)
+				{
+					return FString::Printf(TEXT("%s[%s%s 차선%.0f 속도%.0f%%%s%s] @(%.0f,%.0f)"),
+						*GetNameSafe(Npc), *GetNameSafe(Npc->GetCurrentPath()),
+						Npc->IsReversedOnPath() ? TEXT("/역방향") : TEXT(""),
+						Npc->GetLaneOffset(),
+						Npc->GetCurrentMoveSpeed() / FMath::Max(1.f, Npc->GetWalkSpeed()) * 100.f,
+						Npc->IsWalkingOnPath() ? TEXT("") : TEXT("/길밖"),
+						Npc->GetStalledTime() > 0.5f ? *FString::Printf(TEXT("/정지%.1f초"), Npc->GetStalledTime()) : TEXT(""),
+						Npc->GetActorLocation().X, Npc->GetActorLocation().Y);
+				};
+				const FString Other = To ? Describe(To)
+					: (Player ? FString::Printf(TEXT("플레이어 @(%.0f,%.0f)"), Player->GetActorLocation().X, Player->GetActorLocation().Y) : TEXT("-"));
+				StallChainLog.Add(FString::Printf(TEXT("  %s %s <- %s"), Reason, *Describe(From), *Other));
+			}
+		}
+		if (SubNpcCrowdCVars::DebugBlock == 0 || !From)
+		{
+			return;
+		}
+		const AActor* Target = To ? static_cast<const AActor*>(To) : static_cast<const AActor*>(Player);
+		if (!Target)
+		{
+			return;
+		}
+		const FVector Up(0.f, 0.f, 100.f);
+		const FVector Start = From->GetActorLocation() + Up;
+		const float Life = AvoidUpdateInterval + 0.05f;
+		DrawDebugLine(World, Start, Target->GetActorLocation() + Up, Color, false, Life, 0, 3.f);
+		DrawDebugPoint(World, Start, 12.f, Color, false, Life);
+#endif
+	};
+
+	for (TPair<ANpcCrowdPath*, TArray<FLaneAgent>>& Pair : AgentsByPath)
+	{
+		const TArray<FLaneAgent>& Agents = Pair.Value;
+		const float HalfWidth = Pair.Key->GetLaneHalfWidth();
+
+		for (const FLaneAgent& Me : Agents)
+		{
+			// 다른 경로에서 옮겨 넣은 사람은 장애물로만 쓴다. 그 사람의 계획은 원래 경로에서 한다.
+			if (!Me.Npc || !Me.bWalking || Me.bForeign)
+			{
+				continue;
+			}
+
+			// [합류] 길로 돌아오는 사람은 차가 합류하듯 틈을 본다. 합류할 차선에 사람이 있거나
+			// 뒤에서 다가오고 있으면 길가에 서서 기다린다. 예전에는 곧장 걸어 들어가 몸을 뚫었다.
+			if (Me.bMerging)
+			{
+				// [교착 방지] 몸이 이미 길 위에 들어섰으면 기다리지 않는다.
+				// 길 위에 서서 기다리면 뒷사람이 이 사람 때문에 멈추고, 멈춘 사람들이 합류 자리를
+				// 계속 차지해서 서로 영영 기다렸다 (로그: 합류중인 사람이 10초 넘게 같은 자리).
+				bool bHold = false;
+				const bool bStillOffPath = FMath::Abs(Me.Lane) > HalfWidth + SubNpcCrowdCVars::MergeOnPathTolerance;
+				for (const FLaneAgent& Other : Agents)
+				{
+					if (&Other == &Me || Other.bMerging)
+					{
+						continue;
+					}
+					if (FMath::Abs(Other.Lane - Me.TargetLane) >= LaneClear)
+					{
+						continue;
+					}
+					// 상대가 다가오는 방향 기준으로 내가 얼마나 앞에 있나. 서 있는 상대(플레이어 등)는 앞뒤 모두 본다.
+					const float OtherAlong = (Other.Along != 0.f) ? Other.Along : Me.Along;
+					const float MeAheadOfOther = (Me.Dist - Other.Dist) * OtherAlong;
+					if (MeAheadOfOther > -SubNpcCrowdCVars::MergeClearBehind && MeAheadOfOther < SubNpcCrowdCVars::MergeClearAhead)
+					{
+						bHold = true;
+						break;
+					}
+				}
+				Me.Npc->SetMergeHold(bHold && bStillOffPath);
+				if (bHold)
+				{
+					DrawBlockDebug(Me.Npc, nullptr, nullptr, FColor::Orange);
+				}
+				continue;
+			}
+			ASubNpcCharacter* Rear = Me.Npc;
+
+			// 1) 내 차선 앞을 막는 가장 가까운 상대.
+			//
+			// [버그 수정] 앞뒤·좌우 간격을 경로 중심선 좌표가 아니라 실제 위치로 잰다.
+			// 직선에서는 같지만 모서리에서는 안쪽 차선 사람들이 실제로는 훨씬 가까이 붙는다.
+			// 중심선 거리로 재면 모서리 안쪽에서 몸이 겹치거나 엉뚱한 사람을 막는 사람으로 봐서
+			// 모서리마다 뭉쳤다 (로그: 정지 인원이 B→C 모서리와 C의 굽은 곳에 몰림).
+			const FVector MyDir = (Pair.Key->GetDirectionAtDistance(Me.Dist) * Me.Along).GetSafeNormal2D();
+			const FVector MyRight(-MyDir.Y, MyDir.X, 0.f);
+
+			// [교착 방지] 이음매에서 가로질러 오는 이전 경로 사람은 막는 상대로 보지 않는다.
+			// 직각 모서리(B→C)에서는 B 끝의 사람과 C 입구의 사람이 진행 방향이 90도라 둘 다 상대를
+			// "내 바로 앞"으로 봤다. 서로를 기다리며 같이 멈춰 길 전체가 섰다
+			// (로그: 51 <- 55, 55 <- 51 처럼 서로를 지목하고 9초 넘게 정지).
+			// 이미 다음 경로로 넘어간 사람이 우선이고, 아직 넘어오지 않은 사람이 양보한다.
+			// 같은 쪽을 보고 실제로 앞에 있는 이전 경로 사람은 그대로 앞사람으로 본다.
+			auto IsYieldingUpstream = [&](const FLaneAgent& Other)
+			{
+				return Other.bUpstream
+					&& FVector::DotProduct(Other.Fwd, MyDir) < SubNpcCrowdCVars::CrossingHeadingDot;
+			};
+
+			const FLaneAgent* Blocker = nullptr;
+			float BlockAhead = TNumericLimits<float>::Max();
+			for (const FLaneAgent& Other : Agents)
+			{
+				if (&Other == &Me || IsYieldingUpstream(Other))
+				{
+					continue;
+				}
+
+				const FVector ToOther = Other.Loc - Me.Loc;
+				const float Ahead = FVector::DotProduct(ToOther, MyDir);
+				const float SideGap = FMath::Abs(FVector::DotProduct(ToOther, MyRight));
+
+				// [모서리] 다른 경로에서 내 앞을 가로질러 가는 사람(방향이 크게 다름)은 금방 지나간다.
+				// 이 사람을 앞을 막는 사람으로 보면, 모서리 안쪽 행인이 지나가는 사람마다 서서
+				// 끝없이 기다렸다 (로그: B→C 모서리 안쪽에서 12초 정지). 부딪히기 직전일 때만 피한다.
+				if (Other.bForeign && FVector::DotProduct(Other.Fwd, MyDir) < SubNpcCrowdCVars::CrossingHeadingDot
+					&& Ahead > SubNpcCrowdCVars::FollowStopDistance)
+				{
+					continue;
+				}
+				const bool bOncoming = Other.Npc && Other.Along != Me.Along;
+				const float Window = bOncoming ? SubNpcCrowdCVars::HeadOnLookAhead : SubNpcCrowdCVars::FollowSlowDistance;
+				if (Ahead <= 0.f || Ahead > Window)
+				{
+					continue;
+				}
+				// [변경] 플레이어는 몸이 실제로 닿을 거리일 때만 막힌 걸로 본다.
+				// 예전에는 행인끼리와 같은 75cm 기준을 써서, 길 가장자리에 서 있기만 해도
+				// 맨 앞 행인이 멈추고 그 뒤로 길 전체가 줄을 섰다.
+				const float Clearance = Other.Npc
+					? LaneClear
+					: Rear->GetSimpleCollisionRadius() + PlayerRadius + SubNpcCrowdCVars::PlayerBodyMargin;
+				if (SideGap >= Clearance)
+				{
+					continue;
+				}
+				if (Ahead < BlockAhead)
+				{
+					BlockAhead = Ahead;
+					Blocker = &Other;
+				}
+			}
+
+			if (!Blocker)
+			{
+				continue;   // 앞이 비었다
+			}
+
+			const bool bBlockerIsPlayer = (Blocker->Npc == nullptr);
+			const bool bOncoming = !bBlockerIsPlayer && Blocker->Along != Me.Along;
+			const bool bSameGroup = !bBlockerIsPlayer && Rear->IsSameGroup(Blocker->Npc);
+
+			const float StopDist = bBlockerIsPlayer
+				? Rear->GetSimpleCollisionRadius() + PlayerRadius + SubNpcCrowdCVars::LightBumpContactSlack
+				: SubNpcCrowdCVars::FollowStopDistance;
+			const float GapScale = FMath::Clamp(
+				(BlockAhead - StopDist) / FMath::Max(1.f, SubNpcCrowdCVars::FollowSlowDistance - StopDist),
+				0.f, 1.f);
+
+			// 2) 비켜 갈 상대인가. 같은 일행은 대열을 지킨다.
+			//
+			// [변경] 예전에는 내 걸음이 앞사람 실제 속도보다 20% 이상 빨라야만 추월했다.
+			// 걸음 속도가 고르게 퍼져 있어서 대부분의 짝은 그 차이가 안 났고, 가장 느린 사람
+			// 뒤로 길 전체가 줄지어 천천히 걸었다. 이제 앞사람 때문에 조금이라도 느려지면 추월한다.
+			const bool bBlockerSlow = bBlockerIsPlayer || bOncoming || !Blocker->bWalking
+				|| (Blocker->Npc && Blocker->Npc->IsHeldUp())
+				|| Blocker->Speed < Rear->GetWalkSpeed() * SubNpcCrowdCVars::OvertakeSlowerRatio;
+
+			if (bSameGroup || !bBlockerSlow)
+			{
+				// 친구끼리는 대열 간격을 일행 쪽 로직(리더 진행도 + 간격)이 맞춘다. 여기서는 몸이 실제로
+				// 닿을 만큼 붙었을 때만 살짝 늦춘다.
+				// [버그 수정] 예전에는 행인끼리와 같은 정지 거리(85cm)를 썼는데, 대열 자체가 리더 50~80cm
+				// 뒤·옆 50cm라 두 번째 일행은 매번 "정지"를 받았다. 뒤처지면 리더가 기다리느라 60%로 걸어서
+				// 일행 전체가 느려졌다.
+				const bool bGroupTouching = bSameGroup && BlockAhead < SubNpcCrowdCVars::GroupBodyTouchDistance;
+				if (!bSameGroup || bGroupTouching)
+				{
+					Rear->RequestSlowDown(bSameGroup ? SubNpcCrowdCVars::GroupTouchSpeedScale : GapScale);
+					DrawBlockDebug(Rear, Blocker->Npc, PlayerPawn, bSameGroup ? FColor::Cyan : FColor::White);
+				}
+				continue;
+			}
+
+			// 3) 빈 차선 찾기. 막는 상대 바로 옆 차선이 비어 있어야 한다.
+			//    내 옆이나 바로 뒤에 있는 사람 자리로 끼어들지도 않는다.
+			// [버그 수정] 빈 차선 판정도 실제 위치로 한다. 상대의 차선을 "내 자리에서 본 옆 간격"으로
+			// 바꿔서 쓴다 (내 차선 + 옆 간격). 중심선 좌표로 재면 직각에 가까운 모서리·굽은 곳에서
+			// 실제로는 옆이 비어 있는데 차 있다고 보거나 그 반대가 되어, "빈 차선 없음"으로 줄줄이 섰다.
+			auto PhysicalLane = [&](const FLaneAgent& Other)
+			{
+				return Me.Lane + FVector::DotProduct(Other.Loc - Me.Loc, MyRight) * Me.Along;
+			};
+			const float BlockerLane = PhysicalLane(*Blocker);
+
+			auto IsLaneFree = [&](float TargetLane, float Clearance, float MaxAbsLane)
+			{
+				if (FMath::Abs(TargetLane) > MaxAbsLane)
+				{
+					return false;
+				}
+				for (const FLaneAgent& Other : Agents)
+				{
+					if (&Other == &Me || &Other == Blocker || IsYieldingUpstream(Other))
+					{
+						continue;
+					}
+					// [변경] 막는 상대 바로 옆(내 바로 뒤 ~ 상대를 지나친 직후)만 비어 있으면 된다.
+					// 예전에는 2.75m 앞까지 그 차선에 아무도 없어야 했다. 행인들이 길 폭 안에
+					// 흩어져 걸어서 줄이 생기면 양옆이 늘 "차 있는" 것으로 보였고, 전부 서서 기다렸다.
+					// 더 앞에 있는 사람은 비켜선 뒤에 새 앞사람으로 다시 판단하면 된다.
+					const float Ahead = FVector::DotProduct(Other.Loc - Me.Loc, MyDir);
+					if (Ahead < -SubNpcCrowdCVars::PassBehindWindow || Ahead > BlockAhead + SubNpcCrowdCVars::FollowStopDistance)
+					{
+						continue;
+					}
+					// 내 앞을 가로질러 가는 다른 경로 사람은 금방 지나간다 (막는 상대 판정과 같은 기준).
+					if (Other.bForeign && FVector::DotProduct(Other.Fwd, MyDir) < SubNpcCrowdCVars::CrossingHeadingDot
+						&& Ahead > SubNpcCrowdCVars::FollowStopDistance)
+					{
+						continue;
+					}
+					if (FMath::Abs(PhysicalLane(Other) - TargetLane) < Clearance)
+					{
+						return false;
+					}
+				}
+				return true;
+			};
+
+			// 쪽 고르기: 이미 비켜 가는 중이면 그 쪽을 끝까지 유지한다 (좌우 왕복 방지).
+			// 마주 오는 사람은 각자 자기 오른쪽(경로 기준 정방향 +, 역방향 -)으로 비킨다.
+			// 그 밖에는 이미 치우친 쪽, 정확히 같으면 이름 해시로 가른다.
+			float Prefer = 0.f;
+			if (Rear->IsPassing())
+			{
+				Prefer = FMath::Sign(Rear->GetPassLaneTarget() - BlockerLane);
+			}
+			if (Prefer == 0.f)
+			{
+				if (bOncoming)
+				{
+					Prefer = Me.Along;
+				}
+				else if (!FMath::IsNearlyEqual(Me.Lane, BlockerLane, 1.f))
+				{
+					Prefer = FMath::Sign(Me.Lane - BlockerLane);
+				}
+				else
+				{
+					Prefer = (GetTypeHash(Rear->GetFName()) & 1) ? 1.f : -1.f;
+				}
+			}
+
+			// 두 단계로 찾는다.
+			//   1) 여유 있게: 나란히 설 간격(LaneClear), 길 폭 안.
+			//   2) 비집고: 어깨가 거의 닿는 간격(SqueezeClearance), 길 가장자리를 조금 넘어서도 된다.
+			// [변경] 예전에는 1)만 봐서, 병목에서는 빈 차선이 없다며 전부 줄 서서 기다렸다.
+			// 너무 느려 보여서, 정말 막힌 게 아니면 사람처럼 옆으로 비집고 지나가게 한다.
+			//   3) 오래 서 있었으면: 어깨가 살짝 겹치는 간격(StallClearance)까지 허용한다.
+			//      영영 안 풀리는 정체보다 잠깐 스치는 게 훨씬 덜 어색하다.
+			struct FPassTry { float Clearance; float MaxAbsLane; };
+			const bool bStalled = Rear->GetStalledTime() > SubNpcCrowdCVars::StallRelaxTime;
+			const FPassTry Tries[] =
+			{
+				{ LaneClear, HalfWidth },
+				{ SubNpcCrowdCVars::SqueezeClearance, HalfWidth + SubNpcCrowdCVars::SqueezeOverflow },
+				{ bStalled ? SubNpcCrowdCVars::StallClearance : SubNpcCrowdCVars::SqueezeClearance,
+				  HalfWidth + SubNpcCrowdCVars::SqueezeOverflow },
+			};
+
+			float TargetLane = 0.f;
+			float UsedClearance = LaneClear;
+			bool bFound = false;
+			const int32 NumSides = Rear->IsPassing() ? 1 : 2;
+			for (const FPassTry& Try : Tries)
+			{
+				for (int32 SideIdx = 0; SideIdx < NumSides && !bFound; ++SideIdx)
+				{
+					const float Side = (SideIdx == 0) ? Prefer : -Prefer;
+					const float Candidate = BlockerLane + Side * Try.Clearance;
+					if (IsLaneFree(Candidate, Try.Clearance, Try.MaxAbsLane))
+					{
+						TargetLane = Candidate;
+						UsedClearance = Try.Clearance;
+						bFound = true;
+					}
+				}
+				if (bFound)
+				{
+					break;
+				}
+			}
+
+			if (bFound)
+			{
+				Rear->RequestPassLane(TargetLane, PassUntil);
+
+				// 옆으로 벌어진 만큼만 앞으로 간다. 덜 빠졌을 때는 간격 제동을 그대로 따르므로
+				// 상대 몸을 뚫지 않고, 다 빠지면 원래 속도로 지나간다. 멈춰 있어도 옆으로는
+				// 비켜설 수 있다 (SubNpcCrowdFlow::SidestepSpeed).
+				// 옆으로 얼마나 빠졌는지도 실제 위치로 잰다 (모서리에서 중심선 차선 값은 실제와 다르다).
+				const float SideGapToBlocker = FMath::Abs(FVector::DotProduct(Blocker->Loc - Me.Loc, MyRight));
+				const float Clear = FMath::SmoothStep(UsedClearance * 0.5f, UsedClearance, SideGapToBlocker);
+
+				// [변경] 옆으로 빠지는 동안 기어가지 않는다. 앞사람이 걷고 있으면 그 속도에 맞춰
+				// 걸으면서 비켜선다 - 간격이 줄지 않으니 몸이 겹치지 않고, 전진이 있으니 옆으로도
+				// 제 속도로 빠진다. 앞사람이 서 있거나 이미 바짝 붙었으면 예전처럼 간격 제동을 따른다.
+				const float MatchBlocker = (Blocker->bWalking && BlockAhead > StopDist)
+					? FMath::Clamp(Blocker->Speed / FMath::Max(1.f, Rear->GetWalkSpeed()), 0.f, 1.f)
+					: 0.f;
+
+				// 비킬 차선은 찾았는데 오래 못 빠져나가고 있으면(행인끼리) 정체 해소처럼 천천히 스치며 나간다.
+				// 예전에는 이 경우 정체 해소가 걸리지 않아 추월 중인 채로 10초 넘게 서 있었다.
+				const float StallFloor = (!bBlockerIsPlayer && Rear->GetStalledTime() > SubNpcCrowdCVars::StallGiveUpTime)
+					? SubNpcCrowdCVars::StallCreepScale
+					: 0.f;
+				Rear->RequestSlowDown(FMath::Max(StallFloor, FMath::Lerp(FMath::Max(GapScale, MatchBlocker), 1.f, Clear)));
+				DrawBlockDebug(Rear, Blocker->Npc, PlayerPawn, FColor::Yellow);
+			}
+			else if (!bBlockerIsPlayer && Rear->GetStalledTime() > SubNpcCrowdCVars::StallGiveUpTime)
+			{
+				// [정체 해소] 한참을 서 있었는데도 비킬 곳이 없다. 행인끼리라면 천천히 스치며 지나간다.
+				// 잠깐 어깨가 겹치는 게, 길 전체가 영영 멈춰 있는 것보다 낫다. 플레이어는 뚫지 않는다.
+				Rear->RequestSlowDown(SubNpcCrowdCVars::StallCreepScale);
+				DrawBlockDebug(Rear, Blocker->Npc, PlayerPawn, FColor::Magenta);
+			}
+			else
+			{
+				// 빈 차선이 없다 (병목). 옆으로 비비지 않고 뒤에서 줄 서서 기다린다.
+				Rear->RequestSlowDown(GapScale);
+				DrawBlockDebug(Rear, Blocker->Npc, PlayerPawn, FColor::Red);
+			}
+		}
+	}
+
+#if !UE_BUILD_SHIPPING
+	// crowd.LogBlock: 2초마다 "누가 왜 느려졌고, 누가 가장 많이 막고 있나"를 한 덩어리로 찍는다.
+	// 정체 원인을 화면 없이 로그만으로 찾기 위한 것이다.
+	{
+		static float LastBlockLogTime = -1000.f;
+		// [버그 수정] static이라 PIE를 다시 켜도 이전 판의 시각이 남는다. 새 판은 시간이 0부터라 로그가 한동안 안 찍혔다.
+		if (Now < LastBlockLogTime)
+		{
+			LastBlockLogTime = -1000.f;
+			StallChainLog.Reset();
+		}
+		if (SubNpcCrowdCVars::LogBlock != 0 && Now - LastBlockLogTime >= 2.f)
+		{
+			LastBlockLogTime = Now;
+
+			int32 Walking = 0, Stopped = 0;
+			for (const ASubNpcCharacter* Npc : Nearby)
+			{
+				if (Npc->IsWalkingOnPath())
+				{
+					++Walking;
+					if (Npc->GetStalledTime() > 0.5f)
+					{
+						++Stopped;
+					}
+				}
+			}
+
+			FString Reasons;
+			for (const TPair<FString, int32>& R : ReasonCounts)
+			{
+				Reasons += FString::Printf(TEXT(" %s=%d"), *R.Key, R.Value);
+			}
+
+			BlockerCounts.ValueSort([](int32 A, int32 B) { return A > B; });
+			FString Blockers;
+			int32 Shown = 0;
+			for (const TPair<const AActor*, int32>& B : BlockerCounts)
+			{
+				if (Shown++ >= 5)
+				{
+					break;
+				}
+				FString State = TEXT("플레이어");
+				if (const ASubNpcCharacter* Npc = Cast<ASubNpcCharacter>(B.Key))
+				{
+					State = FString::Printf(TEXT("%s/속도%.0f%%%s%s%s%s"),
+						Npc->IsWalkingOnPath() ? TEXT("걷기") : TEXT("멈춤(반응·스팟)"),
+						Npc->GetCurrentMoveSpeed() / FMath::Max(1.f, Npc->GetWalkSpeed()) * 100.f,
+						Npc->IsRejoiningPath() ? TEXT("/합류중") : TEXT(""),
+						Npc->IsWaitingForGroup() ? TEXT("/일행대기") : TEXT(""),
+						Npc->GetGroupLeader() ? TEXT("/일행") : TEXT(""),
+						Npc->GetStalledTime() > 0.5f ? *FString::Printf(TEXT("/정지%.1f초"), Npc->GetStalledTime()) : TEXT(""));
+				}
+				Blockers += FString::Printf(TEXT(" [%s x%d %s @%s]"),
+					*GetNameSafe(B.Key), B.Value, *State, *B.Key->GetActorLocation().ToCompactString());
+			}
+
+			UE_LOG(LogTemp, Log, TEXT("[CrowdBlock] 근처 걷는 사람 %d명 중 0.5초 넘게 정지 %d명 | 감속 이유:%s | 많이 막는 상대:%s"),
+				Walking, Stopped, *Reasons, *Blockers);
+			for (const FString& Line : StallChainLog)
+			{
+				UE_LOG(LogTemp, Log, TEXT("[CrowdStall]%s"), *Line);
+			}
+			StallChainLog.Reset();
+		}
+	}
+#endif
+
+	const float AvoidSq = FMath::Square(FMath::Min(AvoidDistance, SubNpcCrowdCVars::LaneClearance));
 
 	for (int32 i = 0; i < Nearby.Num(); ++i)
 	{
@@ -782,8 +2441,9 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		{
 			ASubNpcCharacter* B = Nearby[j];
 
-			// 같은 경로 위에 있는 개체끼리만 비교한다.
-			// 다른 경로라면 좌우 오프셋을 밀어도 서로 멀어지지 않는다.
+			// 앞뒤 간격과 추월은 위의 차선 계획이 처리했다. 경로 이음매(서로 다른 경로)의 쌍도
+			// 다른 경로의 사람을 이 경로 좌표로 옮겨 넣어 거기서 같이 처리한다.
+			// 여기서는 같은 경로 위에서 그래도 겹친 몸을 살짝 떼어내는 일만 한다.
 			if (A->GetCurrentPath() != B->GetCurrentPath())
 			{
 				continue;
@@ -796,93 +2456,6 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 			}
 
 			const bool bSameGroup = A->IsSameGroup(B);
-
-			// [종방향 회피] 좌우 회피보다 **먼저, 더 넓은 거리에서** 판정한다.
-			//
-			// 예전에는 이 검사가 아래 좌우 회피의 거리 조건(AvoidDistance) 안에 갇혀
-			// 있었다. 그래서 110cm보다 멀면 검사조차 안 했고, 그 사이에 이미 겹쳐서
-			// 지나가버렸다. 앞사람을 인지하려면 붙기 전에 봐야 한다.
-			if (A->IsReversedOnPath() == B->IsReversedOnPath())
-			{
-				const float Along = A->IsReversedOnPath() ? -1.f : 1.f;
-				const float Ahead = (B->GetPathDistance() - A->GetPathDistance()) * Along;
-				const float LaneGap = FMath::Abs(A->GetLaneOffset() - B->GetLaneOffset());
-				const float Gap = FMath::Abs(Ahead);
-
-				// 차선이 절반 이상 겹치고, 제동 거리 안에 들어왔으면 뒷사람을 늦춘다.
-				if (LaneGap < SubNpcCrowdCVars::FollowLaneWidth && Gap < SubNpcCrowdCVars::FollowSlowDistance)
-				{
-					// Ahead > 0 이면 B가 앞, A가 뒤.
-					ASubNpcCharacter* Rear = (Ahead > 0.f) ? A : B;
-
-					// 바짝 붙으면 0까지 떨어뜨려 **완전히 멈추게** 한다.
-					// 예전 하한 0.15는 "느리게 통과"를 만들 뿐이었다.
-					// 옆으로 비킬 공간이 생기면 아래 좌우 회피가 먼저 풀어준다.
-					const float Scale = FMath::Clamp(
-						(Gap - SubNpcCrowdCVars::FollowStopDistance)
-							/ FMath::Max(1.f, SubNpcCrowdCVars::FollowSlowDistance - SubNpcCrowdCVars::FollowStopDistance),
-						0.f, 1.f);
-
-					// [버그 수정] 친구끼리도 앞뒤로는 막아야 한다.
-					// 예전에는 같은 그룹이면 이 검사 전에 continue 해버렸고, 추종자는
-					// 속도 하한(SpeedScaleMin) 때문에 리더가 멈춰도 계속 걸어 리더를 뚫고 지나갔다.
-					// 다만 평소 대열 간격을 흔들지 않도록, 친구끼리는 정지 거리 안쪽에서만 세운다.
-					const bool bShouldBrake = !bSameGroup || Gap < SubNpcCrowdCVars::FollowStopDistance;
-
-					if (Rear->IsWalkingOnPath())
-					{
-						ASubNpcCharacter* Front = (Rear == A) ? B : A;
-
-						// [추월] 앞사람이 멈췄거나 막혀서 크게 느려졌으면, 뒤에 붙어 서서
-						// 미는 대신 옆 차선으로 비켜 지나간다. 옆에 공간이 없을 때만 기다린다.
-						bool bPassing = false;
-						if (!Front->IsWalkingOnPath() || Front->IsHeldUp())
-						{
-							const float HalfWidth = Rear->GetCurrentPath()->GetLaneHalfWidth();
-							const float FrontLane = Front->GetLaneOffset();
-							const float RearLane = Rear->GetLaneOffset();
-
-							// [좌우 떨림 방지] 이미 추월 중이면 처음 고른 쪽을 끝까지 유지한다.
-							// 매번 새로 고르면 앞사람 차선이 조금만 흔들려도 좌우가 뒤바뀐다.
-							const bool bAlreadyPassing = Rear->IsPassing();
-							const float CommittedSide = FMath::Sign(Rear->GetPassLaneTarget() - FrontLane);
-
-							// 처음이면 이미 치우친 쪽으로 빠진다. 정확히 같으면 이름 해시로 가른다.
-							const float Prefer = (bAlreadyPassing && CommittedSide != 0.f)
-								? CommittedSide
-								: (!FMath::IsNearlyEqual(RearLane, FrontLane, 1.f)
-									? FMath::Sign(RearLane - FrontLane)
-									: ((GetTypeHash(Rear->GetFName()) & 1) ? 1.f : -1.f));
-
-							// 추월 중에는 반대쪽으로 갈아타지 않는다.
-							const int32 NumSides = bAlreadyPassing ? 1 : 2;
-							for (int32 SideIdx = 0; SideIdx < NumSides; ++SideIdx)
-							{
-								const float Side = (SideIdx == 0) ? Prefer : -Prefer;
-								const float TargetLane = FrontLane + Side * SubNpcCrowdCVars::PassLaneGap;
-								if (FMath::Abs(TargetLane) <= HalfWidth)
-								{
-									Rear->RequestPassLane(TargetLane, Now + SubNpcCrowdCVars::PassHoldTime);
-									bPassing = true;
-									break;
-								}
-							}
-						}
-
-						if (bPassing)
-						{
-							// 비켜 가는 동안에도 계속 걷는다. 옆 이동이 전진 거리에 묶여 있으므로
-							// 여기서 멈추면 옆으로도 못 빠진다. 옆으로 벌어질수록 원래 속도로 돌아온다.
-							const float Clear = FMath::Clamp(LaneGap / SubNpcCrowdCVars::FollowLaneWidth, 0.f, 1.f);
-							Rear->RequestSlowDown(FMath::Max(Scale, FMath::Lerp(SubNpcCrowdCVars::PassMinScale, 1.f, Clear)));
-						}
-						else if (bShouldBrake)
-						{
-							Rear->RequestSlowDown(Scale);
-						}
-					}
-				}
-			}
 
 			// [의도] 같은 그룹(친구)끼리는 좌우로 밀어내지 않는다.
 			// "친구는 붙고 남남은 떨어진다"는 그림이 이 한 줄에서 나온다.
@@ -925,6 +2498,239 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 			}
 
 		}
+	}
+}
+
+void USubNpcDirectorSubsystem::UpdateOffLaneYield()
+{
+	const float YieldDistSq = FMath::Square(SubNpcCrowdCVars::OffLaneYieldDistance);
+
+	for (ASubNpcCharacter* Mover : ActiveNpcs)
+	{
+		if (!IsValid(Mover) || Mover->IsPooled())
+		{
+			continue;
+		}
+		if (!Mover->IsMovingOffLane())
+		{
+			Mover->SetOffLaneYield(false);
+			continue;
+		}
+
+		const FVector MyLoc = Mover->GetActorLocation();
+		const FVector MyFwd = Mover->GetActorForwardVector().GetSafeNormal2D();
+		bool bYield = false;
+
+		for (const ASubNpcCharacter* Other : ActiveNpcs)
+		{
+			if (Other == Mover || !IsValid(Other) || Other->IsPooled())
+			{
+				continue;
+			}
+
+			// 길 밖에서 움직이는 사람끼리만 양보한다.
+			//   - 서 있는 사람(스팟 칸·줄 자리)에게 양보하면 영영 못 움직인다. 그 자리는 처음부터 떨어져 있다.
+			//   - [변경] 길 위를 걷는 사람에게도 양보하지 않는다. 길을 가로지르다 양보하면 길 한가운데 서서
+			//     장애물이 되고, 길 위 행인은 또 이 사람을 피하느라 서로 기다리며 뭉쳤다.
+			//     길 위 행인이 이 사람을 보고 비켜 가므로(차선 계획의 장애물) 이쪽은 계속 걸어간다.
+			if (!Other->IsMovingOffLane())
+			{
+				continue;
+			}
+
+			FVector To = Other->GetActorLocation() - MyLoc;
+			To.Z = 0.f;
+			const float DistSq = To.SizeSquared();
+			if (DistSq > YieldDistSq || DistSq < KINDA_SMALL_NUMBER)
+			{
+				continue;
+			}
+			const FVector ToDir = To.GetSafeNormal();
+
+			// 내가 가는 방향 앞에 있을 때만 양보한다.
+			if (FVector::DotProduct(MyFwd, ToDir) < SubNpcCrowdCVars::OffLaneYieldFrontDot)
+			{
+				continue;
+			}
+
+			// 둘 다 길 밖에서 서로를 향해 오고 있으면 한 명만 양보한다 (둘 다 서면 영영 못 지나간다).
+			if (Other->IsMovingOffLane())
+			{
+				const FVector OtherFwd = Other->GetActorForwardVector().GetSafeNormal2D();
+				const bool bOtherFacesMe = FVector::DotProduct(OtherFwd, -ToDir) >= SubNpcCrowdCVars::OffLaneYieldFrontDot;
+				if (bOtherFacesMe && GetTypeHash(Mover->GetFName()) < GetTypeHash(Other->GetFName()))
+				{
+					continue;
+				}
+			}
+
+			bYield = true;
+			break;
+		}
+
+		Mover->SetOffLaneYield(bYield);
+	}
+}
+
+void USubNpcDirectorSubsystem::UpdateGroupCohesion()
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	const float Now = World->GetTimeSeconds();
+
+	// 리더별로 가장 많이 뒤처진 일행의 거리를 잰다.
+	// 대열 간격(GroupFollowGap)만큼은 원래 떨어져 있는 거리이므로 빼고 센다.
+	// 경로 이음매를 넘는 순간에도 맞도록 진행도 대신 실제 거리로 잰다.
+	TMap<ASubNpcCharacter*, float> MaxLag;
+	for (ASubNpcCharacter* Npc : ActiveNpcs)
+	{
+		if (!IsValid(Npc))
+		{
+			continue;
+		}
+		ASubNpcCharacter* Leader = Npc->GetGroupLeader();
+		if (!IsValid(Leader) || Leader->IsPooled())
+		{
+			continue;
+		}
+		const float Lag = FVector::Dist2D(Npc->GetActorLocation(), Leader->GetActorLocation()) - Npc->GetGroupFollowGap();
+		float& Max = MaxLag.FindOrAdd(Leader, 0.f);
+		Max = FMath::Max(Max, Lag);
+	}
+
+	for (const TPair<ASubNpcCharacter*, float>& Pair : MaxLag)
+	{
+		ASubNpcCharacter* Leader = Pair.Key;
+		const float Lag = Pair.Value;
+
+		if (!Leader->IsWalkingOnPath())
+		{
+			Leader->SetWaitingForGroup(false, Now);
+			continue;
+		}
+
+		bool bWaiting = Leader->IsWaitingForGroup();
+		const float WaitedFor = Now - Leader->GetGroupWaitStartTime();
+
+		if (!bWaiting)
+		{
+			// 많이 벌어졌으면 기다리기 시작한다. 방금 기다리다 포기했으면 한동안은 다시 서지 않는다
+			// (계속 못 따라오는 일행 때문에 리더가 서다 가다를 반복하지 않게).
+			const bool bCooledDown = WaitedFor > SubNpcCrowdCVars::GroupWaitMaxTime + SubNpcCrowdCVars::GroupWaitCooldown;
+			bWaiting = (Lag > SubNpcCrowdCVars::GroupWaitStartLag) && bCooledDown;
+		}
+		else if (Lag < SubNpcCrowdCVars::GroupWaitResumeLag || WaitedFor > SubNpcCrowdCVars::GroupWaitMaxTime)
+		{
+			// 다 따라왔으면, 또는 너무 오래 기다렸으면 다시 걷는다.
+			bWaiting = false;
+		}
+
+		Leader->SetWaitingForGroup(bWaiting, Now);
+		if (bWaiting)
+		{
+			// 완전히 서지 않고 아주 천천히 걸으며 기다린다. 길 한가운데 딱 서 있으면 그 자체가
+			// 또 다른 정체가 된다. 느리게 걷는 리더는 뒷사람이 보통 앞사람처럼 추월해 간다.
+			Leader->RequestSlowDown(SubNpcCrowdCVars::GroupWaitWalkScale);
+		}
+	}
+}
+
+void USubNpcDirectorSubsystem::UpdateGroupChats()
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	const float Now = World->GetTimeSeconds();
+
+	// 리더별로 일행을 모은다. 그룹 정보는 추종자 쪽(GroupLeader)에만 있다.
+	TMap<ASubNpcCharacter*, TArray<ASubNpcCharacter*, TInlineAllocator<4>>> Groups;
+	for (ASubNpcCharacter* Npc : ActiveNpcs)
+	{
+		if (!IsValid(Npc))
+		{
+			continue;
+		}
+		if (ASubNpcCharacter* Leader = Npc->GetGroupLeader())
+		{
+			Groups.FindOrAdd(Leader).Add(Npc);
+		}
+	}
+
+	for (TPair<ASubNpcCharacter*, TArray<ASubNpcCharacter*, TInlineAllocator<4>>>& Pair : Groups)
+	{
+		ASubNpcCharacter* Leader = Pair.Key;
+		if (!IsValid(Leader) || !Leader->IsWalkingOnPath())
+		{
+			continue;
+		}
+
+		// 보이는 거리에 있는 무리만. 멀리서 멈춰 봐야 아무도 못 본다.
+		const ESubNpcLodBand Band = Leader->GetLodBand();
+		if (Band != ESubNpcLodBand::Near && Band != ESubNpcLodBand::Mid)
+		{
+			continue;
+		}
+
+		// 처음 본 리더는 시각만 정해둔다. 등장하자마자 멈추면 어색하다.
+		if (Leader->GetNextGroupChatTime() <= 0.f)
+		{
+			Leader->SetNextGroupChatTime(Now + FMath::FRandRange(
+				SubNpcCrowdCVars::GroupChatIntervalMin, SubNpcCrowdCVars::GroupChatIntervalMax));
+			continue;
+		}
+		if (Now < Leader->GetNextGroupChatTime())
+		{
+			continue;
+		}
+		Leader->SetNextGroupChatTime(Now + FMath::FRandRange(
+			SubNpcCrowdCVars::GroupChatIntervalMin, SubNpcCrowdCVars::GroupChatIntervalMax));
+
+		if (FMath::FRand() > SubNpcCrowdCVars::GroupChatChance)
+		{
+			continue;
+		}
+
+		// 리더 근처에서 같이 걷고 있는 일행만 낀다.
+		TArray<ASubNpcCharacter*, TInlineAllocator<4>> Members;
+		Members.Add(Leader);
+		const float RadiusSq = FMath::Square(SubNpcCrowdCVars::GroupChatRadius);
+		for (ASubNpcCharacter* Member : Pair.Value)
+		{
+			if (Member->IsWalkingOnPath()
+				&& Member->GetCurrentPath() == Leader->GetCurrentPath()
+				&& FVector::DistSquared(Member->GetActorLocation(), Leader->GetActorLocation()) < RadiusSq)
+			{
+				Members.Add(Member);
+			}
+		}
+		if (Members.Num() < 2)
+		{
+			continue;
+		}
+
+		// [변경] 멈추지 않고 걸으면서 이야기한다. 같은 시간 동안, 정해진 순서로 번갈아 손짓한다.
+		// 첫 번째로 말할 사람은 매번 바꿔서 늘 리더만 먼저 말하지 않게 한다.
+		const float Duration = FMath::FRandRange(
+			SubNpcCrowdCVars::GroupChatDurationMin, SubNpcCrowdCVars::GroupChatDurationMax);
+		const int32 FirstSpeaker = FMath::RandRange(0, Members.Num() - 1);
+
+		for (int32 i = 0; i < Members.Num(); ++i)
+		{
+			const int32 Order = (i - FirstSpeaker + Members.Num()) % Members.Num();
+			// 이야기 상대: 리더는 첫 번째 일행을, 일행은 리더를 본다.
+			ASubNpcCharacter* Partner = (i == 0) ? Members[1] : Members[0];
+			Members[i]->StartGroupChat(Duration, SubNpcCrowdCVars::GroupTalkAnimId,
+				Order, Members.Num(), SubNpcCrowdCVars::GroupChatTurnLength, Partner);
+		}
+
+		// 대화가 끝난 뒤부터 다음 간격을 센다. 이야기 도중에 다시 시작되지 않게 한다.
+		Leader->SetNextGroupChatTime(Now + Duration + FMath::FRandRange(
+			SubNpcCrowdCVars::GroupChatIntervalMin, SubNpcCrowdCVars::GroupChatIntervalMax));
 	}
 }
 

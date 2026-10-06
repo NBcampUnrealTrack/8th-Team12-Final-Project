@@ -78,6 +78,9 @@ enum class ESubNpcReaction : uint8
 
 	/** 플레이어와 대화 중. 대화창이 닫힐 때까지 멈춰 서 있는다 */
 	Talking		UMETA(DisplayName = "대화 중"),
+
+	/** 일행끼리 길에서 멈춰 서로 마주 보고 이야기한다 */
+	GroupChat	UMETA(DisplayName = "일행과 대화"),
 };
 
 /**

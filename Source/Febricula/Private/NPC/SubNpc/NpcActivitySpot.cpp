@@ -3,13 +3,16 @@
 #include "NPC/SubNpc/NpcActivitySpot.h"
 
 #include "Components/ArrowComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
 
 ANpcActivitySpot::ANpcActivitySpot()
 {
-	// 스팟은 순수 데이터 액터다. 점유 관리도 NPC 쪽에서 호출해주므로 틱이 필요 없다.
-	PrimaryActorTick.bCanEverTick = false;
+	// 스팟은 게임에서는 순수 데이터 액터다. 점유 관리도 NPC 쪽에서 호출해주므로 틱이 필요 없다.
+	// 에디터 뷰포트에서만 틱해서 칸·줄 자리를 그리고, 게임이 시작되면 첫 틱에 스스로 틱을 끈다.
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	SpotRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SpotRoot"));
 	SetRootComponent(SpotRoot);
@@ -25,6 +28,7 @@ void ANpcActivitySpot::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	// 레벨 종료/언로드 시 남은 참조를 확실히 끊는다.
 	// 스팟이 NPC를, NPC가 스팟을 서로 붙잡고 있으면 풀 회수 후에도 메모리가 안 풀린다.
 	Occupants.Reset();
+	WaitQueue.Reset();
 	LastUseTime.Reset();
 	CurrentOccupants = 0;
 
@@ -126,18 +130,170 @@ bool ANpcActivitySpot::IsActivityAvailable(int32 ActivityIndex) const
 	return true;
 }
 
-FVector ANpcActivitySpot::GetStandLocation() const
+FVector ANpcActivitySpot::GetSlotCenter(int32 SlotIndex) const
 {
-	FVector Location = GetActorLocation();
+	// 칸들을 스팟 중심 기준으로 좌우 대칭으로 늘어놓는다.
+	const float Centered = SlotIndex - (MaxOccupants - 1) * 0.5f;
+	return GetActorLocation() + GetActorRightVector() * (Centered * SlotSpacing);
+}
+
+void ANpcActivitySpot::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 게임에서는 할 일이 없다.
+	const UWorld* World = GetWorld();
+	if (!World || World->IsGameWorld())
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+
+#if WITH_EDITORONLY_DATA
+	if (bDrawSlotsInEditor)
+	{
+		DrawSpotDebug();
+	}
+#endif
+}
+
+void ANpcActivitySpot::DrawSpotDebug(float Lifetime) const
+{
+#if ENABLE_DRAW_DEBUG
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 액터 높이는 캡슐 중심(지면 + 88)이라 발밑 근처로 내려 그린다.
+	const FVector Down(0.f, 0.f, -80.f);
+	const FVector Up(1.f, 0.f, 0.f);
+	const FVector Side(0.f, 1.f, 0.f);
+	constexpr float BodyRadius = 34.f;   // 행인 캡슐 반지름. 원끼리 겹치면 몸도 겹친다
+
+	for (int32 Slot = 0; Slot < MaxOccupants; ++Slot)
+	{
+		const FVector C = GetSlotCenter(Slot) + Down;
+		DrawDebugCircle(World, C, BodyRadius, 20, FColor::Yellow, false, Lifetime, 0, 2.f, Up, Side, false);
+		DrawDebugString(World, C + FVector(0.f, 0.f, 30.f), FString::Printf(TEXT("칸 %d"), Slot), nullptr, FColor::Yellow, Lifetime);
+	}
+
+	for (int32 Index = 0; Index < MaxQueueLength; ++Index)
+	{
+		const FVector Q = GetQueueLocation(Index) + Down;
+		DrawDebugCircle(World, Q, BodyRadius, 20, FColor::Orange, false, Lifetime, 0, 2.f, Up, Side, false);
+		DrawDebugString(World, Q + FVector(0.f, 0.f, 30.f), FString::Printf(TEXT("줄 %d"), Index + 1), nullptr, FColor::Orange, Lifetime);
+	}
+
+	// 행인이 바라볼 방향 (스팟 정면)
+	const FVector Center = GetActorLocation() + Down;
+	DrawDebugDirectionalArrow(World, Center, Center + GetActorForwardVector() * 120.f, 40.f, FColor::Cyan, false, Lifetime, 0, 3.f);
+#endif
+}
+
+FVector ANpcActivitySpot::GetStandLocation(int32 SlotIndex) const
+{
+	FVector Location = GetSlotCenter(SlotIndex);
 
 	if (StandJitterRadius > 0.f)
 	{
 		// 매번 정확히 같은 자리에 서면 "복제 붙여넣기"처럼 보인다.
-		const FVector2D Offset = FMath::RandPointInCircle(StandJitterRadius);
+		// 다만 옆 칸을 침범하면 다시 겹치므로 칸 간격의 일부로만 흔든다.
+		const float Jitter = FMath::Min(StandJitterRadius, (SlotSpacing - 70.f) * 0.5f + 5.f);
+		const FVector2D Offset = FMath::RandPointInCircle(Jitter);
 		Location += FVector(Offset.X, Offset.Y, 0.f);
 	}
 
 	return Location;
+}
+
+bool ANpcActivitySpot::IsOnReuseCooldown(const ASubNpcCharacter* Npc) const
+{
+	const UWorld* World = GetWorld();
+	const float Now = World ? World->GetTimeSeconds() : 0.f;
+
+	const float* Last = LastUseTime.Find(Npc);
+	return Last && (Now - *Last < ReuseCooldown);
+}
+
+void ANpcActivitySpot::CleanQueue()
+{
+	WaitQueue.RemoveAll([](const TWeakObjectPtr<ASubNpcCharacter>& Weak) { return !Weak.IsValid(); });
+}
+
+bool ANpcActivitySpot::CanEnterNow(const ASubNpcCharacter* Npc) const
+{
+	if (!Npc || !HasRoom())
+	{
+		return false;
+	}
+
+	// 줄의 맨 앞(살아 있는 사람 중 첫 번째)만 들어갈 수 있다. 줄이 비었으면 누구든.
+	for (const TWeakObjectPtr<ASubNpcCharacter>& Weak : WaitQueue)
+	{
+		if (Weak.IsValid())
+		{
+			return Weak.Get() == Npc;
+		}
+	}
+	return true;
+}
+
+bool ANpcActivitySpot::TryJoinQueue(ASubNpcCharacter* Npc)
+{
+	if (!Npc || MaxQueueLength <= 0 || IsOnReuseCooldown(Npc))
+	{
+		return false;
+	}
+
+	CleanQueue();
+	if (WaitQueue.Contains(Npc))
+	{
+		return true;
+	}
+	if (WaitQueue.Num() >= MaxQueueLength)
+	{
+		return false;
+	}
+
+	WaitQueue.Add(Npc);
+	return true;
+}
+
+void ANpcActivitySpot::LeaveQueue(ASubNpcCharacter* Npc)
+{
+	WaitQueue.RemoveAll([Npc](const TWeakObjectPtr<ASubNpcCharacter>& Weak)
+	{
+		return !Weak.IsValid() || Weak.Get() == Npc;
+	});
+}
+
+int32 ANpcActivitySpot::GetQueueIndex(const ASubNpcCharacter* Npc) const
+{
+	// 죽은 참조는 세지 않는다. 앞사람이 회수되면 그 자리를 바로 당겨 선다.
+	int32 Index = 0;
+	for (const TWeakObjectPtr<ASubNpcCharacter>& Weak : WaitQueue)
+	{
+		if (!Weak.IsValid())
+		{
+			continue;
+		}
+		if (Weak.Get() == Npc)
+		{
+			return Index;
+		}
+		++Index;
+	}
+	return INDEX_NONE;
+}
+
+FVector ANpcActivitySpot::GetQueueLocation(int32 Index) const
+{
+	// 줄은 마지막 칸 바로 옆에서 시작해 QueueDirection으로 늘어선다.
+	const FVector Dir = GetActorTransform().TransformVectorNoScale(QueueDirection).GetSafeNormal2D();
+	const float SlotsHalfWidth = (MaxOccupants - 1) * 0.5f * SlotSpacing;
+	return GetActorLocation() + Dir * (SlotsHalfWidth + QueueSpacing * (Index + 1));
 }
 
 FVector ANpcActivitySpot::GetLookAtLocation(const FNpcActivityOption& Option) const
@@ -152,9 +308,13 @@ FVector ANpcActivitySpot::GetLookAtLocation(const FNpcActivityOption& Option) co
 	return GetActorTransform().TransformPosition(Option.LookAtOffset);
 }
 
-bool ANpcActivitySpot::TryOccupy(ASubNpcCharacter* Npc, int32 ActivityIndex)
+bool ANpcActivitySpot::TryOccupy(ASubNpcCharacter* Npc, int32 ActivityIndex, int32& OutSlotIndex)
 {
-	if (!Npc || !HasRoom())
+	OutSlotIndex = 0;
+
+	// [줄 서기] 먼저 와서 기다리는 사람이 있으면 그 사람이 먼저다.
+	// 예전에는 줄이 없어서, 앞에서 막혀 서 있던 사람 대신 뒤늦게 온 사람이 먼저 들어갔다.
+	if (!CanEnterNow(Npc))
 	{
 		return false;
 	}
@@ -165,21 +325,34 @@ bool ANpcActivitySpot::TryOccupy(ASubNpcCharacter* Npc, int32 ActivityIndex)
 		return false;
 	}
 
+	// 같은 행인이 루프를 돌며 계속 같은 자리에 멈추면 금방 티가 난다.
+	if (IsOnReuseCooldown(Npc))
+	{
+		return false;
+	}
+
 	const UWorld* World = GetWorld();
 	const float Now = World ? World->GetTimeSeconds() : 0.f;
 
-	// 같은 행인이 루프를 돌며 계속 같은 자리에 멈추면 금방 티가 난다.
-	if (const float* Last = LastUseTime.Find(Npc))
+	// 비어 있는 칸 중 가장 앞 번호를 준다.
+	Occupants.RemoveAll([](const FNpcSpotOccupant& Occupant) { return !Occupant.Npc.IsValid(); });
+	for (int32 Slot = 0; Slot < MaxOccupants; ++Slot)
 	{
-		if (Now - *Last < ReuseCooldown)
+		const bool bTaken = Occupants.ContainsByPredicate(
+			[Slot](const FNpcSpotOccupant& Occupant) { return Occupant.SlotIndex == Slot; });
+		if (!bTaken)
 		{
-			return false;
+			OutSlotIndex = Slot;
+			break;
 		}
 	}
+
+	LeaveQueue(Npc);
 
 	FNpcSpotOccupant& Added = Occupants.AddDefaulted_GetRef();
 	Added.Npc = Npc;
 	Added.ActivityIndex = ActivityIndex;
+	Added.SlotIndex = OutSlotIndex;
 	LastUseTime.Add(Npc, Now);
 	++CurrentOccupants;
 

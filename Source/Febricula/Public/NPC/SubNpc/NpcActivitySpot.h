@@ -34,6 +34,10 @@ struct FNpcSpotOccupant
 	/** Activities 배열의 인덱스. 독점 행동 판정에 쓴다 */
 	UPROPERTY()
 	int32 ActivityIndex = INDEX_NONE;
+
+	/** 몇 번째 칸에 서 있는가. 정원이 여러 명이어도 서로 다른 칸에 서서 겹치지 않는다 */
+	UPROPERTY()
+	int32 SlotIndex = 0;
 };
 
 UCLASS()
@@ -70,9 +74,48 @@ public:
 	/** 이 행동을 지금 고를 수 있는가 (독점 행동이면 아무도 안 하고 있어야 한다) */
 	bool IsActivityAvailable(int32 ActivityIndex) const;
 
-	/** NPC가 실제로 서야 할 위치 (스팟 앞) */
+	/**
+	 * NPC가 실제로 서야 할 위치. 칸(Slot)마다 SlotSpacing만큼 옆으로 떨어져 있다.
+	 * 예전에는 반경 안의 아무 점이나 뽑아서 정원이 여러 명이면 서로 겹쳐 섰다.
+	 */
 	UFUNCTION(BlueprintPure, Category = "Crowd|Spot")
-	FVector GetStandLocation() const;
+	FVector GetStandLocation(int32 SlotIndex = 0) const;
+
+	// ---- 줄 서기 -------------------------------------------------------------
+
+	/**
+	 * 지금 바로 들어갈 수 있는가. 자리가 있어도 먼저 와서 기다리는 사람이 있으면
+	 * 그 사람이 먼저다 (줄의 맨 앞만 들어갈 수 있다).
+	 */
+	bool CanEnterNow(const ASubNpcCharacter* Npc) const;
+
+	/** 줄 끝에 선다. 줄이 꽉 찼거나 재사용 쿨다운 중이면 false */
+	bool TryJoinQueue(ASubNpcCharacter* Npc);
+
+	/** 줄에서 빠진다 (포기·반응·회수). 줄에 없으면 아무 일도 없다 */
+	void LeaveQueue(ASubNpcCharacter* Npc);
+
+	/** 줄에서 몇 번째인가 (0 = 맨 앞). 줄에 없으면 INDEX_NONE */
+	int32 GetQueueIndex(const ASubNpcCharacter* Npc) const;
+
+	/** 줄의 Index번째 사람이 기다릴 위치 */
+	FVector GetQueueLocation(int32 Index) const;
+
+	/** 줄에서 이 시간(초)보다 오래 기다리면 포기하고 지나간다 */
+	float GetMaxQueueWait() const { return MaxQueueWait; }
+
+	/** SlotIndex번 칸의 중심 (흔들기 전). 서는 자리와 디버그 표시가 같이 쓴다 */
+	FVector GetSlotCenter(int32 SlotIndex) const;
+
+	/** 칸·줄 자리·바라볼 방향을 디버그 선으로 그린다. Lifetime -1이면 이번 프레임만 */
+	void DrawSpotDebug(float Lifetime = -1.f) const;
+
+	virtual void Tick(float DeltaSeconds) override;
+
+#if WITH_EDITOR
+	/** 에디터 뷰포트에서도 틱해서 칸·줄 자리를 그린다 (bDrawSlotsInEditor) */
+	virtual bool ShouldTickIfViewportsOnly() const override { return bDrawSlotsInEditor; }
+#endif
 
 	/** 선택한 행동에서 바라볼 월드 좌표 */
 	UFUNCTION(BlueprintPure, Category = "Crowd|Spot")
@@ -82,7 +125,7 @@ public:
 	 * 점유 등록/해제. NPC가 반드시 짝을 맞춰 호출해야 한다.
 	 * ActivityIndex는 PickActivity가 준 값. 그 사이 다른 행인이 같은 독점 행동을 잡았으면 실패한다.
 	 */
-	bool TryOccupy(ASubNpcCharacter* Npc, int32 ActivityIndex);
+	bool TryOccupy(ASubNpcCharacter* Npc, int32 ActivityIndex, int32& OutSlotIndex);
 	void ReleaseOccupancy(ASubNpcCharacter* Npc);
 
 protected:
@@ -108,6 +151,42 @@ protected:
 	float StandJitterRadius = 25.f;
 
 	/**
+	 * 정원이 여러 명일 때 칸 사이 간격 (cm). 스팟의 오른쪽 방향으로 나란히 선다.
+	 * 캡슐 지름(약 68cm)보다 커야 어깨가 겹치지 않는다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot", meta = (ClampMin = "70.0"))
+	float SlotSpacing = 90.f;
+
+	/** 자리가 없을 때 줄을 설 수 있는 최대 인원. 0이면 줄을 서지 않고 그냥 지나간다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Queue", meta = (ClampMin = "0"))
+	int32 MaxQueueLength = 3;
+
+	/** 줄 선 사람 사이 간격 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Queue", meta = (ClampMin = "70.0"))
+	float QueueSpacing = 80.f;
+
+	/**
+	 * 줄이 늘어설 방향 (스팟 로컬). 기본은 스팟의 오른쪽 - 칸들 바로 옆에서 이어진다.
+	 * 줄이 길(경로) 쪽으로 뻗지 않게 방향을 잡아준다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Queue")
+	FVector QueueDirection = FVector(0.f, 1.f, 0.f);
+
+	/** 줄에서 이 시간(초)보다 오래 기다리면 포기하고 지나간다. 영원히 서 있는 사람을 막는다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Queue", meta = (ClampMin = "1.0"))
+	float MaxQueueWait = 20.f;
+
+#if WITH_EDITORONLY_DATA
+	/**
+	 * 레벨 편집 중에도 칸(노랑 원)·줄 자리(주황 원과 번호)·바라볼 방향(하늘 화살표)을 그린다.
+	 * 줄이 길 쪽으로 뻗거나 칸이 벽에 박히는지 배치하면서 바로 볼 수 있다.
+	 * (에디터 뷰포트가 실시간(Realtime) 모드여야 계속 보인다)
+	 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Spot|Debug")
+	bool bDrawSlotsInEditor = true;
+#endif
+
+	/**
 	 * 같은 NPC가 이 스팟을 다시 쓰기까지의 최소 간격 (초).
 	 * 루프 경로에서 같은 행인이 계속 같은 자리에 멈추는 걸 막는다.
 	 */
@@ -128,6 +207,16 @@ protected:
 	/** 지금 점유 중인 NPC들과 각자 하고 있는 행동 */
 	UPROPERTY(Transient)
 	TArray<FNpcSpotOccupant> Occupants;
+
+	/** 자리가 나길 기다리는 사람들. 먼저 온 순서대로 들어간다 */
+	UPROPERTY(Transient)
+	TArray<TWeakObjectPtr<ASubNpcCharacter>> WaitQueue;
+
+	/** 쿨다운 중인가 (같은 행인이 같은 스팟에 계속 멈추지 않게) */
+	bool IsOnReuseCooldown(const ASubNpcCharacter* Npc) const;
+
+	/** 죽은 참조를 줄에서 뺀다 */
+	void CleanQueue();
 
 	/** NPC별 마지막 사용 시각 (재사용 쿨다운 판정용) */
 	TMap<TWeakObjectPtr<ASubNpcCharacter>, float> LastUseTime;

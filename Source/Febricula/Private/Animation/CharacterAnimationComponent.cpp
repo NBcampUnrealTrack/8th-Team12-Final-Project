@@ -19,6 +19,21 @@ UCharacterAnimationComponent::UCharacterAnimationComponent()
 
 bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 {
+	return PlayAnimOnSlot(AnimId, AnimSlotName, bLoop);
+}
+
+void UCharacterAnimationComponent::StopAnimOnSlot(FName SlotName, float BlendOutTime)
+{
+	const ACharacter* Owner = Cast<ACharacter>(GetOwner());
+	const USkeletalMeshComponent* MeshComp = Owner ? Owner->GetMesh() : nullptr;
+	if (UAnimInstance* AnimInstance = MeshComp ? MeshComp->GetAnimInstance() : nullptr)
+	{
+		AnimInstance->StopSlotAnimation(BlendOutTime, SlotName);
+	}
+}
+
+bool UCharacterAnimationComponent::PlayAnimOnSlot(FName AnimId, FName SlotName, bool bLoop)
+{
 	const TObjectPtr<UAnimSequenceBase>* Found = AnimLibrary.Find(AnimId);
 	if (!Found || !*Found)
 	{
@@ -32,8 +47,6 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 	{
 		if (USkeletalMeshComponent* MeshComp = Owner->GetMesh())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] %s: '%s' (AnimMode=%d)"),
-				*GetNameSafe(Owner), *AnimId.ToString(), (int32)MeshComp->GetAnimationMode());
 			UAnimInstance* AnimInstance = MeshComp->GetAnimInstance();
 			if (AnimInstance && !bPreferSingleNodeAnim)
 			{
@@ -49,8 +62,8 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 				const int32 LoopCount = bLoop ? 1000 : 1;
 
 				UAnimMontage* Played = AnimInstance->PlaySlotAnimationAsDynamicMontage(
-					*Found, AnimSlotName, AnimBlendTime, AnimBlendTime, /*InPlayRate=*/1.f, LoopCount);
-				
+					*Found, SlotName, AnimBlendTime, AnimBlendTime, /*InPlayRate=*/1.f, LoopCount);
+
 				if (Played)
 				{
 					return true;
@@ -58,7 +71,14 @@ bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 
 				UE_LOG(LogTemp, Warning,
 					TEXT("%s: 슬롯 '%s' 재생에 실패했습니다. 애님 블루프린트 그래프에 같은 이름의 Slot 노드가 있는지 확인하세요. 단일 노드 모드로 대체합니다."),
-					*GetNameSafe(this), *AnimSlotName.ToString());
+					*GetNameSafe(this), *SlotName.ToString());
+			}
+
+			// 상체 슬롯처럼 기본 슬롯이 아닌 곳에 실패했으면 대체 재생하지 않는다.
+			// 아래 폴백은 전신을 덮어써서 걷기 애니메이션이 사라진다.
+			if (SlotName != AnimSlotName)
+			{
+				return false;
 			}
 
 			// 폴백: 애님 블루프린트를 거치지 않고 시퀀스를 직접 재생한다.
