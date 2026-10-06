@@ -18,6 +18,9 @@
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
 #include "NPC/SubNpc/SubNpcProfiling.h"
 
+/** crowd.Mass - 1이면 걷는 행인의 이동을 Mass 프로세서가 병렬로 계산한다 (SubNpcMassProcessors.cpp) */
+extern int32 GSubNpcUseMass;
+
 // ---------------------------------------------------------------------------
 // 그룹 추종 튜닝값.
 //
@@ -434,7 +437,10 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 	PlanNextPath();
 
 	// 시작 위치로 순간이동시킨 뒤 보이게 한다 (순서가 반대면 옛 위치에서 한 프레임 깜빡인다).
-	const FVector StartLoc = StartPath->GetLocationAtDistance(PathDistance, LaneOffset);
+	// [버그 수정] 등장하는 순간에도 바닥에 붙인다. 예전에는 경로 높이로 세워 두고 첫 걸음에서야 붙여서,
+	// 경로가 바닥보다 높은 곳(오르막)에서는 공중에 나타났다가 툭 떨어졌다.
+	FVector StartLoc = StartPath->GetLocationAtDistance(PathDistance, LaneOffset);
+	SnapToGround(StartLoc);
 	const FVector Dir = StartPath->GetDirectionAtDistance(PathDistance) * (bReversedOnPath ? -1.f : 1.f);
 	SetActorLocationAndRotation(StartLoc, Dir.Rotation());
 
@@ -496,6 +502,9 @@ void ASubNpcCharacter::DeactivateToPool()
 
 void ASubNpcCharacter::ClearRuntimeState()
 {
+	// 퇴장 페이드로 바꿔 끼운 머티리얼을 되돌린다. 안 하면 다음에 풀에서 나올 때 투명한 채로 나온다.
+	RestoreMaterialsAfterExitFade();
+
 	// [누수 방지 핵심] 스팟 점유를 안 풀면 그 스팟은 영영 정원이 찬 상태로 남는다.
 	if (OccupiedSpot)
 	{
@@ -578,6 +587,12 @@ void ASubNpcCharacter::ApplyMovementTickRate(ESubNpcLodBand DistanceBand)
 	case ESubNpcLodBand::Near:	Interval = 0.f;					break;
 	case ESubNpcLodBand::Mid:	Interval = MidTickInterval;		break;
 	default:					Interval = FarTickInterval;		break;
+	}
+
+	// 사라지는 중에는 매 프레임 갱신한다 (BeginExitFade 참고).
+	if (bExitFading)
+	{
+		Interval = 0.f;
 	}
 
 	// 같은 값이면 건드리지 않는다. 틱 함수를 매번 다시 등록시킬 이유가 없다.
@@ -704,6 +719,15 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 	const UWorld* World = GetWorld();
 	const float Now = World ? World->GetTimeSeconds() : 0.f;
 
+	// 퇴장구에서 사라지는 중이면 그것만 한다 (경로·스팟·반응 모두 끝났다).
+	if (bExitFading)
+	{
+		bIsMoving = true;
+		CurrentSpeed = WalkSpeed;
+		TickExitFade(DeltaTime);
+		return;
+	}
+
 	// 걸으면서 일행과 이야기하는 중이면 차례에 맞춰 상체 손짓을 켜고 끈다.
 	TickGroupChat(Now);
 
@@ -779,7 +803,11 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 
 	case ESubNpcActivity::Walking:
 	default:
-		TickPathFollow(DeltaTime);
+		// Mass가 맡고 있으면 이동은 UMassSubNpcPathFollowProcessor가 여러 명을 병렬로 계산한다.
+		if (!IsMovementDrivenByMass())
+		{
+			TickPathFollow(DeltaTime);
+		}
 		return;
 	}
 }
@@ -790,10 +818,16 @@ bool ASubNpcCharacter::IsPassing() const
 	return World && World->GetTimeSeconds() < PassLaneUntil;
 }
 
-void ASubNpcCharacter::TickPathFollow(float DeltaTime)
+// [Mass] 예전 TickPathFollow의 본체. 월드를 바꾸는 일(위치 설정·경로 갈아타기·스팟 판정)은
+// Out에 적어 두고 ApplyPathStep에서 한다. 그 덕에 이 함수는 워커 스레드에서 여러 명을 동시에 돌릴 수 있다.
+//   - 바꾸는 것: 자기 멤버(진행도·차선·속도 배율 등)뿐
+//   - 읽는 것: 경로 스플라인, 일행 리더의 진행도·차선, 대화 상대 위치 (읽기만 한다)
+//   - 트레이스: 지면 스냅·벽 스윕 (물리 장면 질의는 어느 스레드에서나 읽기 가능)
+void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 {
 	SUBNPC_PROFILE_SCOPE(PathFollow);
 
+	Out = FSubNpcPathStep();
 	if (!CurrentPath)
 	{
 		return;
@@ -946,14 +980,12 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	const float LateralStep = LaneOffset - LaneBefore;
 
 	// 스팟 판정은 일정 거리마다 다시 굴린다 (경로 진입 시 1회 판정의 부작용 제거).
+	// 판정 자체(스팟 점유)는 게임 스레드 일이라 적용 단계(ApplyPathStep)에서 한다.
+	// 스팟에 들어가면 그쪽에서 이번 걸음의 이동을 버린다.
 	if (FMath::Abs(PathDistance - NextSpotCheckDistance) >= SpotCheckInterval)
 	{
 		NextSpotCheckDistance = PathDistance;
-		RollForActivitySpot();
-		if (CurrentActivity != ESubNpcActivity::Walking)
-		{
-			return;   // 스팟에 들어갔으면 이번 틱 이동은 건너뛴다
-		}
+		Out.bSpotCheck = true;
 	}
 
 	const float Length = CurrentPath->GetPathLength();
@@ -967,7 +999,7 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 		: (bReversedOnPath ? 0.f : Length);
 	if ((!bReversedOnPath && PathDistance >= HandoffAt) || (bReversedOnPath && PathDistance <= HandoffAt))
 	{
-		AdvanceToNextPath();
+		Out.Result = FSubNpcPathStep::EResult::Handoff;   // 갈아타기는 적용 단계에서 (다음 경로 추첨·스팟 판정이 있다)
 		return;
 	}
 
@@ -975,32 +1007,11 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 	FVector Dir = CurrentPath->GetDirectionAtDistance(PathDistance) * (bReversedOnPath ? -1.f : 1.f);
 
 	// 지면에 붙여 세운다. 경로 높이를 대충 그려도 계단·경사로 위에 제대로 선다.
-	// 가까운 개체만 한다 - 멀리 있는 사람의 발밑 몇 cm는 화면에서 안 보인다.
-	bool bGroundSnapped = false;
-	if (SubNpcGroundSnap::Enabled != 0 &&
-		(CurrentLodBand == ESubNpcLodBand::Near || CurrentLodBand == ESubNpcLodBand::Mid))
-	{
-		SUBNPC_PROFILE_SCOPE(GroundSnap);
-		if (const UWorld* World = GetWorld())
-		{
-			const float HalfHeight = GetCapsuleComponent()
-				? GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
-				: 88.f;
-
-			FHitResult Hit;
-			FCollisionQueryParams Params(SCENE_QUERY_STAT(SubNpcGroundSnap), /*bTraceComplex=*/false, this);
-
-			const FVector Foot = Target - FVector(0.f, 0.f, HalfHeight);
-			const FVector Start = Foot + FVector(0.f, 0.f, SubNpcGroundSnap::TraceUp);
-			const FVector End = Foot - FVector(0.f, 0.f, SubNpcGroundSnap::TraceDown);
-
-			if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
-			{
-				Target.Z = Hit.ImpactPoint.Z + HalfHeight;
-				bGroundSnapped = true;
-			}
-		}
-	}
+	// [버그 수정] 거리와 상관없이 모두 붙인다. 예전에는 가까운(Near/Mid) 개체만 붙였는데,
+	// 카메라 뒤라 Far로 내려가거나 막 등장해 LOD가 정해지기 전인 사람은 경로 높이 그대로 걸었다.
+	// 경로 C 오르막 끝은 바닥보다 2m 가까이 높아서 "하늘을 걷다가 공중에서 사라지는" 사람이 보였다.
+	// 멀리 있는 사람은 0.3초에 한 번만 걸음을 계산하므로 트레이스 비용은 작다.
+	const bool bGroundSnapped = SnapToGround(Target);
 
 	// 경로를 막 갈아탔다면, 그때 어긋난 양을 조금씩 갚아나가며 따라붙는다.
 	// 이게 없으면 전환 프레임에 위치가 뚝 끊겨서 순간이동으로 보인다.
@@ -1043,7 +1054,8 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 				MergeHoldTime += DeltaTime;
 			}
 			const FVector Dir2D = FVector(ToTarget.X, ToTarget.Y, 0.f) / Remaining;
-			SetActorRotation(FMath::RInterpTo(GetActorRotation(), Dir2D.Rotation(), DeltaTime, 6.f));
+			Out.Result = FSubNpcPathStep::EResult::RotateOnly;
+			Out.Rotation = FMath::RInterpTo(GetActorRotation(), Dir2D.Rotation(), DeltaTime, 6.f);
 			return;
 		}
 		else
@@ -1052,9 +1064,11 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 			FVector Next = Location + Dir2D * Step;
 			Next.Z = FMath::FInterpConstantTo(Location.Z, Target.Z, DeltaTime, WalkSpeed);
 
-			const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Dir2D.Rotation(), DeltaTime, 8.f);
 			bool bBlockedByWorld = false;
-			SetActorLocationAndRotation(ResolveWorldBlocking(Location, Next, bBlockedByWorld), NewRot, /*bSweep=*/false);
+			Out.Result = FSubNpcPathStep::EResult::Move;
+			Out.Location = ResolveWorldBlocking(Location, Next, bBlockedByWorld);
+			Out.Rotation = FMath::RInterpTo(GetActorRotation(), Dir2D.Rotation(), DeltaTime, 8.f);
+			Out.bSweep = false;
 			return;
 		}
 	}
@@ -1145,7 +1159,190 @@ void ASubNpcCharacter::TickPathFollow(float DeltaTime)
 			PathDistance = PathDistanceBefore;
 		}
 	}
-	SetActorLocationAndRotation(Resolved, NewRot, /*bSweep=*/bSweepWhileMoving);
+	Out.Result = FSubNpcPathStep::EResult::Move;
+	Out.Location = Resolved;
+	Out.Rotation = NewRot;
+	Out.bSweep = bSweepWhileMoving;
+}
+
+namespace SubNpcExitFade
+{
+	/** 사라지는 데 걸리는 시간 (초). 이 동안 끝 너머로 계속 걷는다 (걸음 속도 1.4m/s면 약 1.1m) */
+	constexpr float Duration = 0.8f;
+
+	/** 페이드 머티리얼의 스칼라 파라미터 이름. 1 = 다 보임, 0 = 다 사라짐 */
+	static const FName ParamName(TEXT("Fade"));
+}
+
+bool ASubNpcCharacter::BeginExitFade()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp || !CurrentPath || ExitFadeMaterials.Num() == 0 || bExitFading)
+	{
+		return false;
+	}
+
+	// 바꿔 끼우기 전 머티리얼을 기억한다. 블루프린트(OnArchetypeApplied)가 외형으로 바꾼 것일 수 있다.
+	MaterialsBeforeExitFade.Reset();
+	const int32 NumSlots = MeshComp->GetNumMaterials();
+	for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+	{
+		MaterialsBeforeExitFade.Add(MeshComp->GetMaterial(Slot));
+	}
+	for (int32 Slot = 0; Slot < NumSlots && Slot < ExitFadeMaterials.Num(); ++Slot)
+	{
+		if (ExitFadeMaterials[Slot])
+		{
+			MeshComp->SetMaterial(Slot, ExitFadeMaterials[Slot]);
+		}
+	}
+	MeshComp->SetScalarParameterValueOnMaterials(SubNpcExitFade::ParamName, 1.f);
+
+	// 경로 끝의 진행 방향으로 계속 걷는다. 끝점에서 멈춰 서서 사라지면 어색하다.
+	const float EndDistance = bReversedOnPath ? 0.f : CurrentPath->GetPathLength();
+	const FVector Dir = (CurrentPath->GetDirectionAtDistance(EndDistance) * (bReversedOnPath ? -1.f : 1.f)).GetSafeNormal2D();
+	ExitVelocity = Dir * WalkSpeed;
+
+	bExitFading = true;
+	ExitFadeElapsed = 0.f;
+	CurrentSpeedScale = 1.f;   // 걷기 애니메이션이 제 속도로 나오게 한다
+
+	// 멀리서 0.1초 간격으로 움직이면 사라지는 모습이 뚝뚝 끊긴다. 사라지는 동안은 매 프레임 갱신한다.
+	SetActorTickInterval(0.f);
+	return true;
+}
+
+void ASubNpcCharacter::TickExitFade(float DeltaTime)
+{
+	ExitFadeElapsed += DeltaTime;
+	const float Alpha = FMath::Clamp(1.f - ExitFadeElapsed / SubNpcExitFade::Duration, 0.f, 1.f);
+
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetScalarParameterValueOnMaterials(SubNpcExitFade::ParamName, Alpha);
+	}
+
+	// 똑바로 걸어 나간다. 바닥에 붙이고, 벽이 있으면 뚫지 않는다.
+	const FVector From = GetActorLocation();
+	FVector To = From + ExitVelocity * DeltaTime;
+	SnapToGround(To);
+	bool bBlocked = false;
+	SetActorLocation(ResolveWorldBlocking(From, To, bBlocked));
+
+	if (Alpha <= 0.f)
+	{
+		// 다 사라졌다. 회수는 Director가 안전한 시점에 한다 (머티리얼은 풀로 돌아갈 때 되돌린다).
+		SetActorHiddenInGame(true);
+		bExitFading = false;
+		bPendingRecycle = true;
+		CurrentPath = nullptr;
+	}
+}
+
+void ASubNpcCharacter::RestoreMaterialsAfterExitFade()
+{
+	bExitFading = false;
+	ExitFadeElapsed = 0.f;
+	if (MaterialsBeforeExitFade.Num() == 0)
+	{
+		return;
+	}
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		for (int32 Slot = 0; Slot < MaterialsBeforeExitFade.Num(); ++Slot)
+		{
+			MeshComp->SetMaterial(Slot, MaterialsBeforeExitFade[Slot]);
+		}
+	}
+	MaterialsBeforeExitFade.Reset();
+}
+
+bool ASubNpcCharacter::SnapToGround(FVector& InOutCenter) const
+{
+	if (SubNpcGroundSnap::Enabled == 0)
+	{
+		return false;
+	}
+	SUBNPC_PROFILE_SCOPE(GroundSnap);
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+	const float HalfHeight = GetCapsuleComponent()
+		? GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
+		: 88.f;
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(SubNpcGroundSnap), /*bTraceComplex=*/false, this);
+
+	const FVector Foot = InOutCenter - FVector(0.f, 0.f, HalfHeight);
+	const FVector Start = Foot + FVector(0.f, 0.f, SubNpcGroundSnap::TraceUp);
+	const FVector End = Foot - FVector(0.f, 0.f, SubNpcGroundSnap::TraceDown);
+
+	// [버그 수정] 지형(WorldStatic/WorldDynamic)만 바닥으로 본다.
+	// 예전에는 Visibility 채널로 쏴서 바로 아래에 있는 다른 행인·플레이어 몸에 맞았고,
+	// 그 사람 머리를 바닥으로 알고 위에 올라서서 "머리 위로 걷는" 사람이 생겼다.
+	// 트리거 같은 겹침 전용 볼륨도 건너뛴다 (사람을 실제로 막는 것만 바닥).
+	FCollisionObjectQueryParams Objects;
+	Objects.AddObjectTypesToQuery(ECC_WorldStatic);
+	Objects.AddObjectTypesToQuery(ECC_WorldDynamic);
+
+	TArray<FHitResult> Hits;
+	World->LineTraceMultiByObjectType(Hits, Start, End, Objects, Params);
+	for (const FHitResult& Hit : Hits)   // 가까운 것부터 정렬돼 있다
+	{
+		const UPrimitiveComponent* Comp = Hit.GetComponent();
+		if (!Comp || Comp->GetCollisionResponseToChannel(ECC_Pawn) != ECR_Block
+			|| Cast<APawn>(Hit.GetActor()))
+		{
+			continue;
+		}
+		InOutCenter.Z = Hit.ImpactPoint.Z + HalfHeight;
+		return true;
+	}
+	return false;
+}
+
+void ASubNpcCharacter::ApplyPathStep(const FSubNpcPathStep& Step)
+{
+	SUBNPC_PROFILE_SCOPE(PathApply);
+
+	if (Step.bSpotCheck)
+	{
+		RollForActivitySpot();
+		if (CurrentActivity != ESubNpcActivity::Walking)
+		{
+			return;   // 스팟에 들어갔으면 이번 걸음의 이동은 버린다
+		}
+	}
+
+	switch (Step.Result)
+	{
+	case FSubNpcPathStep::EResult::Handoff:
+		AdvanceToNextPath();
+		break;
+	case FSubNpcPathStep::EResult::RotateOnly:
+		SetActorRotation(Step.Rotation);
+		break;
+	case FSubNpcPathStep::EResult::Move:
+		SetActorLocationAndRotation(Step.Location, Step.Rotation, Step.bSweep);
+		break;
+	default:
+		break;
+	}
+}
+
+void ASubNpcCharacter::TickPathFollow(float DeltaTime)
+{
+	FSubNpcPathStep Step;
+	ComputePathStep(DeltaTime, Step);
+	ApplyPathStep(Step);
+}
+
+bool ASubNpcCharacter::IsMovementDrivenByMass() const
+{
+	return MassEntity.IsSet() && GSubNpcUseMass != 0;
 }
 
 void ASubNpcCharacter::AdvanceToNextPath()
@@ -1217,6 +1414,14 @@ void ASubNpcCharacter::AdvanceToNextPath()
 		//
 		// 지금은 표시만 하고 실제 회수는 Director가 안전한 시점에 처리한다.
 		// 표시된 개체는 이동을 멈춰야 하므로 경로 참조를 끊어 둔다.
+		//
+		// [퇴장 페이드] 퇴장구가 보이는 곳에 있으면(경로 C 끝은 오르막 위 평지 한가운데) 끝에 닿는 순간
+		// 사람이 툭 사라져 보였다. 끝 너머로 몇 걸음 더 걸으며 서서히 사라진 뒤 회수한다.
+		// 거리와 상관없이 한다 - 한 명당 0.8초뿐이고, 카메라 뒤라 Far로 내려간 사람도 돌아보면 보인다.
+		if (bIsExit && BeginExitFade())
+		{
+			return;
+		}
 		bPendingRecycle = true;
 		CurrentPath = nullptr;
 		return;
@@ -1826,7 +2031,8 @@ float ASubNpcCharacter::GetPlayerBumpSpeed(const APawn* Player)
 void ASubNpcCharacter::ReactToPlayerBump(AActor* Player, float ImpactSpeed)
 {
 	const UWorld* World = GetWorld();
-	if (!World || !Player)
+	// 사라지는 중인 사람은 반응하지 않는다 (페이드가 끊기면 반쯤 투명한 채로 남는다).
+	if (!World || !Player || bExitFading)
 	{
 		return;
 	}
@@ -2027,7 +2233,7 @@ void ASubNpcCharacter::EndReaction()
 
 bool ASubNpcCharacter::CanInteract_Implementation(AActor* Interactor) const
 {
-	if (!bAllowTalk || CurrentActivity == ESubNpcActivity::Pooled)
+	if (!bAllowTalk || CurrentActivity == ESubNpcActivity::Pooled || bExitFading)
 	{
 		return false;
 	}

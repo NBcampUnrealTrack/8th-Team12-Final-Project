@@ -17,12 +17,40 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Mass/EntityHandle.h"
 #include "NPC/BaseNpcCharacter.h"
 #include "NPC/SubNpc/SubNpcTypes.h"
 #include "SubNpcCharacter.generated.h"
 
 class ANpcCrowdPath;
 class ANpcActivitySpot;
+
+/**
+ * 경로 이동 한 걸음의 계산 결과.
+ *
+ * 이동을 "계산"과 "적용"으로 나눈다. 계산(ComputePathStep)은 수학·스플라인 조회·트레이스뿐이라
+ * 워커 스레드에서 여러 명을 동시에 돌릴 수 있고(UMassSubNpcPathFollowProcessor),
+ * 적용(ApplyPathStep)은 위치 설정·경로 갈아타기·스팟 판정이라 게임 스레드에서만 한다.
+ */
+struct FSubNpcPathStep
+{
+	enum class EResult : uint8
+	{
+		None,         // 움직이지 않는다 (경로 없음)
+		Move,         // Location/Rotation으로 옮긴다
+		RotateOnly,   // 제자리에서 돌기만 한다 (합류할 틈을 기다리는 중)
+		Handoff       // 다음 경로로 갈아탄다
+	};
+
+	EResult Result = EResult::None;
+
+	/** 스팟 판정 거리에 닿았다. 적용 단계에서 RollForActivitySpot을 부른다 (들어가면 이동은 버린다) */
+	bool bSpotCheck = false;
+
+	bool bSweep = false;
+	FVector Location = FVector::ZeroVector;
+	FRotator Rotation = FRotator::ZeroRotator;
+};
 
 UCLASS()
 class FEBRICULA_API ASubNpcCharacter : public ABaseNpcCharacter
@@ -223,6 +251,12 @@ protected:
 	 * 가까운(Near/Mid) 개체만 검사한다 - 멀리 있는 사람의 벽 스침은 화면에서 안 보인다.
 	 */
 	FVector ResolveWorldBlocking(const FVector& From, const FVector& To, bool& bOutBlocked) const;
+
+	/**
+	 * 캡슐 중심 위치를 바닥(지형)에 붙인다. 바닥을 찾으면 Z를 바꾸고 true.
+	 * 다른 행인·플레이어 몸은 바닥으로 보지 않는다. 워커 스레드에서 불러도 된다 (읽기 전용 트레이스).
+	 */
+	bool SnapToGround(FVector& InOutCenter) const;
 
 	/** 스팟 행동 시작/종료. SlotIndex는 스팟이 정해준 칸 */
 	void BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option, int32 SlotIndex);
@@ -636,6 +670,27 @@ public:
 	bool IsPendingRecycle() const { return bPendingRecycle; }
 	void ClearPendingRecycle() { bPendingRecycle = false; }
 
+	// ---- Mass (이동 계산 병렬화) ---------------------------------------------
+
+	/**
+	 * 경로 이동 한 걸음을 계산만 한다. 자기 멤버(진행도·차선·속도)만 바꾸고 월드는 건드리지 않는다.
+	 * 워커 스레드에서 불러도 된다 - 단, 같은 개체를 두 스레드에서 동시에 부르면 안 된다.
+	 */
+	void ComputePathStep(float DeltaTime, FSubNpcPathStep& Out);
+
+	/** 계산 결과를 적용한다 (위치 설정, 경로 갈아타기, 스팟 판정). 게임 스레드 전용 */
+	void ApplyPathStep(const FSubNpcPathStep& Step);
+
+	/** 이번 틱에 경로를 따라 걸어야 하는 상태인가 (Mass 프로세서가 대상을 고를 때 본다) */
+	bool CanMassStep() const { return CurrentActivity == ESubNpcActivity::Walking && CurrentPath != nullptr && !bExitFading; }
+
+	/** 이 행인을 대신 움직이는 Mass 엔티티. 설정돼 있고 crowd.Mass가 켜져 있으면 액터 틱은 이동을 건너뛴다 */
+	FMassEntityHandle GetMassEntity() const { return MassEntity; }
+	void SetMassEntity(FMassEntityHandle InEntity) { MassEntity = InEntity; }
+
+	/** 지금 Mass가 이동을 맡고 있는가 */
+	bool IsMovementDrivenByMass() const;
+
 protected:
 	/** 이번 프레임에 이웃들이 밀어낸 양의 합 */
 	float PendingAvoidNudge = 0.f;
@@ -771,4 +826,38 @@ protected:
 
 	/** 이 시각까지 PassLaneTarget 쪽으로 옮겨 간다. Director가 갱신을 멈추면 자연히 끝난다 */
 	float PassLaneUntil = -1.f;
+
+	/** 이 행인을 움직이는 Mass 엔티티 (Director가 만들고 지운다). 클래스 맨 끝에 둔다 */
+	FMassEntityHandle MassEntity;
+
+	// ---- 퇴장 페이드 ---------------------------------------------------------
+	// [주의] WalkSpeed / bIsMoving / CurrentSpeed 오프셋을 밀지 않도록 클래스 맨 끝에 둔다.
+
+	/**
+	 * 퇴장구(bDespawnAtEnd 경로의 끝)에 닿았을 때 서서히 사라지게 할 머티리얼. 메시 슬롯 순서대로.
+	 *
+	 * 행인 메시의 원래 머티리얼은 불투명이라 투명도를 조절할 수 없다. 사라지는 동안만 이 머티리얼로
+	 * 바꿔 끼우고 "Fade" 스칼라 값(1 → 0)을 내린다. 마스크(디더) 머티리얼이어야 한다.
+	 * 비워 두면 예전처럼 끝에 닿는 순간 사라진다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Exit")
+	TArray<TObjectPtr<UMaterialInterface>> ExitFadeMaterials;
+
+	/** 페이드 전에 끼워져 있던 머티리얼. 풀로 돌아갈 때 되돌린다 (블루프린트가 외형으로 바꾼 머티리얼일 수 있다) */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInterface>> MaterialsBeforeExitFade;
+
+	/** 퇴장 페이드 중인가. 이 동안은 경로 끝 너머로 똑바로 걸으며 사라진다 */
+	bool bExitFading = false;
+	float ExitFadeElapsed = 0.f;
+	FVector ExitVelocity = FVector::ZeroVector;
+
+	/** 퇴장 페이드를 시작한다. 페이드 머티리얼이 없으면 false (바로 회수한다) */
+	bool BeginExitFade();
+
+	/** 페이드 한 틱. 다 사라지면 회수를 예약한다 */
+	void TickExitFade(float DeltaTime);
+
+	/** 페이드 때 바꾼 머티리얼을 되돌린다 (풀 회수·EndPlay) */
+	void RestoreMaterialsAfterExitFade();
 };

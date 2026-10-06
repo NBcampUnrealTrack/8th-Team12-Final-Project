@@ -2,6 +2,7 @@
 
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
 
+#include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
@@ -16,7 +17,10 @@
 #include "Misc/DateTime.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "MassEntityManager.h"
+#include "MassEntitySubsystem.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
+#include "NPC/SubNpc/SubNpcMassProcessors.h"
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
 #include "NPC/SubNpc/SubNpcProfiling.h"
@@ -341,6 +345,71 @@ namespace SubNpcCrowdCVars
  * 감속 요청은 최솟값을 따르므로 다른 어떤 요청(스치며 통과 등)보다 이 정지가 우선한다.
  */
 /**
+ * 행인 액터 ↔ Mass 엔티티 연결 (Mass 1단계).
+ *
+ * 행인마다 엔티티 하나를 붙인다. 엔티티는 액터를 가리키기만 하고(FSubNpcAgentFragment),
+ * 이동 계산은 UMassSubNpcPathFollowProcessor가 맡는다. 풀에 들어간 행인도 엔티티는 그대로 둔다 -
+ * 프로세서가 걷는 중인 행인만 고르므로 비용이 없고, 풀에서 꺼낼 때마다 만들었다 지우는 것보다 싸다.
+ */
+namespace SubNpcMassBinding
+{
+	static void Bind(UWorld* World, ASubNpcCharacter* Npc)
+	{
+		if (!World || !IsValid(Npc) || Npc->GetMassEntity().IsSet())
+		{
+			return;
+		}
+		UMassEntitySubsystem* MassSubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+		if (!MassSubsystem)
+		{
+			return;
+		}
+		FMassEntityManager& EntityManager = MassSubsystem->GetMutableEntityManager();
+		if (EntityManager.IsProcessing())
+		{
+			return;   // Mass가 도는 중에는 엔티티를 만들 수 없다. 다음 Director 틱에 다시 본다.
+		}
+
+		const UScriptStruct* Composition[] = { FSubNpcAgentFragment::StaticStruct() };
+		const FMassArchetypeHandle Archetype = EntityManager.CreateArchetype(MakeArrayView(Composition));
+		const FMassEntityHandle Entity = EntityManager.CreateEntity(Archetype);
+		EntityManager.GetFragmentDataChecked<FSubNpcAgentFragment>(Entity).Actor = Npc;
+		Npc->SetMassEntity(Entity);
+	}
+
+	static void Unbind(UWorld* World, ASubNpcCharacter* Npc)
+	{
+		if (!Npc || !Npc->GetMassEntity().IsSet())
+		{
+			return;
+		}
+		const FMassEntityHandle Entity = Npc->GetMassEntity();
+		Npc->SetMassEntity(FMassEntityHandle());
+
+		// 월드가 정리되는 중이면 Mass도 같이 정리된다. 손대지 않는다.
+		if (!World || World->bIsTearingDown)
+		{
+			return;
+		}
+		if (UMassEntitySubsystem* MassSubsystem = World->GetSubsystem<UMassEntitySubsystem>())
+		{
+			FMassEntityManager& EntityManager = MassSubsystem->GetMutableEntityManager();
+			if (EntityManager.IsEntityValid(Entity))
+			{
+				if (EntityManager.IsProcessing())
+				{
+					EntityManager.Defer().DestroyEntity(Entity);
+				}
+				else
+				{
+					EntityManager.DestroyEntity(Entity);
+				}
+			}
+		}
+	}
+}
+
+/**
  * 겹침 검사 (crowd.CheckOverlap).
  *
  * 몸 겹침 금지가 제대로 동작하는지 눈 대신 숫자로 확인한다. 인원을 0 → 100으로 늘리면서
@@ -500,6 +569,53 @@ namespace SubNpcOverlapCheck
 
 		if (Now - Window.StartTime >= LogInterval)
 		{
+			// 높이 검사: 발이 바닥에서 떠 있거나 묻힌 행인 (머리 위로 걷기, 하늘 걷기, 바닥에 꺼짐).
+			// 2초에 한 번만 본다 (행인마다 트레이스 한 번).
+			int32 BadHeight = 0;
+			float WorstGap = 0.f;
+			FString WorstHeightDesc;
+			for (const FBody& Body : Bodies)
+			{
+				if (!Body.Npc)
+				{
+					continue;
+				}
+				const UCapsuleComponent* Capsule = Body.Npc->GetCapsuleComponent();
+				const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.f;
+				const FVector FootLoc = Body.Loc - FVector(0.f, 0.f, HalfHeight);
+
+				FCollisionObjectQueryParams Objects;
+				Objects.AddObjectTypesToQuery(ECC_WorldStatic);
+				Objects.AddObjectTypesToQuery(ECC_WorldDynamic);
+				FCollisionQueryParams Params(SCENE_QUERY_STAT(SubNpcHeightCheck), false, Body.Npc);
+				TArray<FHitResult> Hits;
+				World->LineTraceMultiByObjectType(Hits, FootLoc + FVector(0.f, 0.f, 60.f), FootLoc - FVector(0.f, 0.f, 500.f), Objects, Params);
+				for (const FHitResult& Hit : Hits)
+				{
+					const UPrimitiveComponent* Comp = Hit.GetComponent();
+					if (!Comp || Comp->GetCollisionResponseToChannel(ECC_Pawn) != ECR_Block || Cast<APawn>(Hit.GetActor()))
+					{
+						continue;
+					}
+					const float Gap = FootLoc.Z - Hit.ImpactPoint.Z;   // +면 떠 있음, -면 묻힘
+					if (FMath::Abs(Gap) > 25.f)
+					{
+						++BadHeight;
+						if (FMath::Abs(Gap) > FMath::Abs(WorstGap))
+						{
+							WorstGap = Gap;
+							WorstHeightDesc = FString::Printf(TEXT("%s @(%.0f,%.0f,%.0f)"), *Describe(Body.Npc), Body.Loc.X, Body.Loc.Y, Body.Loc.Z);
+						}
+					}
+					break;
+				}
+			}
+			if (BadHeight > 0)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[CrowdHeight] 발이 바닥에서 25cm 넘게 %s 행인 %d명 | 가장 심한 %+.0fcm: %s"),
+					WorstGap > 0.f ? TEXT("뜬") : TEXT("묻힌"), BadHeight, WorstGap, *WorstHeightDesc);
+			}
+
 			if (Window.OverlapFrames > 0)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | %.1f초 중 %.0f%% 프레임에서 겹침, 최대 동시 %d쌍 | 가장 깊은 겹침 %.0fcm: %s"),
@@ -629,6 +745,23 @@ namespace SubNpcBodySeparation
 					}
 				}
 
+				// [모서리] 경로 순서상 앞인 사람이 실제로는 뒤쪽 사람 몸을 향해 걸어가고 있으면 앞사람이 선다.
+				// B→C 모서리에서 아직 B에 있는 사람(순서상 뒤)이 C 입구 쪽에 서 있으면, 이미 C로 넘어간 사람이
+				// 순서만 믿고 그 몸을 뚫고 지나갔다 (로그: C 행인 속도 96~100% ↔ B 행인 속도 0%, 33~65cm 겹침).
+				// 이때는 앞사람이 서고 뒤 사람이 먼저 지나간다. 둘 다 서로를 향하면 원래 순서를 따른다 (둘 다 서면 교착).
+				if (Order != 0)
+				{
+					const FBody& Front = (Order < 0) ? B : A;
+					const FBody& Rear = (Order < 0) ? A : B;
+					const FVector FrontToRear = (Order < 0) ? -Dir : Dir;
+					const bool bFrontWalksIntoRear = FVector::DotProduct(Front.Fwd, FrontToRear) > FrontDot;
+					const bool bRearWalksIntoFront = FVector::DotProduct(Rear.Fwd, -FrontToRear) > FrontDot;
+					if (bFrontWalksIntoRear && !bRearWalksIntoFront)
+					{
+						Order = -Order;
+					}
+				}
+
 				if (Order != 0)
 				{
 					// 일행이 길 폭에 눌려 나란히 겹쳤을 때도 이 규칙으로 뒤쪽이 물러나 한 줄이 된다.
@@ -682,13 +815,15 @@ CSV_DEFINE_CATEGORY(Crowd, true);
 namespace SubNpcProfiling
 {
 	bool bRecording = false;
-	uint64 SectionCycles[static_cast<int32>(ESection::Count)] = {};
+	int64 SectionCycles[static_cast<int32>(ESection::Count)] = {};
 
 	const TCHAR* GetSectionName(ESection Section)
 	{
 		switch (Section)
 		{
 		case ESection::PathFollow:     return TEXT("PathFollow");
+		case ESection::PathApply:      return TEXT("PathApply");
+		case ESection::MassPathFollow: return TEXT("MassPathFollow");
 		case ESection::GroundSnap:     return TEXT("GroundSnap");
 		case ESection::WorldBlock:     return TEXT("WorldBlock");
 		case ESection::Avoidance:      return TEXT("Avoidance");
@@ -827,10 +962,38 @@ namespace SubNpcBench
 			Director->ReturnToPool(Active[i]);
 		}
 
-		for (TActorIterator<ANpcCrowdSpawner> It(World); It; ++It)
+		// 모자란 인원은 모든 경로에 길이 비율로 고르게 뿌린다.
+		// [변경] 예전에는 스포너의 FillImmediately를 불렀는데, 입구 경로(15m) 한 곳에만 넣어서
+		// 겹치지 않게 세우는 규칙에 막혀 100명을 요청해도 48명밖에 못 채웠다.
+		TArray<ANpcCrowdPath*> Paths;
+		float TotalLength = 0.f;
+		for (TActorIterator<ANpcCrowdPath> It(World); It; ++It)
 		{
-			It->FillImmediately();
-			break;
+			if (It->GetPathLength() >= 200.f)
+			{
+				Paths.Add(*It);
+				TotalLength += It->GetPathLength();
+			}
+		}
+		int32 Deficit = N - Director->GetActiveCount();
+		for (int32 Attempt = 0; Deficit > 0 && TotalLength > 0.f && Attempt < Deficit * 4 + 20; ++Attempt)
+		{
+			float Pick = FMath::FRandRange(0.f, TotalLength);
+			ANpcCrowdPath* Path = Paths.Last();
+			for (ANpcCrowdPath* Candidate : Paths)
+			{
+				Pick -= Candidate->GetPathLength();
+				if (Pick <= 0.f)
+				{
+					Path = Candidate;
+					break;
+				}
+			}
+			const bool bReversed = Path->IsSpawnReversed();
+			if (Director->SpawnOnPath(Path, FMath::FRandRange(0.f, Path->GetPathLength()), bReversed))
+			{
+				--Deficit;
+			}
 		}
 	}
 
@@ -878,7 +1041,7 @@ namespace SubNpcBench
 			R.AvgNear = static_cast<float>(State.NearSum / R.Frames);
 			for (int32 s = 0; s < NumSections; ++s)
 			{
-				R.SectionMs[s] = static_cast<float>(FPlatformTime::ToMilliseconds64(SubNpcProfiling::SectionCycles[s]) / R.Frames);
+				R.SectionMs[s] = static_cast<float>(FPlatformTime::ToMilliseconds64(static_cast<uint64>(SubNpcProfiling::SectionCycles[s])) / R.Frames);
 			}
 		}
 
@@ -935,7 +1098,7 @@ namespace SubNpcBench
 			Csv += TEXT("\n");
 
 			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] ===== 요약 (%s) ====="), *State.Label);
-			UE_LOG(LogTemp, Log, TEXT("[CrowdBench]    N | 평균ms |  p95ms |  p99ms |   FPS | 군중합계ms | 경로이동 | 회피 | 겹침금지"));
+			UE_LOG(LogTemp, Log, TEXT("[CrowdBench]    N | 평균ms |  p95ms |  p99ms |   FPS | 군중합계ms(GT) | 경로이동(GT) | 회피 | 겹침금지"));
 			for (const FResult& R : State.Results)
 			{
 				Csv += FString::Printf(TEXT("%s,%d,%.1f,%.1f,%d,%.3f,%.3f,%.3f,%.1f"),
@@ -947,15 +1110,23 @@ namespace SubNpcBench
 				}
 				Csv += TEXT("\n");
 
-				// PathFollow가 GroundSnap·WorldBlock을 포함하므로 합계에서는 빼고 더한다.
-				const float CrowdTotal = R.SectionMs[static_cast<int32>(ESection::PathFollow)]
+				// "게임 스레드가 실제로 붙잡힌 시간"으로 합친다.
+				// Mass를 쓰면 경로 이동은 MassPathFollow(병렬 계산 + 적용의 벽시계 시간)이고,
+				// PathFollow는 워커 스레드들의 CPU 시간 합이라 게임 스레드 비용이 아니다.
+				// 액터 틱으로 돌면 PathFollow(+ PathApply)가 게임 스레드 비용이다.
+				// GroundSnap·WorldBlock은 PathFollow 안에 포함돼 있어 따로 더하지 않는다.
+				const float MassMs = R.SectionMs[static_cast<int32>(ESection::MassPathFollow)];
+				const float PathGameThreadMs = (MassMs > 0.f)
+					? MassMs
+					: R.SectionMs[static_cast<int32>(ESection::PathFollow)] + R.SectionMs[static_cast<int32>(ESection::PathApply)];
+				const float CrowdTotal = PathGameThreadMs
 					+ R.SectionMs[static_cast<int32>(ESection::Avoidance)]
 					+ R.SectionMs[static_cast<int32>(ESection::BodySeparation)]
 					+ R.SectionMs[static_cast<int32>(ESection::GroupLogic)]
 					+ R.SectionMs[static_cast<int32>(ESection::LodSlice)];
 				UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %4d | %6.2f | %6.2f | %6.2f | %5.0f | %10.3f | %8.3f | %4.3f | %8.3f"),
 					R.Requested, R.AvgMs, R.P95Ms, R.P99Ms, R.AvgMs > 0.f ? 1000.f / R.AvgMs : 0.f, CrowdTotal,
-					R.SectionMs[static_cast<int32>(ESection::PathFollow)],
+					PathGameThreadMs,
 					R.SectionMs[static_cast<int32>(ESection::Avoidance)],
 					R.SectionMs[static_cast<int32>(ESection::BodySeparation)]);
 			}
@@ -1206,6 +1377,16 @@ void USubNpcDirectorSubsystem::Tick(float DeltaTime)
 	// 회수 예약된 개체를 먼저 정리한다.
 	// 순회 도중에 활성 배열이 바뀌지 않도록, 실제 회수는 항상 이 시점에만 일어난다.
 	ProcessPendingRecycles();
+
+	// 아직 Mass 엔티티가 없는 행인에게 붙인다 (풀에서 막 나왔거나 레벨에 직접 배치된 개체).
+	// 이미 붙은 개체는 핸들 확인 한 번으로 끝난다.
+	if (UWorld* World = GetWorld())
+	{
+		for (ASubNpcCharacter* Npc : ActiveNpcs)
+		{
+			SubNpcMassBinding::Bind(World, Npc);
+		}
+	}
 
 #if !UE_BUILD_SHIPPING
 	if (SubNpcCrowdCVars::DebugDraw != 0)
@@ -1625,6 +1806,8 @@ void USubNpcDirectorSubsystem::RegisterNpc(ASubNpcCharacter* Npc)
 
 void USubNpcDirectorSubsystem::UnregisterNpc(ASubNpcCharacter* Npc)
 {
+	SubNpcMassBinding::Unbind(GetWorld(), Npc);
+
 	ActiveNpcs.RemoveSingleSwap(Npc, EAllowShrinking::No);
 	PooledNpcs.RemoveSingleSwap(Npc, EAllowShrinking::No);
 }
