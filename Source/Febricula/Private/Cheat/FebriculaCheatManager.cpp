@@ -6,6 +6,7 @@
 #include "SNegativeActionButton.h"
 #include "SWarningOrErrorBox.h"
 #include "Activity/ActivitySubsystem.h"
+#include "Cache/ActorCacheSubsystem.h"
 #include "GameFramework/Character.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/TimeSubsystem.h"
@@ -38,12 +39,20 @@ void UFebriculaCheatManager::GetCachedCharacter()
 	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("GetCachedCharacter()"));
-		for (const TPair<FName, TWeakObjectPtr<ACharacter>>& Pair : DialogueSubsystem->GetCachedCharacter())
+		for (const TPair<FName, FCharacterCache>& Pair : DialogueSubsystem->GetCachedCharacter())
 		{
 			UE_LOG(LogTemp, Warning, TEXT("%s"), *Pair.Key.ToString());
-			UE_LOG(LogTemp, Warning, TEXT("%s"), *GetNameSafe(Pair.Value.Get()));
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *GetNameSafe(Pair.Value.Character.Get()));
 			UE_LOG(LogTemp, Warning, TEXT("\n"));
 		}
+	}
+}
+
+void UFebriculaCheatManager::GetCurrentAP()
+{
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("잔여 AP: %d"), ActivitySubsystem->GetCurrentAP());
 	}
 }
 
@@ -110,6 +119,22 @@ void UFebriculaCheatManager::GetAllActivities()
 			}
 			UE_LOG(LogTemp, Warning, TEXT("\n"));
 		}
+	}
+}
+
+void UFebriculaCheatManager::GetAllCachedTargetPoints()
+{
+	if (UActorCacheSubsystem* ActorCacheSubsystem = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
+	{
+		ActorCacheSubsystem->PrintAllCachedTarget();
+	}
+}
+
+void UFebriculaCheatManager::GetNowStat(FName StatName)
+{
+	if (UGameProgressSubsystem* ProgressSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s 현재 값: %d"), *StatName.ToString(), ProgressSubsystem->GetStat(StatName));
 	}
 }
 

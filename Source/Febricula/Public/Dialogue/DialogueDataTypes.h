@@ -18,6 +18,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Engine/DataTable.h"
+#include "Engine/TargetPoint.h"
 #include "DialogueDataTypes.generated.h"
 
 /**
@@ -52,6 +53,11 @@ enum class EGameConditionType : uint8
 
 	/** Key 카운터가 Value 이하인가 */
 	CounterAtMost			UMETA(DisplayName = "카운터 N 이하"),
+	
+	/* 잔여 AP가 N 이상인가 */
+	APAtLeat				UMETA(DisplayName = "잔여 AP N 이상"),
+	
+	APAtMost				UMETA(DisplayName = "잔여 AP N 이하"),
 
 	/** Key 능력치가 Value 이상인가 (예: Charm >= 5) - 매력/담력 선택지 조건용 */
 	StatAtLeast				UMETA(DisplayName = "능력치 N 이상"),
@@ -78,6 +84,8 @@ enum class EGameConditionType : uint8
 	 */
 	ScheduleIs				UMETA(DisplayName = "현재 시간대가 O"),
 
+	ScheduleAfter			UMETA(DisplayName = "현재 시간대가 O 이후"), 
+	
 	/** 현재 시간대가 Key 태그의 하위인가 (예: Key=Schedule.FreeTime 이면 FreeTime.1/2/3 전부 통과) */
 	ScheduleIsChildOf		UMETA(DisplayName = "현재 시간대가 O 계열"),
 
@@ -120,6 +128,8 @@ enum class EGameActionType : uint8
 
 	/** Key 카운터를 Value만큼 증감 */
 	AddCounter				UMETA(DisplayName = "카운터 증감"),
+	
+	AddStat					UMETA(DisplayName = "스탯 증감"),
 
 	/** Key 이벤트를 완료 처리 */
 	CompleteEvent			UMETA(DisplayName = "이벤트 완료 처리"),
@@ -240,7 +250,19 @@ enum class EGameActionType : uint8
 	
 	UnInteract				UMETA(DisplayName = "상호작용 전 상태로 설정"),
 	
-	ConsumeAP				UMETA(DisplayName = "AP 소모")
+	ConsumeAP				UMETA(DisplayName = "AP 소모"),
+	
+	PlayBGM					UMETA(DisplayName = "BGM 재생"),
+	
+	StopBGM					UMETA(DisplayName = "BGM 정지"),
+	
+	PlaySE					UMETA(DisplayName = "SE 재생"),
+	
+	StopSE					UMETA(DisplayName = "SE 정지"),
+	
+	SetSEVolume				UMETA(DisplayName = "SE 볼륨"),
+	
+	FinishActivity			UMETA(DisplayName = "액티비티 종료")
 };
 
 /**
@@ -293,6 +315,10 @@ struct FGameCondition
 	/** 비교값. 일차, 카운터 수치, 관계 등급(ENpcRelationshipLevel의 정수값) 등 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Condition")
 	int32 Value = 0;
+	
+	FGameCondition() = default;
+	
+	FGameCondition(EGameConditionType Type, FName Key, int32 Value) : Type(Type), Key(Key), Value(Value) {};
 };
 
 /**
@@ -341,6 +367,21 @@ struct FGameCamera
 
 };
 
+USTRUCT(BlueprintType)
+struct FSoundLocation
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	FName SoundChannel;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	FName SoundName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	FName Target;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound")
+	float Blend;
+	
+};
+
 /**
  * 플레이어 선택지 하나.
  * Conditions를 만족하지 못하면 목록에 보이되 회색으로 비활성화된다
@@ -361,10 +402,18 @@ struct FDialogueChoice
 	/** 이 선택지를 골랐을 때 실행할 액션 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
 	TArray<FGameAction> Actions;
-
+	
 	/** 다음 노드. None이면 대화 종료 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
 	FName NextNodeId;
+	
+	/** FreeAction 여부 */ 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Choice")
+	bool bFreeActivity = false;
+	
+	/** 만약 액티비티면 액티비티의 Key */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Choice")
+	FGameplayTag ConnectedTag = FGameplayTag::EmptyTag;
 	
 	FDialogueChoice() = default;
 	
@@ -436,6 +485,9 @@ struct FDialogueNodeRow : public FTableRowBase
 	TArray<FGameAction> OnEnterActions;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+	bool bYesNo;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	TArray<FDialogueChoice> Choices;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
@@ -444,6 +496,8 @@ struct FDialogueNodeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue | Camera")
 	FGameCamera Camera;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue | SoundLoc")
+	FSoundLocation SoundLocation;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
 	FName NextNodeId;

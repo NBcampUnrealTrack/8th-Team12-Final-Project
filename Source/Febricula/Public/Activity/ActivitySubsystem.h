@@ -8,8 +8,8 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ActivitySubsystem.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActivityRequested, FGameplayTag, ActivityTag, FActivityDefinition, Definition);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActivityRequested, FActivityDefinition, Definition);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnActivityFinished, FName, ChannelName, FName, ActivityName);
 /**
  *
  */
@@ -20,9 +20,6 @@ class FEBRICULA_API UActivitySubsystem : public UGameInstanceSubsystem
 
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-
-	UFUNCTION()
-	void HandleDialogueFinished();
 	
 	virtual void BindDialogue();
 	
@@ -33,30 +30,44 @@ public:
 	void PrintFixedActivities();
 	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
-	void RunActivity(FGameplayTag ActivityTag);
-
+	bool RunActivityByIndex(int32 Index);
+	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	bool TryConsumeAP(int32 Cost);
 
 	// ---- 세이브/로드 ----
-
-	UFUNCTION(BlueprintPure, Category = "ActivitySubsystem | Save")
-	int32 GetCurrentAP() const { return CurrentAP; }
-
+	
 	UFUNCTION(BlueprintCallable, Category = "ActivitySubsystem | Save")
 	void SetCurrentAP(int32 NewAP) { CurrentAP = NewAP; }
 
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	void GoHome();
-
+	
+	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
+	int32 GetCurrentAP() const;
+	
+	void ActivityFinished(FName ActivityName);
+	
+	void ActivityFinished(FName NpcName, int32 EventNumber);
+	
 	int32 GetRunnableLength();
-
+	
 	TArray<FGameplayTag> GetRunnableActivityTag() const;
 
 	FGameplayTag GetNowScheduleTag() const;
 
 	UPROPERTY(BlueprintAssignable, Category = ActivitySubsystem)
 	FOnActivityRequested OnActivityRequested;
+	
+	UPROPERTY(BlueprintAssignable, Category = ActivitySubsystem)
+	FOnActivityFinished OnActivityFinished;
+	
+	UPROPERTY()
+	bool bFreeActivity;
+	
+	UPROPERTY()
+	bool bWaitActivityChoice;
+	
 
 	// 디버그용
 #if !UE_BUILD_SHIPPING
@@ -71,6 +82,7 @@ protected:
 
 	void OnLevelLoaded(UWorld* LoadedWorld);
 	
+	void SortRunnableActivity();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
@@ -87,10 +99,16 @@ protected:
 	
 	UPROPERTY(EditdefaultsOnly, BlueprintReadOnly, Category = "Activity | FixedEventAsset")
 	TObjectPtr<UDataTable> FixedDialogues;
-
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
 	int32 CurrentAP;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activity")
 	int32 MaxAP;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")
+	bool bProcessActivity;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Activity")
+	FGameplayTag NowPlayedActivity;
 };

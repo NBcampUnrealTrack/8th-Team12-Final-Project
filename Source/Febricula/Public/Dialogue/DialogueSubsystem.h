@@ -19,7 +19,7 @@
 
 class ABaseNpcCharacter;
 class UGameProgressSubsystem;
-class UNpcRelationshipSubsystem;
+class UNpcAffinitySubsystem;
 
 USTRUCT(BlueprintType)
 struct FDialogueLogEntry
@@ -38,7 +38,7 @@ struct FDialogueLogEntry
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueLine, const FText&, Speaker, const FText&, Body);
 
 /** 선택지를 띄워야 할 때 */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDialogueChoices, const TArray<FDialogueChoiceView>&, Choices);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueChoices, const TArray<FDialogueChoiceView>&, Choices, bool, bYesNo);
 
 /** 대화가 완전히 끝났을 때 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
@@ -48,6 +48,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
  * OnDialogueFinished와 달리 대화가 끝난 게 아니므로, HUD는 창만 숨기고 상태는 유지해야 한다.
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueBoxHidden);
+
+USTRUCT(Blueprintable, BlueprintType)
+struct FCharacterCache
+{
+	GENERATED_BODY()
+public:
+	TWeakObjectPtr<ACharacter> Character;
+	FTransform Transform;
+};
 
 UCLASS()
 class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
@@ -101,7 +110,7 @@ public:
 
 	/** 선택지를 골랐을 때 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	void SelectChoice(int32 ChoiceIndex);
+	void SelectChoice(int32 ChoiceIndex, bool bYesNo = false);
 
 	/** 강제 종료 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
@@ -148,7 +157,7 @@ public:
 	void CameraToPlayerCam(const float MoveTime);
 
 	//지연 생성된 위젯을 위한 함수
-	UFUNCTION(BlueprintCallable, Category = "Dialogue | Dialogue Holder")
+	UFUNCTION(BlueprintCallable, Category= "Dialogue | Dialogue Holder")
 	bool GetCurrentLine(FText& OutSpeaker, FText& OutLine, TArray<FDialogueChoiceView>& OutChoiceViews);
 
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
@@ -156,8 +165,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cahced Character")
 	void RemoveCharacterByName(FName Name, ACharacter* Character);
-
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Result")
+	bool GetResult() { return RecentDialogueResult; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | ActionQueue")
+	void ExecuteQueuedActions();
+	
 	void ActivityDialoguePrint(const FDialogueNodeRow& Row);
+	
+
 	// ---- HUD가 구독할 델리게이트 ----
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
@@ -171,8 +188,16 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
 	FOnDialogueBoxHidden OnDialogueBoxHidden;
-
-	TMap<FName, TWeakObjectPtr<ACharacter>> GetCachedCharacter() const;
+	
+	// UPROPERTY(BlueprintAssignable, Category = "Dialogue")
+	// FOnChoiceSelected OnChoiceSelected;
+	//
+	TMap<FName, FCharacterCache> GetCachedCharacter() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Dialogue | Cache")
+	FTransform GetDefaultTransform(FName NpcId);
+	
+	bool CheckNpcCached(FName NpcName) const;
 
 	/** 백로그(지난 대사 기록) 전체를 가져온다. UI가 스크롤 목록 바인딩에 사용 */
 	UFUNCTION(BlueprintPure, Category = "Dialogue | Log")
@@ -194,10 +219,10 @@ protected:
 	void ResolveNodeExit();
 
 	/** 선택지를 HUD에 표시하고 입력을 선택 대기 상태로 바꾼다 */
-	void PresentChoices(const TArray<FDialogueChoice>& InChoices);
+	void PresentChoices(const TArray<FDialogueChoice>& InChoices, bool bYesNo = false);
 
 	UGameProgressSubsystem* GetProgress() const;
-	UNpcRelationshipSubsystem* GetRelationship() const;
+	UNpcAffinitySubsystem* GetRelationship() const;
 
 	/** 월드에서 NpcId가 일치하는 NPC 액터를 찾는다 (AI 액션 실행용) */
 	ABaseNpcCharacter* FindNpcById(FName NpcId) const;
@@ -276,12 +301,13 @@ protected:
 	FText HoldingDialogue;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue | Dialogue Holder")
 	TArray<FDialogueChoiceView> HoldingChoices;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	bool bBlockPlayerInput;
 
 	UPROPERTY()
-	TMap<FName, TWeakObjectPtr<ACharacter>> CachedCharacter;
-
+	TMap<FName, FCharacterCache> CachedCharacter;
+	
 	UPROPERTY()
 	TArray<FName> ClearedEvents;
 
@@ -295,4 +321,11 @@ protected:
 
 	/** 대사 한 줄을 로그에 기록 + 델리게이트 브로드캐스트 */
 	void BroadcastDialogueLine(const FText& Speaker, const FText& Body);
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue | Result")
+	bool RecentDialogueResult;
+		
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop | Debug")
+	TArray<FGameAction> QueuedLevelChange;
 };
+

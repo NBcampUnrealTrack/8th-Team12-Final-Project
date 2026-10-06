@@ -9,6 +9,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/PlayerStat.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Dialogue/DialogueDataTypes.h"
 #include "GameProgressSubsystem.generated.h"
@@ -96,7 +97,12 @@ public:
 	int32 GetStat(FName StatId) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
-	void SetStat(FName StatId, int32 NewValue) { Stats.Add(StatId, NewValue); }
+	void SetStat(FName StatId, int32 NewValue)
+	{
+		const int32 Val = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
+		if (Val == INDEX_NONE) return;
+		Stats[Val] = NewValue;
+	}
 
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
 	int32 AddStat(FName StatId, int32 Delta);
@@ -104,7 +110,7 @@ public:
 	// ---- 이벤트 완료 기록 ----
 
 	UFUNCTION(BlueprintPure, Category = "Progress|Event")
-	bool IsEventCompleted(FName EventId) const { return CompletedEvents.Contains(EventId); }
+	bool IsEventCompleted(FName EventId) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Progress|Event")
 	void MarkEventCompleted(FName EventId) { CompletedEvents.Add(EventId); }
@@ -165,5 +171,5 @@ protected:
 	TMap<FName, int32> Counters;
 
 	UPROPERTY()
-	TMap<FName, int32> Stats;
+	int32 Stats[static_cast<uint8>(EPlayerStat::Max)];
 };

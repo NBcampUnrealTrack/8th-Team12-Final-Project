@@ -187,9 +187,9 @@ void UInteractionComponent::UpdateFocus()
 
 	if (HUDWidget)
 	{
-		if (FocusedActor)
+		if (FocusedActor.Get())
 		{
-			HUDWidget->ShowInteractionPrompt(IInteractable::Execute_GetInteractionPrompt(FocusedActor, OwnerActor));
+			HUDWidget->ShowInteractionPrompt(IInteractable::Execute_GetInteractionPrompt(FocusedActor.Get(), OwnerActor));
 		}
 		else
 		{
@@ -217,8 +217,20 @@ void UInteractionComponent::TryInteract()
 		}
 	}
 
-	if (FocusedActor && FocusedActor->Implements<UInteractable>())
+	if (FocusedActor.Get() && FocusedActor->Implements<UInteractable>())
 	{
-		IInteractable::Execute_Interact(FocusedActor, GetOwner());
+		IInteractable::Execute_Interact(FocusedActor.Get(), GetOwner());
 	}
+}
+
+FName UInteractionComponent::GetFocusedActorTag() const
+{
+	if (FocusedActor.Get())
+	{
+		if (FocusedActor->Tags.Num() > 0)
+		{
+			return FocusedActor->Tags[0];
+		}
+	}
+	return NAME_None;
 }

@@ -7,7 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
-#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcAffinitySubsystem.h"
 
 const UTimeSubsystem* UGameProgressSubsystem::GetTime() const
 {
@@ -40,15 +40,31 @@ int32 UGameProgressSubsystem::AddCounter(FName CounterId, int32 Delta)
 
 int32 UGameProgressSubsystem::GetStat(FName StatId) const
 {
-	const int32* Found = Stats.Find(StatId);
-	return Found ? *Found : 0;
+	int64 Value = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
+	if (Value < -1 || Value > static_cast<int64>(EPlayerStat::Max))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
+		return 0;
+	}
+	return Stats[Value];
 }
 
 int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
 {
-	int32& Value = Stats.FindOrAdd(StatId);
-	Value += Delta;
-	return Value;
+	int64 Index = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
+	if (Index < -1 || Index > static_cast<int64>(EPlayerStat::Max))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
+		return 0;
+	}
+ 	Stats[Index] += Delta;
+ 	return Stats[Index];
+}
+
+bool UGameProgressSubsystem::IsEventCompleted(FName EventId) const
+{
+	bool Temp = CompletedEvents.Contains(EventId);
+	return Temp;
 }
 
 bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) const
@@ -94,6 +110,12 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 			return false;
 		}
 		return Time->GetNowScheduleTag() == Required;
+	}
+		
+	case EGameConditionType::ScheduleAfter:
+	{
+		const UTimeSubsystem* TimeSubsystem = GetTime();
+			
 	}
 
 	case EGameConditionType::ScheduleIsChildOf:
@@ -169,23 +191,36 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	case EGameConditionType::CounterAtMost:
 		return GetCounter(Condition.Key) <= Condition.Value;
 
+	case EGameConditionType::APAtLeat:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			return Condition.Value <= ActivitySubsystem->GetCurrentAP();
+		}
+		
+	case EGameConditionType::APAtMost:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			return Condition.Value >= ActivitySubsystem->GetCurrentAP();
+		}
+
+		
 	case EGameConditionType::StatAtLeast:
 		return GetStat(Condition.Key) >= Condition.Value;
 
 	case EGameConditionType::RelationshipAtLeast:
-	{
-		// 호감도는 이 서브시스템이 아니라 UNpcRelationshipSubsystem이 소유하므로 위임한다.
-		if (const UGameInstance* GI = GetGameInstance())
 		{
-			if (const UNpcRelationshipSubsystem* Relationship = GI->GetSubsystem<UNpcRelationshipSubsystem>())
+			// 호감도는 이 서브시스템이 아니라 UNpcRelationshipSubsystem이 소유하므로 위임한다.
+			if (const UGameInstance* GI = GetGameInstance())
 			{
-				const ENpcRelationshipLevel Required =
-					static_cast<ENpcRelationshipLevel>(FMath::Clamp(Condition.Value, 0, static_cast<int32>(ENpcRelationshipLevel::Intimate)));
-				return Relationship->IsRelationshipAtLeast(Condition.Key, Required);
+				if (const UNpcAffinitySubsystem* Relationship = GI->GetSubsystem<UNpcAffinitySubsystem>())
+				{
+					const ENpcRelationshipLevel Required =
+						static_cast<ENpcRelationshipLevel>(FMath::Clamp(Condition.Value, 0, static_cast<int32>(ENpcRelationshipLevel::Intimate)));
+					return Relationship->IsRelationshipAtLeast(Condition.Key, Required);
+				}
 			}
+			return false;
 		}
-		return false;
-	}
 
 	case EGameConditionType::RollCheck:
 	{
@@ -243,7 +278,13 @@ FGameProgressSaveData UGameProgressSubsystem::GetSaveData() const
 	Data.Topics = Topics;
 	Data.CompletedEvents = CompletedEvents;
 	Data.Counters = Counters;
-	Data.Stats = Stats;
+	
+	const UEnum* Enum = StaticEnum<EPlayerStat>();
+	for (int32 i = 0; i < static_cast<int32>(EPlayerStat::Max); ++i)
+	{
+		Data.Stats.Add(FName(Enum->GetNameStringByIndex(i)), Stats[i]);
+	}
+
 	Data.FallbackDay = FallbackDay;
 	return Data;
 }
@@ -254,6 +295,12 @@ void UGameProgressSubsystem::LoadSaveData(const FGameProgressSaveData& Data)
 	Topics = Data.Topics;
 	CompletedEvents = Data.CompletedEvents;
 	Counters = Data.Counters;
-	Stats = Data.Stats;
+	
+	const UEnum* Enum = StaticEnum<EPlayerStat>();
+	for (int32 i = 0; i < static_cast<int32>(EPlayerStat::Max); ++i)
+	{
+		const FName Name(Enum->GetNameStringByIndex(i));
+		Stats[i] = Data.Stats.FindRef(Name);   // 없으면 0
+	}
 	FallbackDay = Data.FallbackDay;
 }

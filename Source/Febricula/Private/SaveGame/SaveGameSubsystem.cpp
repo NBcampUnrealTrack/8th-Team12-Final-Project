@@ -5,7 +5,7 @@
 
 #include "Kismet/GameplayStatics.h"
 #include "Progress/GameProgressSubsystem.h"
-#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcAffinitySubsystem.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Dialogue/DialogueSubsystem.h"
@@ -70,7 +70,7 @@ bool USaveGameSubsystem::SaveToSlot(int32 SlotIndex)
 	{
 		Save->ProgressData = Progress->GetSaveData();
 	}
-	if (const UNpcRelationshipSubsystem* Relationship = GetGameInstance()->GetSubsystem<UNpcRelationshipSubsystem>())
+	if (const UNpcAffinitySubsystem* Relationship = GetGameInstance()->GetSubsystem<UNpcAffinitySubsystem>())
 	{
 		Save->RelationshipData = Relationship->GetSaveData();
 	}
@@ -166,7 +166,7 @@ void USaveGameSubsystem::ApplyGameInstanceData(const UFebriculaSaveGame* Save)
 	{
 		Progress->LoadSaveData(Save->ProgressData);
 	}
-	if (UNpcRelationshipSubsystem* Relationship = GetGameInstance()->GetSubsystem<UNpcRelationshipSubsystem>())
+	if (UNpcAffinitySubsystem* Relationship = GetGameInstance()->GetSubsystem<UNpcAffinitySubsystem>())
 	{
 		Relationship->LoadSaveData(Save->RelationshipData);
 	}

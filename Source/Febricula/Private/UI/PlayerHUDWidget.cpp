@@ -98,7 +98,7 @@ void UPlayerHUDWidget::HandleDialogueLine(const FText& Speaker, const FText& Bod
 	BP_ShowDialogueLine(Speaker, Body);
 }
 
-void UPlayerHUDWidget::HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices)
+void UPlayerHUDWidget::HandleDialogueChoices(const TArray<FDialogueChoiceView>& Choices, bool bYesNo)
 {
 	UE_LOG(LogTemp, Warning, TEXT("UPlayerHUDWidget::HandleDialogueChoices"));
 	UE_LOG(LogTemp, Error, TEXT("InViewport=%d, Visible=%d"),
@@ -143,11 +143,11 @@ void UPlayerHUDWidget::RequestAdvance()
 	}
 }
 
-void UPlayerHUDWidget::RequestSelectChoice(int32 ChoiceIndex)
+void UPlayerHUDWidget::RequestSelectChoice(int32 ChoiceIndex, bool bYesNo)
 {
 	if (UDialogueSubsystem* Dialogue = GetDialogueSubsystem())
 	{
-		Dialogue->SelectChoice(ChoiceIndex);
+		Dialogue->SelectChoice(ChoiceIndex, bYesNo);
 	}
 }
 

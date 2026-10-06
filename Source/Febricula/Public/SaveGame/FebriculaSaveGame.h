@@ -14,7 +14,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
 #include "Progress/GameProgressSubsystem.h"
-#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcAffinitySubsystem.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "FebriculaSaveGame.generated.h"

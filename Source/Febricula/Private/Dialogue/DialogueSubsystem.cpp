@@ -8,24 +8,28 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "FebriculaCharacter.h"
+#include "IPropertyTable.h"
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Animation/CharacterAnimationComponent.h"
+#include "Cache/ActorCacheSubsystem.h"
 #include "Components/CapsuleComponent.h"
 #include "Dialogue/NpcCrowdManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/FebriculaGameMode.h"
-#include "GameMode/LevelAutoEventSetting.h"
+#include "GameMode/SoundSubsystem.h"
+#include "GameMode/TargetTypeComponent.h"
+#include "GameMode/TargetTypeRole.h"
 #include "GameMode/TimeSubsystem.h"
+#include "Interaction/InteractionComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Level/MovableMapActor.h"
 #include "Progress/GameProgressSubsystem.h"
 #include "NPC/BaseNpcCharacter.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
 #include "NPC/MainNpc/MainNpcCharacter.h"
-#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
-#include "WorldPartition/HLOD/HLODActor.h"
+#include "NPC/MainNpc/NpcAffinitySubsystem.h"
 
 TStatId UDialogueSubsystem::GetStatId() const
 {
@@ -209,9 +213,15 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator)
 	for (const TPair<FName, uint8*>& Pair : EventTable->GetRowMap())
 	{
 		const FNpcEventRow* Row = reinterpret_cast<const FNpcEventRow*>(Pair.Value);
-		if (!Row || Row->NpcId != NpcId && !Row->NpcId.IsNone())
+		if (Row)
 		{
-			continue;
+			if (Row->NpcId != NpcId)
+			{
+				if (!Row->NpcId.IsNone())
+				{
+					continue;		
+				}
+			}
 		}
 
 		// 반복 불가 이벤트인데 이미 완료했으면 후보에서 제외
@@ -311,7 +321,7 @@ void UDialogueSubsystem::ReleaseParticipants()
 		}
 
 		// 대사 중에 재생시킨 슬롯 애니메이션이 남아있지 않도록 정리한다.
-		Npc->StopNpcAnim();
+		Npc->StopNpcAnim(.25f, true);
 
 		if (AMainNpcCharacter* MainNpc = Cast<AMainNpcCharacter>(Npc))
 		{
@@ -323,9 +333,9 @@ void UDialogueSubsystem::ReleaseParticipants()
 
 ACharacter* UDialogueSubsystem::GetCharacterInCache(FName CharacterName) const
 {
-	if (const TWeakObjectPtr<ACharacter>* CharPtr = CachedCharacter.Find(CharacterName))
+	if (const FCharacterCache* CharPtr = CachedCharacter.Find(CharacterName))
 	{
-		if (ACharacter* Character = CharPtr->Get())
+		if (ACharacter* Character = CharPtr->Character.Get())
 		{
 			return Character;
 		}
@@ -424,40 +434,70 @@ void UDialogueSubsystem::SetFastForward(bool bEnable)
 	FastForwardElapsed = 0.f;
 }
 
-void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex)
+void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex, bool bYesNo)
 {
 	if (!bDialogueActive || !bWaitingForChoice)
 	{
 		return;
 	}
-
+	
 	if (!PendingChoices.IsValidIndex(ChoiceIndex))
 	{
 		return;
+	}
+	
+	bool RunResult = true;
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	{
+		if (ActivitySubsystem->bWaitActivityChoice)
+		{	
+			ActivitySubsystem->bWaitActivityChoice = false;
+			RunResult = ActivitySubsystem->RunActivityByIndex(ChoiceIndex); 
+		}
 	}
 
 	const FDialogueChoice Chosen = PendingChoices[ChoiceIndex];
 	
 	// 조건 미달 선택지는 UI에서 비활성으로 보이지만, 혹시 모르니 여기서도 막는다.
 	const UGameProgressSubsystem* Progress = GetProgress();
-	if (Progress && !Progress->EvaluateConditions(Chosen.Conditions))
+	if (!RunResult && Progress && !Progress->EvaluateConditions(Chosen.Conditions))
 	{
 		return;
 	}
 
+	if (bYesNo == true)
+	{
+		if (ChoiceIndex == PendingChoices.Num() - 1)
+		{
+			RecentDialogueResult = false;
+		}
+		else
+		{
+			RecentDialogueResult = true;
+		}
+	}
+
 	PendingChoices.Reset();
 	bWaitingForChoice = false;
-
+	
 	ExecuteActions(Chosen.Actions);
-
+		
 	if (Chosen.NextNodeId.IsNone())
 	{
+		if (Chosen.bFreeActivity)
+		{
+			if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+			{
+				ActivitySubsystem->bFreeActivity = true;
+			}
+		}
 		FinishDialogue();
 	}
 	else
 	{
 		EnterNode(Chosen.NextNodeId);
 	}
+
 }
 
 void UDialogueSubsystem::FinishDialogue()
@@ -512,9 +552,23 @@ void UDialogueSubsystem::FinishDialogue()
 // 노드 진입 / 이탈
 // ---------------------------------------------------------------------------
 
-TMap<FName, TWeakObjectPtr<ACharacter>> UDialogueSubsystem::GetCachedCharacter() const
+TMap<FName, FCharacterCache> UDialogueSubsystem::GetCachedCharacter() const
 {
 	return CachedCharacter;
+}
+
+FTransform UDialogueSubsystem::GetDefaultTransform(FName NpcId)
+{
+	if (FCharacterCache* Cache = CachedCharacter.Find(NpcId))
+	{
+		return Cache->Transform;
+	}                                                                                                                       
+	return FTransform();
+}
+
+bool UDialogueSubsystem::CheckNpcCached(FName NpcName) const
+{
+	return CachedCharacter.Contains(NpcName); 
 }
 
 void UDialogueSubsystem::EnterNode(FName NodeId)
@@ -560,6 +614,18 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 		CameraToCinematicCam(Row->Camera.Location, Row->Camera.Rotation, Row->Camera.MoveTime, Row->Camera.Focus);
 		break;
 	}
+	
+	if (Row->SoundLocation.SoundChannel != NAME_None && Row->SoundLocation.SoundName != NAME_None)
+	{
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			if (UActorCacheSubsystem* ActorCache = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
+			{
+				SoundSubsystem->PlaySE3d(Row->SoundLocation.SoundChannel, SoundSubsystem->FoundSoundBase(Row->SoundLocation.SoundName),  ActorCache->GetTargetLocation(Row->SoundLocation.Target, ETargetTypeRole::Sound), Row->SoundLocation.Blend);
+			}
+		}
+	}
+		
 	ExecuteActions(Row->OnEnterActions);
 
 	// 선택지가 있는 노드는 반드시 골라야 하므로 자동 진행을 걸지 않는다.
@@ -596,27 +662,31 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	// 질문을 읽은 플레이어는 선택지가 바로 나올 거라고 기대하기 때문이다.
 	if (Row->Choices.Num() > 0)
 	{
-		PresentChoices(Row->Choices);
+		PresentChoices(Row->Choices, Row->bYesNo);
 	}
 }
 
 void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
 {
-	BlockPlayerInput(true);
-	bHasHoldingLine = true;
-	HoldingSpeaker = Row.SpeakerName;
-	HoldingDialogue = Row.Text;
-	bDialogueActive = true;
-	OnDialogueLine.Broadcast(Row.SpeakerName, Row.Text);
-	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
-
-	if (Row.Choices.Num() > 0)
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
-		PresentChoices(Row.Choices);
+		if (ActivitySubsystem->bFreeActivity) return;
+		BlockPlayerInput(true);
+		bHasHoldingLine = true;
+		HoldingSpeaker = Row.SpeakerName;
+		HoldingDialogue = Row.Text;
+		bDialogueActive = true;
+		OnDialogueLine.Broadcast(Row.SpeakerName, Row.Text);
+		UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
+
+		if (Row.Choices.Num() > 0)
+		{
+			PresentChoices(Row.Choices);
+		}
 	}
 }
 
-void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices)
+void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices, bool bYesNo)
 {
 	const UGameProgressSubsystem* Progress = GetProgress();
 
@@ -640,7 +710,7 @@ void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices
 		UE_LOG(LogTemp, Warning, TEXT("View Name2: %s"), *Choice.Text.ToString());		
 	}
 	HoldingChoices = Views;
-	OnDialogueChoices.Broadcast(Views);
+	OnDialogueChoices.Broadcast(Views, bYesNo);
 	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueChoices.IsBound());
 	bWaitingForChoice = true;
 }
@@ -800,27 +870,38 @@ void UDialogueSubsystem::AddCharacterByName(FName Name, ACharacter* Character)
 {
 	if (Character && !Name.IsNone())
 	{
-		if (const TWeakObjectPtr<ACharacter>* Found = CachedCharacter.Find(Name))
+		if (const FCharacterCache* Found = CachedCharacter.Find(Name))
 		{
-			if (Found->IsValid() && Found->Get() != Character)
+			if (Found->Character.IsValid())
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Character %s already exists"), *Name.ToString());
 				return;
 			}
 		}
-		CachedCharacter.Add(Name, Character);
+		FVector Temp = Character->GetActorLocation();
+		UE_LOG(LogTemp, Warning, TEXT("캐릭터 기본 위치: %f : %f : %f"), Temp.X, Temp.Y, Temp.Z);
+		CachedCharacter.Add(Name, FCharacterCache(Character, Character->GetTransform()));
 	}
 }
 
 void UDialogueSubsystem::RemoveCharacterByName(FName Name, ACharacter* Character)
 {
-	if (const TWeakObjectPtr<ACharacter>* Found = CachedCharacter.Find(Name))
+	if (const FCharacterCache* Found = CachedCharacter.Find(Name))
 	{
-		if (Found->Get() == Character)
+		if (Found->Character.Get() == Character)
 		{
 			CachedCharacter.Remove(Name);
 		}
 	}
+}
+
+void UDialogueSubsystem::ExecuteQueuedActions()
+{
+	if (QueuedLevelChange.Num() > 0)
+	{
+		ExecuteAction(QueuedLevelChange.Pop());
+	}
+	QueuedLevelChange.Reset();
 }
 
 void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
@@ -833,7 +914,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		break;
 
 	case EGameActionType::AddAffinity:
-		if (UNpcRelationshipSubsystem* Relationship = GetRelationship())
+		if (UNpcAffinitySubsystem* Relationship = GetRelationship())
 		{
 			Relationship->AddAffinity(Action.Key, static_cast<float>(Action.Value));
 		}
@@ -850,6 +931,9 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 	case EGameActionType::AddCounter:
 		if (Progress) { Progress->AddCounter(Action.Key, Action.Value); }
 		break;
+		
+	case EGameActionType::AddStat:
+		if (Progress) { Progress->AddStat(Action.Key, Action.Value); }
 
 	case EGameActionType::CompleteEvent:
 		if (Progress) { Progress->MarkEventCompleted(Action.Key); }
@@ -896,7 +980,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			Time->ResetSchedule();
 		}
 		break;
-
+		
 		// ---- AI 연동 ----
 
 	case EGameActionType::NpcSetAIState:
@@ -998,7 +1082,6 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("CrowdManager를 찾을 수 없음"))
 			}
-
 		}
 		break;
 		
@@ -1076,13 +1159,13 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		}
 		else
 		{
-			if (TWeakObjectPtr<ACharacter>* NpcPtr = CachedCharacter.Find(Action.Key))
+			if (FCharacterCache* NpcPtr = CachedCharacter.Find(Action.Key))
 			{
-				if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(NpcPtr->Get()))
+				if (ABaseNpcCharacter* Npc = Cast<ABaseNpcCharacter>(NpcPtr->Character.Get()))
 				{
-					if (TWeakObjectPtr<ACharacter>* Character = CachedCharacter.Find(Action.Key2))
+					if (FCharacterCache* Character = CachedCharacter.Find(Action.Key2))
 					{
-						Npc->FaceTowards(Character->Get());
+						Npc->FaceTowards(Character->Character.Get());
 					}
 				}
 			}
@@ -1094,8 +1177,45 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		if (const UActivitySetting* ActivitySetting = GetDefault<UActivitySetting>())
 		{
 			OnDialogueBoxHidden.Broadcast();
-			UGameplayStatics::OpenLevelBySoftObjectPtr(this, *ActivitySetting->Levels.Find(Action.Key));
+			if (Action.Key == NAME_None)
+			{
+				if (ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0))
+				{
+					if (UInteractionComponent* InteractionComponent = Player->GetComponentByClass<UInteractionComponent>())
+					{
+						FName TargetLevelName = InteractionComponent->GetFocusedActorTag();
+						if (TargetLevelName == NAME_None)
+						{
+							UE_LOG(LogTemp, Warning, TEXT("레벨 자동 식별 실패"));
+							break;
+						}
+						if (const TSoftObjectPtr<UWorld>* Level = ActivitySetting->Levels.Find(TargetLevelName))
+						{
+							FGameAction QueuedAction = FGameAction(EGameActionType::ChangeLevel, TargetLevelName, TEXT("false"), 0);
+							QueuedLevelChange.Add(QueuedAction);
+						}
+					}
+				}
+			}
+			if (const TSoftObjectPtr<UWorld>* Level = ActivitySetting->Levels.Find(Action.Key))
+			{
+				if (!Action.Key2.ToString().ToBool())
+				{
+					UGameplayStatics::OpenLevelBySoftObjectPtr(this, *Level);
+				}
+				else
+				{
+					FGameAction QueuedAction = FGameAction(EGameActionType::ChangeLevel, Action.Key, TEXT("false"), 0);
+					QueuedLevelChange.Add(QueuedAction);
+				}
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("존재하지 않는 레벨: %s"), *Action.Key.ToString());
+			}
 		}
+		
+		
 		break;
 
 	case EGameActionType::FadeOut:
@@ -1137,8 +1257,8 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 	case EGameActionType::SpawnActor:
 		if (AFebriculaGameMode* GameMode = Cast<AFebriculaGameMode>(GetWorld()->GetAuthGameMode()))
 		{
-			TWeakObjectPtr<ACharacter>* Found = CachedCharacter.Find(Action.Key);
-			if (Found && Found->IsValid())
+			FCharacterCache* Found = CachedCharacter.Find(Action.Key);
+			if (Found && Found->Character.IsValid())
 			{
 				UE_LOG(LogTemp, Warning, TEXT("%s: 이미 존재하는 NPC"), *Action.Key.ToString());
 				break;
@@ -1149,29 +1269,30 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 				UE_LOG(LogTemp, Warning, TEXT("%s: 등록되지 않은 NPC Id"), *Action.Key.ToString());
 				break;
 			}
-			TArray<AActor*> FoundedLocation;
 			if (Action.Key2.IsNone())
 			{
 				UE_LOG(LogTemp, Warning, TEXT("%s: 위치 정보 누락됨"), *Action.Key.ToString());
 				break;
 			}
-
-			UGameplayStatics::GetAllActorsWithTag(this, Action.Key2, FoundedLocation);
-			if (FoundedLocation.IsEmpty())
+			
+			if (UActorCacheSubsystem* CacheSubsystem = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
 			{
-				UE_LOG(LogTemp, Warning, TEXT("%s: 지정된 스폰 위치 %s를 찾지 못함 "), *Action.Key.ToString(), *Action.Key2.ToString());
+				FTransform SpawnTransform = CacheSubsystem->GetTargetTransform(Action.Key2);
+				// if (FoundedLocation.IsEmpty())
+				// {w
+				// 	UE_LOG(LogTemp, Warning, TEXT("%s: 지정된 스폰 위치 %s를 찾지 못함 "), *Action.Key.ToString(), *Action.Key2.ToString());
+				// 	break;
+				// }
+				
+				ABaseNpcCharacter* Character = GetWorld()->SpawnActorDeferred<ABaseNpcCharacter>(SpawnClass, SpawnTransform);
+				if (Character)
+				{
+					Character->SetNpcId(Action.Key);
+					Character->FinishSpawning(SpawnTransform);
+
+				}
 				break;
 			}
-
-			FTransform SpawnTransform = FoundedLocation[0]->GetActorTransform();
-			ABaseNpcCharacter* Character = GetWorld()->SpawnActorDeferred<ABaseNpcCharacter>(SpawnClass, SpawnTransform);
-			if (Character)
-			{
-				Character->SetNpcId(Action.Key);
-				Character->FinishSpawning(SpawnTransform);
-
-			}
-			break;
 		}
 		break;
 
@@ -1184,46 +1305,53 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		break;
 
 	case EGameActionType::Teleport:
-	{
-		AActor* NowActor = nullptr;
-		if (Action.Key.IsNone() || Action.Key == "Player")
 		{
-			NowActor = UGameplayStatics::GetPlayerCharacter(this, 0);
-		}
-		else
-		{
-			NowActor = GetCharacterInCache(Action.Key);
-		}
-
-		if (NowActor)
-		{
-			if (ACharacter* NowCharacter = Cast<ACharacter>(NowActor))
+			AActor* NowActor = nullptr;
+			if (Action.Key.IsNone() || Action.Key == "Player")
 			{
-				if (UCharacterMovementComponent* Movement = NowCharacter->GetCharacterMovement())
+				NowActor = UGameplayStatics::GetPlayerCharacter(this, 0);
+			}
+			else
+			{
+				NowActor = GetCharacterInCache(Action.Key);	
+			}
+		
+			if (NowActor)
+			{
+				if (ACharacter* NowCharacter = Cast<ACharacter>(NowActor))
 				{
-					Movement->StopMovementImmediately();
-					Movement->DisableMovement();
-					Movement->SetMovementMode(MOVE_None);
-					Movement->SetComponentTickEnabled(false);
-					NowCharacter->SetActorEnableCollision(false);
-					NowCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-					NowCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-					NowCharacter->GetMesh()->SetSimulatePhysics(false);
-					NowCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-					TArray<AActor*> Found;
-					UGameplayStatics::GetAllActorsWithTag(this, Action.Key2, Found);
-					if (Found.Num() > 0)
+					if (UCharacterMovementComponent* Movement = NowCharacter->GetCharacterMovement())
 					{
-						NowActor->SetActorLocationAndRotation(Found[0]->GetActorLocation(), Found[0]->GetActorRotation());
+						Movement->StopMovementImmediately();
+						Movement->DisableMovement();
+						Movement->SetMovementMode(MOVE_None);
+						Movement->SetComponentTickEnabled(false);
+						NowCharacter->SetActorEnableCollision(false);
+						NowCharacter->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						NowCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						NowCharacter->GetMesh()->SetSimulatePhysics(false);
+						NowCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+						TArray<AActor*> Found;
+						UGameplayStatics::GetAllActorsWithTag(this, Action.Key2, Found);
+						if (Found.Num() > 0)
+						{
+							NowActor->SetActorLocationAndRotation(Found[0]->GetActorLocation(), Found[0]->GetActorRotation());
+						}
 					}
 				}
 			}
 			break;
 		}
-	}
-
 	case EGameActionType::Interact:
 		{
+			if (UActorCacheSubsystem* CacheSubsystem = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
+			{
+				if (UTargetTypeComponent* Comp = CacheSubsystem->GetTargetTypeComponent(Action.Key))
+				{
+					Comp->ActivateTarget();
+					break;
+				}
+			}
 			TArray<AActor*> Founds;
 			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
 			if (Founds.IsEmpty()) break;
@@ -1254,16 +1382,69 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 				MapActor->StartMoveWrapper(Founds[0], EMoveState::OPENING, false);
 			}
 			break;
+		}
 		
-	}
-
 	case EGameActionType::ConsumeAP:
 		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 		{
 			ActivitySubsystem->TryConsumeAP(Action.Value);
 		}
 		break;
+		
+	case EGameActionType::PlayBGM:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			if (USoundBase* Sound = SoundSubsystem->FoundSoundBase(Action.Key))
+			{
+				SoundSubsystem->PlayBGM(Sound, FCString::Atof(*Action.Key2.ToString()));
+			}
+		}
+		break;
+		
+	case EGameActionType::StopBGM:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			SoundSubsystem->StopBGM(FCString::Atof(*Action.Key.ToString()));
+		}
+		break;
+		
+	case EGameActionType::PlaySE:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			if (USoundBase* Sound = SoundSubsystem->FoundSoundBase(Action.Key2))
+			{
+				SoundSubsystem->PlaySE(Action.Key, Sound, Action.Value);
+			}
+		}
+		break;
 	
+	case EGameActionType::SetSEVolume:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			SoundSubsystem->SetSEVolume(Action.Key, FCString::Atoi(*Action.Key2.ToString()));
+		}
+
+		break;
+		
+	case EGameActionType::StopSE:
+		if (USoundSubsystem* SoundSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<USoundSubsystem>())
+		{
+			SoundSubsystem->StopSE(Action.Key, FCString::Atoi(*Action.Key2.ToString()));
+		}
+		break;
+		
+	case EGameActionType::FinishActivity:
+		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+		{
+			if (Action.Value == 0)
+			{
+				ActivitySubsystem->ActivityFinished(Action.Key);
+				break;
+			}
+			ActivitySubsystem->ActivityFinished(Action.Key, Action.Value);
+		}
+		break;
+		
 	default:
 		break;
 	}
@@ -1306,13 +1487,13 @@ UGameProgressSubsystem* UDialogueSubsystem::GetProgress() const
 	return nullptr;
 }
 
-UNpcRelationshipSubsystem* UDialogueSubsystem::GetRelationship() const
+UNpcAffinitySubsystem* UDialogueSubsystem::GetRelationship() const
 {
 	if (const UWorld* World = GetWorld())
 	{
 		if (UGameInstance* GI = World->GetGameInstance())
 		{
-			return GI->GetSubsystem<UNpcRelationshipSubsystem>();
+			return GI->GetSubsystem<UNpcAffinitySubsystem>();
 		}
 	}
 	return nullptr;

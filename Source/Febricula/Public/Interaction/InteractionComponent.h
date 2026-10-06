@@ -37,9 +37,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void TryInteract();
 
-	UFUNCTION(BlueprintPure, Category = "Interaction")
-	AActor* GetFocusedActor() const { return FocusedActor; }
-
+	UFUNCTION(Category = "Interaction")
+	TWeakObjectPtr<AActor> GetFocusedActor() const { return FocusedActor; }
+	FName GetFocusedActorTag() const;
 	UFUNCTION(BlueprintPure, Category = "Interaction")
 	UPlayerHUDWidget* GetHUDWidget() const { return HUDWidget; }
 
@@ -88,7 +88,7 @@ protected:
 	// ---- 런타임 ----
 
 	UPROPERTY(Transient)
-	TObjectPtr<AActor> FocusedActor;
+	TWeakObjectPtr<AActor> FocusedActor;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UPlayerHUDWidget> HUDWidget;
