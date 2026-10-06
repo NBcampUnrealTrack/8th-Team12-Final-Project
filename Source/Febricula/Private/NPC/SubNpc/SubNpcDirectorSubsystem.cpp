@@ -21,6 +21,10 @@
 #include "MassEntitySubsystem.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcMassProcessors.h"
+#include "NPC/SubNpc/SubNpcMassStateTree.h"
+#include "MassStateTreeFragments.h"
+#include "StateTree.h"
+#include "StructUtils/InstancedStruct.h"
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
 #include "NPC/SubNpc/SubNpcProfiling.h"
@@ -345,6 +349,66 @@ namespace SubNpcCrowdCVars
  * 감속 요청은 최솟값을 따르므로 다른 어떤 요청(스치며 통과 등)보다 이 정지가 우선한다.
  */
 /**
+ * 경로 이음매에서 "누가 앞인가" 판정.
+ *
+ * Upstream이 Downstream 쪽으로 갈아타기 직전이고 Downstream은 막 갈아탄 참이면 true.
+ * [버그 수정] 예전에는 "Upstream의 경로 출구가 Downstream의 경로인가"만 봤다. 가는 길·오는 길이 서로를
+ * 출구로 갖는 순환 경로(테스트 레벨의 왕복로)에서는 양쪽 다 상대를 뒤로 봐서, 반환점에서 서로 양보하다
+ * 55명이 한 덩어리로 겹쳐 갇혔다. 실제 이음매 근처(끝·시작에서 Window 안)에 있을 때만 앞뒤를 정한다.
+ */
+namespace SubNpcRoute
+{
+	constexpr float SeamWindow = 600.f;
+
+	static float RemainingOnPath(const ASubNpcCharacter* Npc)
+	{
+		const ANpcCrowdPath* Path = Npc ? Npc->GetCurrentPath() : nullptr;
+		if (!Path)
+		{
+			return TNumericLimits<float>::Max();
+		}
+		return Npc->IsReversedOnPath() ? Npc->GetPathDistance() : Path->GetPathLength() - Npc->GetPathDistance();
+	}
+
+	static float TravelledOnPath(const ASubNpcCharacter* Npc)
+	{
+		const ANpcCrowdPath* Path = Npc ? Npc->GetCurrentPath() : nullptr;
+		if (!Path)
+		{
+			return TNumericLimits<float>::Max();
+		}
+		return Npc->IsReversedOnPath() ? Path->GetPathLength() - Npc->GetPathDistance() : Npc->GetPathDistance();
+	}
+
+	static bool FeedsInto(const ANpcCrowdPath* From, const ANpcCrowdPath* To)
+	{
+		if (!From || !To)
+		{
+			return false;
+		}
+		for (const FNpcPathExit& Exit : From->GetExits())
+		{
+			if (Exit.NextPath == To)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Upstream이 이음매 바로 앞(경로 끝 근처)이고 그 경로가 Downstream의 경로로 이어지는가 */
+	static bool IsUpstreamAtSeam(const ASubNpcCharacter* Upstream, const ANpcCrowdPath* DownstreamPath)
+	{
+		return Upstream && FeedsInto(Upstream->GetCurrentPath(), DownstreamPath) && RemainingOnPath(Upstream) < SeamWindow;
+	}
+
+	static bool IsSeamOrder(const ASubNpcCharacter* Upstream, const ASubNpcCharacter* Downstream)
+	{
+		return Downstream && IsUpstreamAtSeam(Upstream, Downstream->GetCurrentPath()) && TravelledOnPath(Downstream) < SeamWindow;
+	}
+}
+
+/**
  * 행인 액터 ↔ Mass 엔티티 연결 (Mass 1단계).
  *
  * 행인마다 엔티티 하나를 붙인다. 엔티티는 액터를 가리키기만 하고(FSubNpcAgentFragment),
@@ -353,6 +417,37 @@ namespace SubNpcCrowdCVars
  */
 namespace SubNpcMassBinding
 {
+	static int32 UseStateTree = 1;
+	static FAutoConsoleVariableRef CVarUseStateTree(
+		TEXT("crowd.StateTree"),
+		UseStateTree,
+		TEXT("1이면 스포너에 지정된 Mass StateTree로 행인 상태를 정한다. 0이면 액터 코드가 정한다 (게임 시작 전에 설정, 비교용)."),
+		ECVF_Cheat);
+
+	/** 스포너에 지정된 행인 StateTree. 월드마다 한 번만 찾는다 (없으면 nullptr - 예전처럼 액터가 스스로 정한다) */
+	static UStateTree* FindCrowdStateTree(UWorld* World)
+	{
+		if (UseStateTree == 0)
+		{
+			return nullptr;
+		}
+		static TWeakObjectPtr<UWorld> CachedWorld;
+		static TWeakObjectPtr<UStateTree> CachedTree;
+		if (CachedWorld.Get() != World)
+		{
+			CachedWorld = World;
+			CachedTree = nullptr;
+			for (TActorIterator<ANpcCrowdSpawner> It(World); It; ++It)
+			{
+				CachedTree = It->LoadCrowdStateTree();
+				break;
+			}
+			UE_LOG(LogTemp, Log, TEXT("[Crowd] 행인 상태 결정: %s"),
+				CachedTree.IsValid() ? *FString::Printf(TEXT("Mass StateTree (%s)"), *GetNameSafe(CachedTree.Get())) : TEXT("액터 코드 (StateTree 없음)"));
+		}
+		return CachedTree.Get();
+	}
+
 	static void Bind(UWorld* World, ASubNpcCharacter* Npc)
 	{
 		if (!World || !IsValid(Npc) || Npc->GetMassEntity().IsSet())
@@ -370,11 +465,31 @@ namespace SubNpcMassBinding
 			return;   // Mass가 도는 중에는 엔티티를 만들 수 없다. 다음 Director 틱에 다시 본다.
 		}
 
-		const UScriptStruct* Composition[] = { FSubNpcAgentFragment::StaticStruct(), FSubNpcRepresentationFragment::StaticStruct() };
-		const FMassArchetypeHandle Archetype = EntityManager.CreateArchetype(MakeArrayView(Composition));
-		const FMassEntityHandle Entity = EntityManager.CreateEntity(Archetype);
-		EntityManager.GetFragmentDataChecked<FSubNpcAgentFragment>(Entity).Actor = Npc;
+		FSubNpcAgentFragment Agent;
+		Agent.Actor = Npc;
+
+		TArray<FInstancedStruct, TInlineAllocator<4>> Fragments;
+		Fragments.Add(FInstancedStruct::Make(Agent));
+		Fragments.Add(FInstancedStruct::Make(FSubNpcRepresentationFragment()));
+
+		// [Mass 3단계] 스포너에 StateTree가 지정돼 있으면 상태 결정을 StateTree에 맡긴다.
+		// 엔진의 UMassStateTreeActivationProcessor가 이 프래그먼트를 보고 트리를 시작한다.
+		FMassArchetypeSharedFragmentValues Shared;
+		UStateTree* StateTree = FindCrowdStateTree(World);
+		if (StateTree)
+		{
+			Fragments.Add(FInstancedStruct::Make(FMassStateTreeInstanceFragment()));
+			Fragments.Add(FInstancedStruct::Make(FSubNpcBehaviorFragment()));
+
+			FMassStateTreeSharedFragment TreeFragment;
+			TreeFragment.StateTree = StateTree;
+			Shared.Add(EntityManager.GetOrCreateConstSharedFragment(TreeFragment));
+			Shared.Sort();
+		}
+
+		const FMassEntityHandle Entity = EntityManager.CreateEntity(Fragments, Shared);
 		Npc->SetMassEntity(Entity);
+		Npc->SetSpotDecisionByStateTree(StateTree != nullptr);
 	}
 
 	static void Unbind(UWorld* World, ASubNpcCharacter* Npc)
@@ -659,6 +774,26 @@ namespace SubNpcOverlapCheck
 					WorstGap > 0.f ? TEXT("뜬") : TEXT("묻힌"), BadHeight, WorstGap, *WorstHeightDesc);
 			}
 
+			// 상태별 인원: StateTree를 켜고 끌 때 스팟 들르기·반응이 같은 비율로 일어나는지 비교한다.
+			{
+				int32 Walking = 0, AtSpot = 0, Reacting = 0;
+				for (const ASubNpcCharacter* Npc : Npcs)
+				{
+					if (!IsValid(Npc))
+					{
+						continue;
+					}
+					switch (Npc->GetActivity())
+					{
+					case ESubNpcActivity::Walking:  ++Walking;  break;
+					case ESubNpcActivity::AtSpot:   ++AtSpot;   break;
+					case ESubNpcActivity::Reacting: ++Reacting; break;
+					default: break;
+					}
+				}
+				UE_LOG(LogTemp, Log, TEXT("[CrowdActivity] 걷기 %d | 스팟·줄 %d | 반응 %d"), Walking, AtSpot, Reacting);
+			}
+
 			if (Window.OverlapFrames > 0)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | %.1f초 중 %.0f%% 프레임에서 겹침, 최대 동시 %d쌍 | 가장 깊은 겹침 %.0fcm: %s"),
@@ -808,17 +943,6 @@ namespace SubNpcBodySeparation
 				{
 					const ANpcCrowdPath* PathA = A.Npc->GetCurrentPath();
 					const ANpcCrowdPath* PathB = B.Npc->GetCurrentPath();
-					auto FeedsInto = [](const ANpcCrowdPath* From, const ANpcCrowdPath* To)
-					{
-						for (const FNpcPathExit& Exit : From->GetExits())
-						{
-							if (Exit.NextPath == To)
-							{
-								return true;
-							}
-						}
-						return false;
-					};
 					if (PathA && PathA == PathB && A.Npc->IsReversedOnPath() == B.Npc->IsReversedOnPath())
 					{
 						const float Along = A.Npc->IsReversedOnPath() ? -1.f : 1.f;
@@ -827,11 +951,11 @@ namespace SubNpcBodySeparation
 							? (Lead > 0.f ? -1 : 1)
 							: ((GetTypeHash(A.Npc->GetFName()) < GetTypeHash(B.Npc->GetFName())) ? -1 : 1);
 					}
-					else if (PathA && PathB && FeedsInto(PathA, PathB))
+					else if (SubNpcRoute::IsSeamOrder(A.Npc, B.Npc))
 					{
 						Order = -1;
 					}
-					else if (PathA && PathB && FeedsInto(PathB, PathA))
+					else if (SubNpcRoute::IsSeamOrder(B.Npc, A.Npc))
 					{
 						Order = 1;
 					}
@@ -2234,17 +2358,8 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 				Agent.Speed = Npc->IsWalkingOnPath() ? Npc->GetCurrentMoveSpeed() : 0.f;
 				Agent.bWalking = Npc->IsWalkingOnPath();
 				Agent.bForeign = true;
-				if (const ANpcCrowdPath* OtherPath = Npc->GetCurrentPath())
-				{
-					for (const FNpcPathExit& Exit : OtherPath->GetExits())
-					{
-						if (Exit.NextPath == Path)
-						{
-							Agent.bUpstream = true;
-							break;
-						}
-					}
-				}
+				// 이 경로로 들어오기 직전인 사람만 "이전 경로 사람"이다 (순환 경로에서 양쪽이 서로를 이전으로 보지 않게).
+				Agent.bUpstream = SubNpcRoute::IsUpstreamAtSeam(Npc, Path);
 			}
 		}
 	}
@@ -2420,6 +2535,7 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 				// 서 있는 사람을 C 행인이 비켜 가지 않고 어깨로 뚫으며 지나갔다 (로그: C 속도 90~100% ↔ B 속도 0%).
 				// 서로를 기다려 같이 멈추는 교착은 둘 다 걷고 있을 때 생기므로, 걷는 사람만 무시한다.
 				return Other.bUpstream && Other.bWalking && Other.Speed > 30.f
+					&& SubNpcRoute::TravelledOnPath(Me.Npc) < SubNpcRoute::SeamWindow   // 나도 막 넘어온 참일 때만
 					&& FVector::DotProduct(Other.Fwd, MyDir) < SubNpcCrowdCVars::CrossingHeadingDot;
 			};
 

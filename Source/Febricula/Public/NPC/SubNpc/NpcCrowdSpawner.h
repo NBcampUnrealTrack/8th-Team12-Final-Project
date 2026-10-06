@@ -19,6 +19,7 @@ class ANpcCrowdPath;
 class ASubNpcCharacter;
 class UAnimToTextureDataAsset;
 class UDataTable;
+class UStateTree;
 
 /** 시간대별 인구 밀도 배율 */
 USTRUCT(BlueprintType)
@@ -184,6 +185,20 @@ protected:
 public:
 	/** 원경 표현에 쓸 애니메이션 데이터를 읽어 온다. 설정이 없거나 못 읽으면 nullptr (원경 표현을 쓰지 않는다) */
 	UAnimToTextureDataAsset* LoadFarCrowdAnimData() const;
+
+	/** 행인 상태 결정에 쓸 Mass StateTree를 읽어 온다. 비어 있으면 nullptr (예전처럼 액터가 스스로 정한다) */
+	UStateTree* LoadCrowdStateTree() const;
+
+protected:
+	/**
+	 * 행인의 상태 결정(걷다가 스팟에 들를지, 반응·스팟이 끝나면 무엇을 할지)을 맡을 Mass StateTree.
+	 * 스키마는 "Mass Behavior"(MassStateTreeSchema)여야 하고, "행인:" 태스크들로 만든다.
+	 * 비워 두면 예전처럼 액터 코드가 스스로 정한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Behavior")
+	TSoftObjectPtr<UStateTree> CrowdStateTree;
+
+public:
 
 protected:
 	/**

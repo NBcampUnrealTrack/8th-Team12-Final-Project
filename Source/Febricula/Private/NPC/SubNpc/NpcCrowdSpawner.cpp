@@ -3,6 +3,7 @@
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 
 #include "AnimToTextureDataAsset.h"
+#include "StateTree.h"
 #include "Engine/GameInstance.h"
 #include "Misc/ScopeExit.h"
 #include "Engine/World.h"
@@ -30,6 +31,11 @@ ANpcCrowdSpawner::ANpcCrowdSpawner()
 UAnimToTextureDataAsset* ANpcCrowdSpawner::LoadFarCrowdAnimData() const
 {
 	return FarCrowdAnimData.IsNull() ? nullptr : FarCrowdAnimData.LoadSynchronous();
+}
+
+UStateTree* ANpcCrowdSpawner::LoadCrowdStateTree() const
+{
+	return CrowdStateTree.IsNull() ? nullptr : CrowdStateTree.LoadSynchronous();
 }
 
 void ANpcCrowdSpawner::BeginPlay()

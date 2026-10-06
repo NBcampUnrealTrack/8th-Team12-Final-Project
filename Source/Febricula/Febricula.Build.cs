@@ -29,7 +29,10 @@ public class Febricula : ModuleRules
 			"MassEntity",
 			"MassCore",
 			// 멀리 있는 행인을 인스턴스드 메시 + 텍스처로 구운 애니메이션으로 그린다 (SubNpcMassProcessors).
-			"AnimToTexture"
+			"AnimToTexture",
+			// 행인 상태 결정(스팟에 들를지 등)을 Mass StateTree로 (SubNpcMassStateTree).
+			"MassAIBehavior",
+			"MassSignals"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

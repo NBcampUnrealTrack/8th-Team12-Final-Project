@@ -878,4 +878,25 @@ protected:
 
 	/** 인스턴스드 메시로 그려지는 중인가 (스켈레탈 메시는 숨겨져 있다) */
 	bool bInstancedRepresentation = false;
+
+	/**
+	 * 스팟에 들를지를 Mass StateTree가 정한다 (Mass 3단계).
+	 * true면 걷는 중의 자동 스팟 판정(RollForActivitySpot)을 하지 않고, StateTree의
+	 * "행인: 스팟 들르기 판정" 태스크가 TryEnterNearbySpot을 부를 때만 들른다.
+	 */
+	bool bSpotDecisionByStateTree = false;
+
+	/**
+	 * StateTree가 "스팟에 들를지 굴려 봐"라고 요청했다. 액터 틱(게임 스레드)에서 처리한다.
+	 * Mass StateTree 태스크는 게임 스레드가 아닌 곳에서 돌 수 있어서, 스팟 점유처럼 월드를 바꾸는 일은
+	 * 태스크가 직접 하지 않고 요청만 남긴다.
+	 */
+	FThreadSafeBool bSpotRollRequested = false;
+
+public:
+	void SetSpotDecisionByStateTree(bool bEnable) { bSpotDecisionByStateTree = bEnable; }
+	bool IsSpotDecisionByStateTree() const { return bSpotDecisionByStateTree; }
+
+	/** 스팟 들르기 판정을 요청한다 (어느 스레드에서나 불러도 된다) */
+	void RequestSpotRoll() { bSpotRollRequested = true; }
 };

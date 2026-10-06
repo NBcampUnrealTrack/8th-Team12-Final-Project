@@ -480,7 +480,10 @@ void ASubNpcCharacter::ActivateFromPool(const FSubNpcArchetypeRow& InArchetype, 
 	OnArchetypeApplied(Archetype);
 
 	NextSpotCheckDistance = PathDistance;
-	RollForActivitySpot();
+	if (!bSpotDecisionByStateTree)   // StateTree가 맡으면 들를지는 StateTree가 정한다
+	{
+		RollForActivitySpot();
+	}
 }
 
 void ASubNpcCharacter::DeactivateToPool()
@@ -853,6 +856,19 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 
 	case ESubNpcActivity::Walking:
 	default:
+		// StateTree(걷기 태스크)가 요청한 스팟 판정. 스팟 점유·애니메이션을 바꾸므로 게임 스레드인 여기서 한다.
+		if (bSpotRollRequested)
+		{
+			bSpotRollRequested = false;
+			if (bSpotDecisionByStateTree)
+			{
+				RollForActivitySpot();
+				if (CurrentActivity != ESubNpcActivity::Walking)
+				{
+					return;
+				}
+			}
+		}
 		// Mass가 맡고 있으면 이동은 UMassSubNpcPathFollowProcessor가 여러 명을 병렬로 계산한다.
 		if (!IsMovementDrivenByMass())
 		{
@@ -1399,7 +1415,7 @@ void ASubNpcCharacter::ApplyPathStep(const FSubNpcPathStep& Step)
 {
 	SUBNPC_PROFILE_SCOPE(PathApply);
 
-	if (Step.bSpotCheck)
+	if (Step.bSpotCheck && !bSpotDecisionByStateTree)   // StateTree가 맡으면 "행인: 스팟 들르기 판정" 태스크가 정한다
 	{
 		RollForActivitySpot();
 		if (CurrentActivity != ESubNpcActivity::Walking)
@@ -1576,7 +1592,10 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	RolledSpots.Reset();
 
 	PlanNextPath();
-	RollForActivitySpot();
+	if (!bSpotDecisionByStateTree)
+	{
+		RollForActivitySpot();
+	}
 }
 
 float ASubNpcCharacter::GetLaneHandoffDistance() const
