@@ -89,6 +89,9 @@ namespace SubNpcPathHandoff
 
 	/** 이보다 작아지면 0으로 끊는다 (cm) */
 	constexpr float SnapThreshold = 1.f;
+
+	/** 갈아탈 때 어긋남을 메우는 최대 속도 (걸음 속도 대비). 0.25면 이음매에서 최대 1.25배로 움직인다 */
+	constexpr float MaxCatchUpRatio = 0.25f;
 }
 
 namespace SubNpcCrowdFlow
@@ -134,6 +137,9 @@ namespace SubNpcCrowdFlow
 	 * Director의 SqueezeOverflow와 같거나 커야 비집고 지나가는 차선에 실제로 닿는다.
 	 */
 	constexpr float PassLaneOverflow = 45.f;
+
+	/** 한 걸음에 몸이 실제로 움직일 수 있는 최대 속도 (걸음 속도 대비). 이음매·따라잡기에서 달려 보이지 않게 한다 */
+	constexpr float MaxSpeedRatio = 1.25f;
 }
 
 namespace SubNpcLightBump
@@ -274,7 +280,9 @@ namespace SubNpcGroupTuning
 
 	/** 추종자 속도 배율 범위. 하한이 0보다 커야 뒷걸음질이 없다 */
 	constexpr float SpeedScaleMin = 0.55f;
-	constexpr float SpeedScaleMax = 1.65f;
+	// [튜닝] 1.65 → 1.2. 경로를 갈아탄 직후 리더와의 간격이 크게 잡히면 1.65배로 달려가서
+	// 앞사람에 닿아 서고, 풀리면 또 달려가기를 반복했다 (이음매에서 빨라지고 겹치는 원인 중 하나).
+	constexpr float SpeedScaleMax = 1.2f;   // 걸음 속도 상한(MaxSpeedRatio 1.25)보다 낮아야 뒤처짐이 쌓이지 않는다
 
 	/** 일행 걸음 속도를 리더 속도에서 이 비율(±)만큼 다르게 준다. 0.03 = ±3% */
 	constexpr float MemberSpeedJitter = 0.03f;
@@ -505,6 +513,10 @@ void ASubNpcCharacter::ClearRuntimeState()
 	// 퇴장 페이드로 바꿔 끼운 머티리얼을 되돌린다. 안 하면 다음에 풀에서 나올 때 투명한 채로 나온다.
 	RestoreMaterialsAfterExitFade();
 
+	// 원경 인스턴스 표현을 끝낸다. 인스턴스 칸은 표현 프로세서가 이 사람이 풀로 들어간 걸 보고 돌려받는다.
+	// 메시 가시성은 다음 등장 때 ApplyLodBand가 다시 정한다.
+	bInstancedRepresentation = false;
+
 	// [누수 방지 핵심] 스팟 점유를 안 풀면 그 스팟은 영영 정원이 찬 상태로 남는다.
 	if (OccupiedSpot)
 	{
@@ -669,6 +681,44 @@ void ASubNpcCharacter::ApplyLodBand(ESubNpcLodBand NewBand)
 	if (MeshComp && NewBand != ESubNpcLodBand::Culled)
 	{
 		MeshComp->SetVisibility(true, /*bPropagateToChildren=*/true);
+	}
+
+	// 인스턴스드 메시로 그려지는 중이면 밴드가 바뀌어도 스켈레탈 메시는 계속 숨긴다.
+	if (bInstancedRepresentation && MeshComp)
+	{
+		MeshComp->SetVisibility(false, /*bPropagateToChildren=*/true);
+		MeshComp->SetComponentTickEnabled(false);
+		MeshComp->bPauseAnims = true;
+	}
+}
+
+void ASubNpcCharacter::SetInstancedRepresentation(bool bInstanced)
+{
+	if (bInstancedRepresentation == bInstanced)
+	{
+		return;
+	}
+	bInstancedRepresentation = bInstanced;
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	if (bInstanced)
+	{
+		// 스켈레탈 메시를 숨기고 애니메이션 계산(포즈 평가·스키닝)을 멈춘다. 이게 원경 표현으로 아끼는 비용이다.
+		MeshComp->SetVisibility(false, /*bPropagateToChildren=*/true);
+		MeshComp->SetComponentTickEnabled(false);
+		MeshComp->bPauseAnims = true;
+	}
+	else
+	{
+		// 지금 LOD 밴드 설정을 다시 적용해서 보이게 되돌린다 (같은 밴드면 ApplyLodBand가 건너뛰므로 잠시 바꿔 둔다).
+		const ESubNpcLodBand Band = CurrentLodBand;
+		CurrentLodBand = (Band == ESubNpcLodBand::Near) ? ESubNpcLodBand::Mid : ESubNpcLodBand::Near;
+		ApplyLodBand(Band);
 	}
 }
 
@@ -952,7 +1002,18 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 		{
 			if (Leader->CurrentPath == CurrentPath)
 			{
-				const float Desired = FMath::Clamp(Leader->LaneOffset + GroupLaneOffset, -HalfWidth, HalfWidth);
+				// [버그 수정] 리더가 길 가장자리에 붙어 내 자리가 길 폭 밖이면 반대편에 선다.
+				// 예전에는 길 폭으로 잘라서 리더와 같은 차선에 눌려 몸이 겹쳤다 (로그: 경로 A 입구, 일행끼리 겹침).
+				// 양쪽 다 들어가면 지금 서 있는 쪽을 유지한다 (경계에서 좌우로 왔다 갔다 하며 리더 몸을 가로지르지 않게).
+				const bool bOwnSideFits = FMath::Abs(Leader->LaneOffset + GroupLaneOffset) <= HalfWidth;
+				const bool bOtherSideFits = FMath::Abs(Leader->LaneOffset - GroupLaneOffset) <= HalfWidth;
+				const bool bCurrentlyOnOtherSide = (LaneOffset - Leader->LaneOffset) * GroupLaneOffset < 0.f;
+				float Side = GroupLaneOffset;
+				if (bOtherSideFits && (!bOwnSideFits || bCurrentlyOnOtherSide))
+				{
+					Side = -GroupLaneOffset;
+				}
+				const float Desired = FMath::Clamp(Leader->LaneOffset + Side, -HalfWidth, HalfWidth);
 				LaneOffset = FMath::FInterpTo(LaneOffset, Desired, DeltaTime, SubNpcGroupTuning::LaneFollowRate);
 			}
 		}
@@ -1018,7 +1079,14 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 	if (!PathHandoffOffset.IsNearlyZero())
 	{
 		// 지수 감쇠. DeltaTime이 커도(Far는 0.3초 틱) 0으로 튀지 않는다.
-		PathHandoffOffset *= FMath::Exp(-SubNpcPathHandoff::BlendRate * DeltaTime);
+		// [버그 수정] 한 틱에 메우는 양을 걸음에 묶는다. 예전에는 걷는 것과 상관없이 1초 남짓 만에 메워서,
+		// 이음매를 지나는 순간 1.4~1.6배 빨라졌고(측정: A→B, B→C 이음매), 앞사람 때문에 서 있어도
+		// 이 보정만으로 미끄러져 앞사람 몸에 파고들었다. 이제 걸음의 일부만큼만 더 움직이고, 서 있으면 메우지 않는다.
+		const float OffsetSize = PathHandoffOffset.Size();
+		const float Desired = OffsetSize * (1.f - FMath::Exp(-SubNpcPathHandoff::BlendRate * DeltaTime));
+		const float MaxCatchUp = WalkSpeed * CurrentSpeedScale * SubNpcPathHandoff::MaxCatchUpRatio * DeltaTime;
+		const float Reduce = FMath::Min(Desired, MaxCatchUp);
+		PathHandoffOffset *= (OffsetSize > KINDA_SMALL_NUMBER) ? (OffsetSize - Reduce) / OffsetSize : 0.f;
 
 		if (PathHandoffOffset.SizeSquared() < FMath::Square(SubNpcPathHandoff::SnapThreshold))
 		{
@@ -1062,7 +1130,14 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 		{
 			const FVector Dir2D = FVector(ToTarget.X, ToTarget.Y, 0.f) / Remaining;
 			FVector Next = Location + Dir2D * Step;
-			Next.Z = FMath::FInterpConstantTo(Location.Z, Target.Z, DeltaTime, WalkSpeed);
+			// [버그 수정] 높이는 목표점이 아니라 내 발밑 바닥에 맞춘다. 목표점(진행도)은 계속 앞으로 가서
+			// 오르막 위에 있을 수 있다 - 그 높이를 따라가면 평지를 걸으면서 허공으로 올라갔다
+			// (로그: 길로합류중 행인이 바닥에서 94~200cm 뜸, 아래 사람을 밟는 것처럼 보임).
+			Next.Z = Location.Z;
+			if (!SnapToGround(Next))
+			{
+				Next.Z = FMath::FInterpConstantTo(Location.Z, Target.Z, DeltaTime, WalkSpeed);
+			}
 
 			bool bBlockedByWorld = false;
 			Out.Result = FSubNpcPathStep::EResult::Move;
@@ -1142,6 +1217,22 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 	// [추가] 그런데 추월·비집기로 길 가장자리를 넘거나 경로가 지형에 붙어 있으면 벽을 뚫었다.
 	// 그래서 캡슐 스윕 대신 지형(WorldStatic/WorldDynamic)만 따로 쓸어 본다 (ResolveWorldBlocking).
 	// 행인끼리는 여전히 막지 않으므로 위의 정체 문제는 생기지 않는다.
+	// [속도 상한] 실제로 몸이 움직이는 거리를 걸음 속도의 일정 배수로 묶는다.
+	// 일행 따라잡기·경로 갈아타기 보정·굽은 곳 차선 보정이 겹치면 한 걸음이 걸음 속도보다 커져서,
+	// 이음매에서 1.4~1.6배로 끌려가듯 빨라졌다 (측정: [CrowdSpeed]). 남은 거리는 다음 걸음들에서 따라잡는다.
+	{
+		const FVector Current = GetActorLocation();
+		const FVector Delta2D(Target.X - Current.X, Target.Y - Current.Y, 0.f);
+		const float MaxStep = WalkSpeed * SubNpcCrowdFlow::MaxSpeedRatio * DeltaTime;
+		const float StepSize = Delta2D.Size();
+		if (StepSize > MaxStep && StepSize > KINDA_SMALL_NUMBER)
+		{
+			const FVector Clamped = Delta2D * (MaxStep / StepSize);
+			Target.X = Current.X + Clamped.X;
+			Target.Y = Current.Y + Clamped.Y;
+		}
+	}
+
 	bool bBlockedByWorld = false;
 	const FVector Resolved = ResolveWorldBlocking(GetActorLocation(), Target, bBlockedByWorld);
 	if (bBlockedByWorld)
@@ -1757,7 +1848,12 @@ void ASubNpcCharacter::TickSpotQueue(float DeltaTime, float Now)
 
 	const FVector Dir = ToTarget / Remaining;
 	FVector Next = Location + Dir * Step;
-	Next.Z = FMath::FInterpConstantTo(Location.Z, Target.Z, DeltaTime, WalkSpeed);
+	// 줄 자리로 옮길 때도 발밑 바닥에 붙인다 (길로 돌아갈 때와 같은 이유).
+	Next.Z = Location.Z;
+	if (!SnapToGround(Next))
+	{
+		Next.Z = FMath::FInterpConstantTo(Location.Z, Target.Z, DeltaTime, WalkSpeed);
+	}
 	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Dir.Rotation(), DeltaTime, 8.f);
 	bool bBlockedByWorld = false;
 	SetActorLocationAndRotation(ResolveWorldBlocking(Location, Next, bBlockedByWorld), NewRot, /*bSweep=*/false);
@@ -1892,7 +1988,12 @@ void ASubNpcCharacter::TickApproachSpot(float DeltaTime)
 	// 걸어가는 방향을 본다. 높이는 설 자리 쪽으로 같이 맞춰 간다.
 	const FVector Dir = ToStand / Remaining;
 	FVector Next = Location + Dir * Step;
-	Next.Z = FMath::FInterpConstantTo(Location.Z, SpotStandLocation.Z, DeltaTime, WalkSpeed);
+	// 스팟까지 걸어가는 동안에도 발밑 바닥에 붙인다 (오르막을 가로지를 때 허공을 걷지 않게).
+	Next.Z = Location.Z;
+	if (!SnapToGround(Next))
+	{
+		Next.Z = FMath::FInterpConstantTo(Location.Z, SpotStandLocation.Z, DeltaTime, WalkSpeed);
+	}
 
 	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Dir.Rotation(), DeltaTime, 8.f);
 	bool bBlockedByWorld = false;

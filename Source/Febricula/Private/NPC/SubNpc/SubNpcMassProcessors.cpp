@@ -2,9 +2,18 @@
 
 #include "NPC/SubNpc/SubNpcMassProcessors.h"
 
+#include "AnimToTextureDataAsset.h"
+#include "AnimToTextureInstancePlaybackHelpers.h"
 #include "Async/ParallelFor.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "MassExecutionContext.h"
+#include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
 #include "NPC/SubNpc/SubNpcProfiling.h"
 
@@ -106,4 +115,282 @@ void UMassSubNpcPathFollowProcessor::Execute(FMassEntityManager& EntityManager, 
 			Job.Npc->ApplyPathStep(Job.Step);
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// 원경 표현
+// ---------------------------------------------------------------------------
+
+static int32 GSubNpcFarInstances = 1;
+static FAutoConsoleVariableRef CVarSubNpcFarInstances(
+	TEXT("crowd.FarInstances"),
+	GSubNpcFarInstances,
+	TEXT("1이면 멀리 있는 행인을 인스턴스드 메시(텍스처로 구운 애니메이션)로 그린다. 0이면 모두 스켈레탈 메시로 그린다."),
+	ECVF_Cheat);
+
+static float GSubNpcFarInstanceDistance = 4000.f;
+static FAutoConsoleVariableRef CVarSubNpcFarInstanceDistance(
+	TEXT("crowd.FarInstanceDistance"),
+	GSubNpcFarInstanceDistance,
+	TEXT("이 거리(cm)보다 멀리 있는 행인을 인스턴스드 메시로 그린다. 기본 4000 (Mid 밴드 끝). 작은 맵에서 시험할 때 낮춘다."),
+	ECVF_Cheat);
+
+namespace SubNpcFarCrowd
+{
+	/** 경계에서 액터와 인스턴스가 왔다 갔다 하지 않게, 돌아올 때는 이만큼(cm) 더 가까워져야 한다 */
+	constexpr float Hysteresis = 300.f;
+
+	/** 이보다 느리면(cm/s) 대기 애니메이션으로 바꾼다 */
+	constexpr float IdleSpeedThreshold = 20.f;
+
+	/** 구운 걷기 애니메이션의 원래 걸음 속도 (cm/s). 행인 걸음 속도와의 비율로 재생 속도를 정한다 */
+	constexpr float BakedWalkSpeed = 150.f;
+
+	/** 쓰지 않는 칸을 치워 두는 자리. 크기 0이라 보이지 않는다 */
+	static const FTransform HiddenTransform(FQuat::Identity, FVector(0.f, 0.f, -100000.f), FVector::ZeroVector);
+}
+
+ASubNpcFarCrowdInstancer::ASubNpcFarCrowdInstancer()
+{
+	PrimaryActorTick.bCanEverTick = false;
+
+	Instances = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("FarCrowdInstances"));
+	SetRootComponent(Instances);
+	Instances->SetMobility(EComponentMobility::Movable);
+	Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Instances->SetCanEverAffectNavigation(false);
+	// 멀리 있는 사람의 그림자는 거의 안 보이는데 비용은 크다 (가까운 행인도 Mid부터 그림자를 끈다).
+	Instances->SetCastShadow(false);
+}
+
+bool ASubNpcFarCrowdInstancer::Initialize(UAnimToTextureDataAsset* InAnimData)
+{
+	if (!InAnimData)
+	{
+		return false;
+	}
+	UStaticMesh* Mesh = InAnimData->StaticMesh.LoadSynchronous();
+	if (!Mesh || InAnimData->Animations.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Crowd] 원경 표현 데이터 %s 에 스태틱 메시나 구운 애니메이션이 없습니다. 원경 표현을 쓰지 않습니다."),
+			*GetNameSafe(InAnimData));
+		return false;
+	}
+
+	AnimData = InAnimData;
+	Instances->SetStaticMesh(Mesh);
+	Instances->ClearInstances();
+	// 인스턴스마다 자동 재생 데이터(시간 오프셋, 재생 속도, 시작·끝 프레임)를 넣는다.
+	Instances->NumCustomDataFloats = sizeof(FAnimToTextureAutoPlayData) / sizeof(float);
+
+	// 걷기·대기 애니메이션 찾기. Animations는 켜져 있는(bEnabled) AnimSequences만 순서대로 담는다.
+	int32 BakedIndex = 0;
+	for (const FAnimToTextureAnimSequenceInfo& Info : InAnimData->AnimSequences)
+	{
+		if (!Info.bEnabled)
+		{
+			continue;
+		}
+		const FString Name = GetNameSafe(Info.AnimSequence);
+		if (WalkAnimIndex < 0 && Name.Contains(TEXT("Walk")))
+		{
+			WalkAnimIndex = BakedIndex;
+		}
+		else if (IdleAnimIndex < 0 && Name.Contains(TEXT("Idle")))
+		{
+			IdleAnimIndex = BakedIndex;
+		}
+		++BakedIndex;
+	}
+	if (WalkAnimIndex < 0)
+	{
+		WalkAnimIndex = 0;
+	}
+	if (IdleAnimIndex < 0)
+	{
+		IdleAnimIndex = WalkAnimIndex;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Crowd] 원경 표현 준비: 메시 %s, 애니메이션 %d개 (걷기 %d, 대기 %d)"),
+		*GetNameSafe(Mesh), InAnimData->Animations.Num(), WalkAnimIndex, IdleAnimIndex);
+	return true;
+}
+
+int32 ASubNpcFarCrowdInstancer::AcquireSlot()
+{
+	if (FreeSlots.Num() > 0)
+	{
+		return FreeSlots.Pop(EAllowShrinking::No);
+	}
+	return Instances->AddInstance(SubNpcFarCrowd::HiddenTransform, /*bWorldSpace=*/true);
+}
+
+void ASubNpcFarCrowdInstancer::ReleaseSlot(int32 Slot)
+{
+	if (Slot < 0)
+	{
+		return;
+	}
+	Instances->UpdateInstanceTransform(Slot, SubNpcFarCrowd::HiddenTransform, /*bWorldSpace=*/true, /*bMarkRenderStateDirty=*/false, /*bTeleport=*/true);
+	FreeSlots.Add(Slot);
+}
+
+UMassSubNpcRepresentationProcessor::UMassSubNpcRepresentationProcessor()
+	: EntityQuery(*this)
+{
+	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::AllNetModes);
+	ProcessingPhase = EMassProcessingPhase::PrePhysics;
+	bRequiresGameThreadExecution = true;   // 인스턴스드 메시·액터 컴포넌트를 바꾼다
+
+	// 이동이 끝난 위치로 인스턴스를 옮겨야 한 프레임 늦게 따라가지 않는다.
+	ExecutionOrder.ExecuteAfter.Add(UMassSubNpcPathFollowProcessor::StaticClass()->GetFName());
+}
+
+void UMassSubNpcRepresentationProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	EntityQuery.AddRequirement<FSubNpcAgentFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FSubNpcRepresentationFragment>(EMassFragmentAccess::ReadWrite);
+}
+
+ASubNpcFarCrowdInstancer* UMassSubNpcRepresentationProcessor::GetOrCreateInstancer(UWorld* World)
+{
+	if (ASubNpcFarCrowdInstancer* Existing = Instancer.Get())
+	{
+		return Existing;
+	}
+	if (bInstancerUnavailable || !World)
+	{
+		return nullptr;
+	}
+
+	UAnimToTextureDataAsset* AnimData = nullptr;
+	for (TActorIterator<ANpcCrowdSpawner> It(World); It; ++It)
+	{
+		AnimData = It->LoadFarCrowdAnimData();
+		break;
+	}
+	if (!AnimData)
+	{
+		bInstancerUnavailable = true;
+		UE_LOG(LogTemp, Log, TEXT("[Crowd] 원경 표현 데이터가 없어 멀리 있는 행인도 스켈레탈 메시로 그립니다 (스포너의 Far Crowd Anim Data)."));
+		return nullptr;
+	}
+
+	FActorSpawnParameters Params;
+	Params.ObjectFlags |= RF_Transient;
+	ASubNpcFarCrowdInstancer* NewInstancer = World->SpawnActor<ASubNpcFarCrowdInstancer>(Params);
+	if (!NewInstancer || !NewInstancer->Initialize(AnimData))
+	{
+		if (NewInstancer)
+		{
+			NewInstancer->Destroy();
+		}
+		bInstancerUnavailable = true;
+		return nullptr;
+	}
+	Instancer = NewInstancer;
+	return NewInstancer;
+}
+
+void UMassSubNpcRepresentationProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+{
+	UWorld* World = EntityManager.GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		return;
+	}
+
+	// 기준점: 카메라 위치 (3인칭이라 캐릭터보다 카메라 거리가 화면과 맞는다).
+	FVector Viewer = FVector::ZeroVector;
+	bool bHasViewer = false;
+	if (const APlayerController* PC = World->GetFirstPlayerController())
+	{
+		if (PC->PlayerCameraManager)
+		{
+			Viewer = PC->PlayerCameraManager->GetCameraLocation();
+			bHasViewer = true;
+		}
+	}
+
+	const bool bEnabled = GSubNpcFarInstances != 0 && bHasViewer;
+	ASubNpcFarCrowdInstancer* FarCrowd = bEnabled ? GetOrCreateInstancer(World) : Instancer.Get();
+	UInstancedStaticMeshComponent* Instances = FarCrowd ? FarCrowd->GetInstances() : nullptr;
+	if (!Instances)
+	{
+		return;
+	}
+
+	const float EnterSq = FMath::Square(GSubNpcFarInstanceDistance);
+	const float LeaveSq = FMath::Square(FMath::Max(0.f, GSubNpcFarInstanceDistance - SubNpcFarCrowd::Hysteresis));
+	bool bChanged = false;
+
+	EntityQuery.ForEachEntityChunk(Context, [&](FMassExecutionContext& ChunkContext)
+	{
+		const TConstArrayView<FSubNpcAgentFragment> Agents = ChunkContext.GetFragmentView<FSubNpcAgentFragment>();
+		const TArrayView<FSubNpcRepresentationFragment> Reps = ChunkContext.GetMutableFragmentView<FSubNpcRepresentationFragment>();
+
+		for (FMassExecutionContext::FEntityIterator It = ChunkContext.CreateEntityIterator(); It; ++It)
+		{
+			ASubNpcCharacter* Npc = Agents[It].Actor.Get();
+			FSubNpcRepresentationFragment& Rep = Reps[It];
+			const bool bIsInstanced = Rep.InstanceIndex >= 0;
+
+			// 인스턴스로 그릴까? 풀에 있거나 숨겨졌거나(퇴장 끝) 사라지는 중이면 액터 쪽이다.
+			bool bWant = bEnabled && IsValid(Npc) && !Npc->IsPooled() && !Npc->IsHidden() && !Npc->IsExitFading();
+			if (bWant)
+			{
+				const float DistSq = FVector::DistSquared(Npc->GetActorLocation(), Viewer);
+				bWant = DistSq > (bIsInstanced ? LeaveSq : EnterSq);
+			}
+
+			if (bWant && !bIsInstanced)
+			{
+				Rep.InstanceIndex = FarCrowd->AcquireSlot();
+				Rep.AnimIndex = -1;
+				Rep.TimeOffset = FMath::FRandRange(0.f, 10.f);
+				Npc->SetInstancedRepresentation(true);
+			}
+			else if (!bWant && bIsInstanced)
+			{
+				FarCrowd->ReleaseSlot(Rep.InstanceIndex);
+				Rep.InstanceIndex = -1;
+				if (IsValid(Npc) && !Npc->IsPooled())
+				{
+					Npc->SetInstancedRepresentation(false);
+				}
+				bChanged = true;
+			}
+
+			if (Rep.InstanceIndex < 0)
+			{
+				continue;
+			}
+
+			// 위치: 스켈레탈 메시 컴포넌트 자리 그대로 (발 위치·방향·체격 배율이 이미 들어 있다).
+			Instances->UpdateInstanceTransform(Rep.InstanceIndex, Npc->GetMesh()->GetComponentTransform(),
+				/*bWorldSpace=*/true, /*bMarkRenderStateDirty=*/false, /*bTeleport=*/true);
+			bChanged = true;
+
+			// 애니메이션: 걷는 중이면 걷기(걸음 속도에 맞춘 재생 속도), 서 있으면 대기.
+			// 재생 속도를 감속에 따라 매번 바꾸면 박자가 튀므로 걷기/대기가 바뀔 때만 다시 넣는다.
+			const bool bMoving = Npc->GetAnimSpeed() > SubNpcFarCrowd::IdleSpeedThreshold;
+			const int32 Anim = bMoving ? FarCrowd->GetWalkAnimIndex() : FarCrowd->GetIdleAnimIndex();
+			if (Anim != Rep.AnimIndex)
+			{
+				const float PlayRate = bMoving ? Npc->GetWalkSpeed() / SubNpcFarCrowd::BakedWalkSpeed : 1.f;
+				FAnimToTextureAutoPlayData AutoPlay;
+				if (UAnimToTextureInstancePlaybackLibrary::GetAutoPlayDataFromDataAsset(FarCrowd->GetAnimData(), Anim, AutoPlay, Rep.TimeOffset, PlayRate))
+				{
+					UAnimToTextureInstancePlaybackLibrary::UpdateInstanceAutoPlayData(Instances, Rep.InstanceIndex, AutoPlay, /*bMarkRenderStateDirty=*/false);
+				}
+				Rep.AnimIndex = Anim;
+			}
+		}
+	});
+
+	// [버그 수정] 여기서 MarkRenderStateDirty()를 부르지 않는다.
+	// 인스턴스 위치·데이터를 바꾸면 엔진(FPrimitiveInstanceDataManager)이 바뀐 인스턴스만 렌더 쪽에 보낸다.
+	// 예전에는 매 프레임 MarkRenderStateDirty()로 인스턴스 메시 전체를 처음부터 다시 만들어서,
+	// 원경을 켜면 오히려 60 FPS → 22~31 FPS로 떨어졌다.
+	(void)bChanged;
 }

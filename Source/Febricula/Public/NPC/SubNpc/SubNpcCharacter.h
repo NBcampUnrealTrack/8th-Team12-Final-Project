@@ -691,6 +691,21 @@ public:
 	/** 지금 Mass가 이동을 맡고 있는가 */
 	bool IsMovementDrivenByMass() const;
 
+	// ---- 원경 인스턴스 표현 (UMassSubNpcRepresentationProcessor) -------------
+
+	/**
+	 * 멀리 있을 때 인스턴스드 메시로 그리도록 바꾼다. true면 스켈레탈 메시를 숨기고 애니메이션 계산을 멈춘다.
+	 * 액터 자체(이동·충돌·상호작용)는 그대로 돈다 - 그리는 방식만 바뀐다.
+	 */
+	void SetInstancedRepresentation(bool bInstanced);
+	bool IsInstancedRepresentation() const { return bInstancedRepresentation; }
+
+	/** ABP에 넘기는 현재 걸음 속도 (cm/s). 인스턴스 쪽 걷기/대기 애니메이션을 고를 때 쓴다 */
+	float GetAnimSpeed() const { return CurrentSpeed; }
+
+	/** 퇴장구에서 사라지는 중인가 (그동안은 인스턴스로 바꾸지 않는다 - 페이드가 보여야 한다) */
+	bool IsExitFading() const { return bExitFading; }
+
 protected:
 	/** 이번 프레임에 이웃들이 밀어낸 양의 합 */
 	float PendingAvoidNudge = 0.f;
@@ -860,4 +875,7 @@ protected:
 
 	/** 페이드 때 바꾼 머티리얼을 되돌린다 (풀 회수·EndPlay) */
 	void RestoreMaterialsAfterExitFade();
+
+	/** 인스턴스드 메시로 그려지는 중인가 (스켈레탈 메시는 숨겨져 있다) */
+	bool bInstancedRepresentation = false;
 };

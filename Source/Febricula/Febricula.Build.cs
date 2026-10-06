@@ -27,7 +27,9 @@ public class Febricula : ModuleRules
 			"NavigationSystem",
 			// 행인 이동 계산을 Mass 프로세서에서 병렬로 돌린다 (SubNpcMassProcessors).
 			"MassEntity",
-			"MassCore"
+			"MassCore",
+			// 멀리 있는 행인을 인스턴스드 메시 + 텍스처로 구운 애니메이션으로 그린다 (SubNpcMassProcessors).
+			"AnimToTexture"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

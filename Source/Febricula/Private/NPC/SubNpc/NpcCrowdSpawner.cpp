@@ -2,6 +2,7 @@
 
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 
+#include "AnimToTextureDataAsset.h"
 #include "Engine/GameInstance.h"
 #include "Misc/ScopeExit.h"
 #include "Engine/World.h"
@@ -20,6 +21,15 @@ ANpcCrowdSpawner::ANpcCrowdSpawner()
 
 	USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
+
+	// 엔진 AnimToTexture 플러그인의 샘플 마네킹 (걷기·대기·달리기가 이미 구워져 있다).
+	FarCrowdAnimData = TSoftObjectPtr<UAnimToTextureDataAsset>(
+		FSoftObjectPath(TEXT("/AnimToTexture/Characters/Mannequin/Data/DA_BoneAnimation.DA_BoneAnimation")));
+}
+
+UAnimToTextureDataAsset* ANpcCrowdSpawner::LoadFarCrowdAnimData() const
+{
+	return FarCrowdAnimData.IsNull() ? nullptr : FarCrowdAnimData.LoadSynchronous();
 }
 
 void ANpcCrowdSpawner::BeginPlay()

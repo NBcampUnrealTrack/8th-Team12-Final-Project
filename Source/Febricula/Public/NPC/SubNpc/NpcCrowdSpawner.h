@@ -17,6 +17,7 @@
 
 class ANpcCrowdPath;
 class ASubNpcCharacter;
+class UAnimToTextureDataAsset;
 class UDataTable;
 
 /** 시간대별 인구 밀도 배율 */
@@ -179,4 +180,19 @@ protected:
 	TArray<FCrowdDensityByHour> DensityBySchedule;
 
 	FTimerHandle SpawnTimerHandle;
+
+public:
+	/** 원경 표현에 쓸 애니메이션 데이터를 읽어 온다. 설정이 없거나 못 읽으면 nullptr (원경 표현을 쓰지 않는다) */
+	UAnimToTextureDataAsset* LoadFarCrowdAnimData() const;
+
+protected:
+	/**
+	 * 멀리 있는 행인을 그릴 인스턴스드 메시 애니메이션 데이터 (AnimToTexture).
+	 *
+	 * 걷기·대기 애니메이션을 텍스처로 구워 둔 데이터다. 스태틱 메시와 머티리얼은 이 데이터에 들어 있는 것을 쓴다.
+	 * 애니메이션 이름에 "Walk"/"Idle"이 들어간 것을 걷기/대기로 쓴다.
+	 * 기본값은 엔진 AnimToTexture 플러그인의 샘플 마네킹(이미 구워져 있음)이다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|FarCrowd")
+	TSoftObjectPtr<UAnimToTextureDataAsset> FarCrowdAnimData;
 };
