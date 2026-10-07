@@ -128,7 +128,7 @@ namespace SubNpcCrowdFlow
 	 * 추월하는 사람을 최소 속도로 계속 걷게 했는데, 옆으로 다 빠지기 전에 앞사람 몸을
 	 * 그대로 뚫고 지나갔다. 서서 반 걸음 옆으로 비켜서는 정도는 허용하고, 전진은 막는다.
 	 */
-	constexpr float SidestepSpeed = 45.f;
+	constexpr float SidestepSpeed = 70.f;   // [튜닝] 45 → 70. 플레이어가 막았을 때 90cm 비키는 데 2초씩 걸렸다
 
 	/**
 	 * 추월하는 동안 길 가장자리(LaneHalfWidth)를 넘어갈 수 있는 거리 (cm).

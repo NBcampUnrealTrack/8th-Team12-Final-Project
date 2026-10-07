@@ -106,10 +106,16 @@ namespace SubNpcCrowdCVars
 	constexpr float AvoidPlayerMargin = 20.f;
 	constexpr float AvoidSpotMargin = 25.f;
 	/** 서 있을 때 옆걸음 속도 (cm/s). 이동 코드의 SidestepSpeed와 같다 */
-	constexpr float AvoidSidestepSpeed = 45.f;
+	constexpr float AvoidSidestepSpeed = 70.f;
 	/** 이만큼 막혀 있으면 길 폭을 넘어서라도 돌아간다 (초, cm). 넘는 폭은 이동 코드의 PassLaneOverflow 이하 */
 	constexpr float AvoidStallRelaxTime = 1.5f;
 	constexpr float AvoidStallOverflow = 45.f;
+	/** 한번 받은 길 밖 허용을 유지하는 시간 (초). 비켜 가는 동안 계속 갱신된다 */
+	constexpr float AvoidOverflowHold = 2.f;
+	/** 비키기 시작한 방향을 유지하는 시간 (초). 같은 쪽으로 계속 비키면 계속 갱신된다 */
+	constexpr float AvoidSideHold = 1.5f;
+	/** 몸이 닿아 있을 때 이 속도(cm/s)보다 빨리 파고드는 후보만 충돌로 본다. 옆으로 돌아 나가는 걸음은 허용 */
+	constexpr float AvoidContactClosingSpeed = 15.f;
 
 	/**
 	 * 1이면 PIE·게임 중에도 행인 경로를 그린다. 경로 스플라인과 방향 화살표는 에디터 전용이라
@@ -1799,6 +1805,115 @@ namespace SubNpcPathDebug
 		}
 	}
 
+	// crowd.BlockTest 1: "플레이어가 앞을 막으면 지나가는가"를 자동으로 잰다.
+	// 걷는 행인 하나를 골라 그 앞길(같은 차선 1.8m 앞)에 플레이어를 세워 두고, 행인이 플레이어를 지나칠 때까지의
+	// 시간을 [CrowdBlockTest]로 남긴다. 15초 안에 못 지나가면 실패. 끝나면 1초 뒤 다른 행인으로 반복한다.
+	static int32 BlockTest = 0;
+	static FAutoConsoleVariableRef CVarBlockTest(TEXT("crowd.BlockTest"), BlockTest,
+		TEXT("1이면 걷는 행인 앞길에 플레이어를 세워 지나가는 데 걸린 시간을 잰다 ([CrowdBlockTest] 로그)."),
+		ECVF_Cheat);
+
+	static void TickBlockTest(UWorld* World, const TArray<TObjectPtr<ASubNpcCharacter>>& Npcs)
+	{
+		struct FState
+		{
+			TWeakObjectPtr<ASubNpcCharacter> Target;
+			float StartTime = 0.f;
+			float NextPickTime = 0.f;
+			float PlayerDist = 0.f;
+			float Along = 1.f;
+			FVector PlayerLoc = FVector::ZeroVector;
+			int32 Passed = 0, Failed = 0;
+			float TotalTime = 0.f, MaxTime = 0.f;
+		};
+		static FState S;
+
+		APlayerController* PC = World->GetFirstPlayerController();
+		APawn* Player = PC ? PC->GetPawn() : nullptr;
+		if (!Player)
+		{
+			return;
+		}
+		const float Now = World->GetTimeSeconds();
+		if (Now < S.StartTime - 1.f)
+		{
+			S = FState();   // 새 판
+		}
+
+		ASubNpcCharacter* Npc = S.Target.Get();
+		if (Npc)
+		{
+			// 플레이어는 그 자리에 계속 서 있는다 (밀리거나 떨어져도 되돌린다)
+			if (FVector::DistSquared2D(Player->GetActorLocation(), S.PlayerLoc) > FMath::Square(5.f))
+			{
+				Player->SetActorLocation(S.PlayerLoc, false, nullptr, ETeleportType::TeleportPhysics);
+			}
+
+			const ANpcCrowdPath* Path = Npc->GetCurrentPath();
+			const bool bGone = !IsValid(Npc) || Npc->IsPooled() || !Path;
+			const float Ahead = bGone ? 0.f : (Npc->GetPathDistance() - S.PlayerDist) * S.Along;
+			const float Elapsed = Now - S.StartTime;
+			if (bGone || Ahead > 80.f || Elapsed > 15.f || !Npc->IsWalkingOnPath())
+			{
+				const bool bPassed = !bGone && Ahead > 80.f;
+				if (bPassed)
+				{
+					++S.Passed;
+					S.TotalTime += Elapsed;
+					S.MaxTime = FMath::Max(S.MaxTime, Elapsed);
+				}
+				else if (Elapsed > 15.f)
+				{
+					++S.Failed;
+				}
+				UE_LOG(LogTemp, Log, TEXT("[CrowdBlockTest] %s<%s> %s %.1f초 | 누적 통과 %d (평균 %.1f초, 최대 %.1f초) 실패 %d"),
+					*GetNameSafe(Npc), bGone ? TEXT("-") : *GetRole(Npc).Replace(TEXT("\n"), TEXT(" ")),
+					bPassed ? TEXT("통과") : (Elapsed > 15.f ? TEXT("실패(15초)") : TEXT("중단(경로 바뀜·스팟)")), Elapsed,
+					S.Passed, S.Passed > 0 ? S.TotalTime / S.Passed : 0.f, S.MaxTime, S.Failed);
+				S.Target = nullptr;
+				S.NextPickTime = Now + 1.f;
+			}
+			return;
+		}
+		if (Now < S.NextPickTime)
+		{
+			return;
+		}
+
+		// 가까이 걷는 행인 중 하나 (경로 중간, 앞으로 3m 이상 남은 사람)
+		RebuildGroupTags(Npcs);
+		TArray<ASubNpcCharacter*, TInlineAllocator<64>> Candidates;
+		for (ASubNpcCharacter* Candidate : Npcs)
+		{
+			const ANpcCrowdPath* Path = IsValid(Candidate) ? Candidate->GetCurrentPath() : nullptr;
+			if (!Path || !Candidate->IsWalkingOnPath() || Candidate->IsMovingOffLane() || Candidate->GetLodBand() != ESubNpcLodBand::Near)
+			{
+				continue;
+			}
+			const float Along = Candidate->IsReversedOnPath() ? -1.f : 1.f;
+			const float PlaceDist = Candidate->GetPathDistance() + Along * 180.f;
+			if (PlaceDist < 100.f || PlaceDist > Path->GetPathLength() - 300.f)
+			{
+				continue;
+			}
+			Candidates.Add(Candidate);
+		}
+		if (Candidates.Num() == 0)
+		{
+			return;
+		}
+		Npc = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
+		const ANpcCrowdPath* Path = Npc->GetCurrentPath();
+		S.Along = Npc->IsReversedOnPath() ? -1.f : 1.f;
+		S.PlayerDist = Npc->GetPathDistance() + S.Along * 180.f;
+		const FVector Ground = Path->GetLocationAtDistance(S.PlayerDist, Npc->GetLaneOffset());
+		S.PlayerLoc = Ground + FVector(0.f, 0.f, Player->GetSimpleCollisionHalfHeight() + 2.f);
+		Player->SetActorLocation(S.PlayerLoc, false, nullptr, ETeleportType::TeleportPhysics);
+		S.PlayerLoc = Player->GetActorLocation();
+		S.Target = Npc;
+		S.StartTime = Now;
+	}
+
 	/** crowd.DumpPaths: 경로 모양을 로그로 남긴다 (길이·폭·출구, 200cm마다 위치와 방향). 에디터 없이 배치를 볼 때 쓴다 */
 	static FAutoConsoleCommandWithWorldAndArgs CmdDumpPaths(
 		TEXT("crowd.DumpPaths"),
@@ -1906,6 +2021,10 @@ void USubNpcDirectorSubsystem::Tick(float DeltaTime)
 	else if (SubNpcPathDebug::DebugSpot != 0)
 	{
 		SubNpcPathDebug::DrawSpotStates(GetWorld(), ActiveNpcs);
+	}
+	if (SubNpcPathDebug::BlockTest != 0)
+	{
+		SubNpcPathDebug::TickBlockTest(GetWorld(), ActiveNpcs);
 	}
 #endif
 
@@ -2388,6 +2507,19 @@ void USubNpcDirectorSubsystem::ProcessPendingRecycles()
 	}
 }
 
+namespace
+{
+	/** 속도 회피: 행인마다 기억하는 것 (비키던 방향, 길 밖 허용). 게임 스레드에서만 읽고 쓴다 */
+	struct FAvoidMemory
+	{
+		float Side = 0.f;            // 진행 방향 기준 +1 오른쪽, -1 왼쪽
+		float SideUntil = 0.f;
+		float OverflowUntil = 0.f;
+	};
+	// 클래스 멤버로 두지 않는 이유는 LodHysteresis 주석 참고 (헤더를 바꾸면 핫 리로드 때 오프셋이 밀린다)
+	TMap<const ASubNpcCharacter*, FAvoidMemory> AvoidMemory;
+}
+
 void USubNpcDirectorSubsystem::UpdateAvoidance()
 {
 	FVector ViewerLocation;
@@ -2398,6 +2530,16 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 
 	const UWorld* World = GetWorld();
 	const float Now = World ? World->GetTimeSeconds() : 0.f;
+
+	// 다 지난 기억은 버린다. 시각이 지금보다 한참 뒤면 이전 판(PIE 재시작)의 것이다 - 포인터가 재사용됐을 수 있다.
+	for (auto It = AvoidMemory.CreateIterator(); It; ++It)
+	{
+		const float Latest = FMath::Max(It.Value().SideUntil, It.Value().OverflowUntil);
+		if (Latest < Now || Latest > Now + 10.f)
+		{
+			It.RemoveCurrent();
+		}
+	}
 
 	// [측정 근거] stat game에서 Director 전체(TickableGameObjects Time)의
 	// 0명 -> 90명 델타가 0.06 ms에 불과했다. 예전 기본값 24는 근거 없이 보수적이었고,
@@ -2598,8 +2740,17 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		const FVector2D MyRight(-MyDir.Y, MyDir.X);
 		const FVector2D MyPos(Npc->GetActorLocation());
 		const float MyRadius = Npc->GetSimpleCollisionRadius();
-		const bool bStalled = Npc->GetStalledTime() > SubNpcCrowdCVars::AvoidStallRelaxTime;
-		const float LaneLimit = Path->GetLaneHalfWidth() + (bStalled ? SubNpcCrowdCVars::AvoidStallOverflow : 0.f);
+		// [좌우 왔다 갔다 방지] 비키는 방향과 길 밖 허용을 행인마다 잠깐 기억한다.
+		// 예전에는 매번 새로 정했다. 플레이어가 막고 서 있으면 (1) 길 가장자리에 닿는 순간 "비키던 방향"을 잃어
+		// 반대쪽도 같은 점수가 되었고, (2) 1.5초 막혀 길 밖 허용을 받아도 움직이자마자 막힌 시간이 0이 되어
+		// 허용이 사라지니 바깥 후보가 막혀 다시 플레이어 쪽으로 돌아왔다. 그래서 왼쪽·오른쪽을 반복하며 못 지나갔다.
+		FAvoidMemory& Memory = AvoidMemory.FindOrAdd(Npc);
+		if (Npc->GetStalledTime() > SubNpcCrowdCVars::AvoidStallRelaxTime)
+		{
+			Memory.OverflowUntil = Now + SubNpcCrowdCVars::AvoidOverflowHold;
+		}
+		const bool bOverflow = Now < Memory.OverflowUntil;
+		const float LaneLimit = Path->GetLaneHalfWidth() + (bOverflow ? SubNpcCrowdCVars::AvoidStallOverflow : 0.f);
 
 		// 주변 사람 (같은 일행은 대열 로직이 맡는다)
 		TArray<const FAvoidBody*, TInlineAllocator<32>> Near;
@@ -2617,7 +2768,6 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		}
 
 		// 내가 From에서 V로 걸을 때 가장 먼저 부딪히는 시각. 상대는 Lead초 뒤 위치로 옮겨 놓고 잰다.
-		constexpr float AvoidProbeTime = 0.5f;
 		auto MinTimeToCollision = [&](const FVector2D& From, const FVector2D& V, float Lead, const FAvoidBody** OutFirst = nullptr)
 		{
 			float MinTtc = 1000.f;
@@ -2630,7 +2780,11 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 				float T = 1000.f;
 				if (C <= 0.f)
 				{
-					T = (FVector2D::DotProduct(Rel, RelVel) > 0.f) ? 0.f : 1000.f;   // 닿아 있으면 멀어지는 쪽만 허용
+					// 닿아 있으면 파고드는 쪽만 막는다. [버그 수정] 예전에는 조금이라도 가까워지면 막아서,
+					// 정면에 선 상대를 옆으로 돌아 나가는 걸음(아주 살짝 가까워진다)까지 막혀 그 자리에 갇혔다
+					// (자동 측정: 길 가장자리에서 플레이어와 닿은 행인이 15초 넘게 정지).
+					const float Closing = FVector2D::DotProduct(Rel.GetSafeNormal(), RelVel);
+					T = (Closing > SubNpcCrowdCVars::AvoidContactClosingSpeed) ? 0.f : 1000.f;
 				}
 				else
 				{
@@ -2663,45 +2817,61 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 		float BestCost = TNumericLimits<float>::Max();
 		float BestScale = 1.f;
 		float BestSide = 0.f;
-		const float PrevSide = Npc->IsPassing() ? FMath::Sign(Npc->GetPassLaneTarget() - Lane) * Along : 0.f;
+		const float PrevSide = (Now < Memory.SideUntil) ? Memory.Side : 0.f;   // 진행 방향 기준 +1 오른쪽, -1 왼쪽
 		for (const float S : SpeedSteps)
 		{
-			// 옆걸음 한도는 이동 코드와 같다: 전진의 0.45배, 서 있으면 초속 45cm
+			// 옆걸음 한도는 이동 코드와 같다: 전진의 0.45배, 서 있으면 초속 70cm
 			const float MaxLat = FMath::Max(SubNpcCrowdCVars::AvoidSidestepSpeed, 0.45f * S * Walk);
 			for (const float Side : SideSteps)
 			{
-				const float Lat = Side * MaxLat;   // 진행 방향 기준 오른쪽 +
-				// 0.6초 뒤 차선이 길 밖이면 안 된다
+				float Lat = Side * MaxLat;   // 진행 방향 기준 오른쪽 +
+				// 0.6초 뒤 차선이 길 밖으로 나가면 가장자리까지만 옮긴다 (가장자리를 따라 걷는 후보로 남긴다).
+				// 예전에는 후보를 통째로 버려서, 가장자리에 붙은 사람은 바깥쪽을 못 골라 안쪽으로 되돌아왔다.
 				const float FutureLane = Lane + Lat * Along * 0.6f;
 				if (FMath::Abs(FutureLane) > LaneLimit && FMath::Abs(FutureLane) > FMath::Abs(Lane))
 				{
-					continue;
+					const float EdgeLat = (FMath::Clamp(FutureLane, -LaneLimit, LaneLimit) - Lane) / (Along * 0.6f);
+					if (Side != 0.f && FMath::Abs(EdgeLat) < 1.f)
+					{
+						continue;   // 더 나갈 자리가 없다 - 정면 후보와 같다
+					}
+					Lat = EdgeLat;
 				}
 				const FVector2D V = MyDir * (S * Walk) + MyRight * Lat;
 				const float MinTtc = MinTimeToCollision(MyPos, V, 0.f);
-				// [교착 방지] 이 후보로 0.5초 걸은 자리에서 정면으로 걸으면 바로 막히는가.
-				// 이게 없으면 마주 선 둘에게 "제자리 정지"가 충돌 없는 최선이라 둘 다 영영 서 있었다.
-				// 옆으로 비켜 앞이 트이는 후보가 서 있기보다 싸진다.
-				const float AheadTtc = MinTimeToCollision(MyPos + V * AvoidProbeTime, MyDir * Walk, AvoidProbeTime);
+				// [교착 방지] 오래 서 있을수록 느려지는 비용을 키운다 (최대 4배).
+				// 그냥 두면 앞이 막혔을 때 "제자리 정지"가 충돌 없는 최선이라 영영 서 있었다
+				// (마주 선 둘, 길을 막고 선 플레이어). 서 있을수록 천천히 옆으로 빠지는 후보가 싸진다.
+				// [변경] 예전에는 "0.5초 뒤 자리에서 정면이 막혔나"로 같은 일을 하려 했는데, 천천히 옆으로 빠지는
+				// 후보까지 똑같이 깎아서 서 있기와 점수가 같아졌다 (자동 측정: 플레이어가 막으면 6/28 실패).
+				const float WaitWeight = 1.f + FMath::Min(Npc->GetStalledTime(), 3.f);
 				const float Horizon = SubNpcCrowdCVars::AvoidHorizon;
-				float Cost = (1.f - S) * 1.f                                  // 느려지는 것
+				float Cost = (1.f - S) * WaitWeight                           // 느려지는 것
 					+ FMath::Abs(Side) * 0.25f                                  // 옆으로 비키는 것
-					+ FMath::Max(0.f, Horizon - MinTtc) / Horizon * 4.f         // 곧 부딪히는 것
-					+ FMath::Max(0.f, Horizon - AheadTtc) / Horizon * 0.8f;     // 비킨 뒤에도 앞이 막혀 있는 것
+					+ FMath::Max(0.f, Horizon - MinTtc) / Horizon * 4.f;        // 곧 부딪히는 것
 				if (Side < 0.f)
 				{
 					Cost += 0.05f;   // 비킬 때는 오른쪽 선호 (마주 오는 둘이 같은 쪽으로 피하는 왔다 갔다 방지)
 				}
 				if (PrevSide != 0.f && Side != 0.f && FMath::Sign(Side) != PrevSide)
 				{
-					Cost += 0.3f;    // 비키던 쪽 유지
+					Cost += 1.f;     // 비키던 쪽 유지 (반대쪽은 정말 막혔을 때만)
 				}
 				if (Cost < BestCost)
 				{
 					BestCost = Cost;
 					BestScale = S;
-					BestSide = Side * MaxLat;
+					BestSide = Lat;
 				}
+			}
+		}
+		if (!FMath::IsNearlyZero(BestSide))
+		{
+			Memory.Side = FMath::Sign(BestSide);
+			Memory.SideUntil = Now + SubNpcCrowdCVars::AvoidSideHold;
+			if (bOverflow)
+			{
+				Memory.OverflowUntil = Now + SubNpcCrowdCVars::AvoidOverflowHold;   // 돌아가는 동안은 계속 허용
 			}
 		}
 
