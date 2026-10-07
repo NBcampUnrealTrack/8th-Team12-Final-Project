@@ -21,6 +21,7 @@
 #include "HAL/IConsoleManager.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "Misc/PackageName.h"
+#include "NPC/SubNpc/SubNpcLog.h"
 
 namespace SubNpcFarCrowdBake
 {
@@ -28,20 +29,20 @@ namespace SubNpcFarCrowdBake
 	{
 		if (Args.Num() < 1)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[FarBake] 사용법: crowd.BakeFarCrowd <데이터 에셋 경로>"));
+			UE_LOG(LogSubNpc, Warning, TEXT("[FarBake] 사용법: crowd.BakeFarCrowd <데이터 에셋 경로>"));
 			return;
 		}
 
 		UAnimToTextureDataAsset* DataAsset = LoadObject<UAnimToTextureDataAsset>(nullptr, *Args[0]);
 		if (!DataAsset)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[FarBake] 데이터 에셋을 찾을 수 없습니다: %s"), *Args[0]);
+			UE_LOG(LogSubNpc, Warning, TEXT("[FarBake] 데이터 에셋을 찾을 수 없습니다: %s"), *Args[0]);
 			return;
 		}
 		USkeletalMesh* SkeletalMesh = DataAsset->GetSkeletalMesh();
 		if (!SkeletalMesh)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[FarBake] %s 에 스켈레탈 메시가 없습니다."), *GetNameSafe(DataAsset));
+			UE_LOG(LogSubNpc, Warning, TEXT("[FarBake] %s 에 스켈레탈 메시가 없습니다."), *GetNameSafe(DataAsset));
 			return;
 		}
 
@@ -59,13 +60,13 @@ namespace SubNpcFarCrowdBake
 			StaticMesh = UAnimToTextureBPLibrary::ConvertSkeletalMeshToStaticMesh(SkeletalMesh, MeshPath, SourceLOD);
 			if (!StaticMesh)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[FarBake] 스태틱 메시 변환 실패: %s (스켈레탈 LOD %d)"), *MeshPath, SourceLOD);
+				UE_LOG(LogSubNpc, Warning, TEXT("[FarBake] 스태틱 메시 변환 실패: %s (스켈레탈 LOD %d)"), *MeshPath, SourceLOD);
 				return;
 			}
 			DataAsset->StaticMesh = StaticMesh;
 			DataAsset->SkeletalLODIndex = SourceLOD;
 			DataAsset->MarkPackageDirty();
-			UE_LOG(LogTemp, Log, TEXT("[FarBake] 스태틱 메시 생성: %s (스켈레탈 LOD %d에서)"), *StaticMesh->GetPathName(), SourceLOD);
+			UE_LOG(LogSubNpc, Log, TEXT("[FarBake] 스태틱 메시 생성: %s (스켈레탈 LOD %d에서)"), *StaticMesh->GetPathName(), SourceLOD);
 		}
 
 		// 움직이는 인스턴스라 라이트맵이 필요 없다. 라이트맵 UV를 만들면 구운 UV 채널을 덮어쓸 수 있다.
@@ -90,7 +91,7 @@ namespace SubNpcFarCrowdBake
 			}
 			else
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[FarBake] LOD %d 굽기 실패 (출력 로그의 LogAnimToTextureEditor 확인)"), LOD);
+				UE_LOG(LogSubNpc, Warning, TEXT("[FarBake] LOD %d 굽기 실패 (출력 로그의 LogAnimToTextureEditor 확인)"), LOD);
 			}
 		}
 		DataAsset->StaticLODIndex = SavedStaticLOD;
@@ -107,7 +108,7 @@ namespace SubNpcFarCrowdBake
 			UMaterialInstanceConstant* Instance = Cast<UMaterialInstanceConstant>(Material.MaterialInterface);
 			if (Instance && !Instance->GetPackage()->GetName().StartsWith(OwnFolder))
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[FarBake] %s 은 원경 전용 폴더 밖이라 건드리지 않습니다. 스태틱 메시의 슬롯 %s 에 원경 머티리얼을 넣고 다시 실행하세요."),
+				UE_LOG(LogSubNpc, Warning, TEXT("[FarBake] %s 은 원경 전용 폴더 밖이라 건드리지 않습니다. 스태틱 메시의 슬롯 %s 에 원경 머티리얼을 넣고 다시 실행하세요."),
 					*Instance->GetPathName(), *Material.MaterialSlotName.ToString());
 				continue;
 			}
@@ -119,7 +120,7 @@ namespace SubNpcFarCrowdBake
 			}
 		}
 
-		UE_LOG(LogTemp, Log, TEXT("[FarBake] 완료: %s | LOD %d/%d개 구움, 프레임 %d, 뼈 %d개, 머티리얼 인스턴스 %d개 갱신. 저장을 잊지 마세요."),
+		UE_LOG(LogSubNpc, Log, TEXT("[FarBake] 완료: %s | LOD %d/%d개 구움, 프레임 %d, 뼈 %d개, 머티리얼 인스턴스 %d개 갱신. 저장을 잊지 마세요."),
 			*GetNameSafe(DataAsset), Baked, NumLODs, DataAsset->NumFrames, DataAsset->NumBones, UpdatedMaterials);
 	}
 

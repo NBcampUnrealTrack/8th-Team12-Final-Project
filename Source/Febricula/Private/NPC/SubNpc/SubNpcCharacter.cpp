@@ -198,7 +198,7 @@ namespace SubNpcBumpDebug
 		}
 
 		const FString Line = FString::Printf(TEXT("[Bump] %s: %s"), *GetNameSafe(Npc), *Msg);
-		UE_LOG(LogTemp, Log, TEXT("%s"), *Line);
+		UE_LOG(LogSubNpc, Log, TEXT("%s"), *Line);
 
 #if !UE_BUILD_SHIPPING
 		if (GEngine)

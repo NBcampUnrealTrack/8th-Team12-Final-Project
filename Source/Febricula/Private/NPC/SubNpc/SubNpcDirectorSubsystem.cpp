@@ -44,6 +44,8 @@
 //
 // 되돌릴 때는 값을 1로 주면 된다. ECVF_Cheat이라 배포 빌드에는 안 들어간다.
 // ---------------------------------------------------------------------------
+DEFINE_LOG_CATEGORY(LogSubNpc);
+
 /** SubNpcLog.h의 SUBNPC_LOG 스위치 */
 int32 GSubNpcCrowdLog = 0;
 static FAutoConsoleVariableRef CVarSubNpcCrowdLog(
@@ -1370,7 +1372,7 @@ namespace SubNpcBench
 		// 첫 측정의 0명·30명 단계가 이것 때문에 쓸 수 없는 값이 됐다.
 		if (R.P95Ms > 250.f)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[CrowdBench] N=%d 측정 중 프레임이 3 FPS 근처로 묶였습니다 - 창이 포커스를 잃은 것 같습니다. ")
+			UE_LOG(LogSubNpc, Warning, TEXT("[CrowdBench] N=%d 측정 중 프레임이 3 FPS 근처로 묶였습니다 - 창이 포커스를 잃은 것 같습니다. ")
 				TEXT("이 단계 값은 버리고, 측정 중에는 게임 창을 클릭해 둔 채 두세요 ")
 				TEXT("(또는 에디터 환경설정 > 일반 > 성능 > '백그라운드에 있을 때 CPU 사용량 줄이기'를 끄세요)."), N);
 		}
@@ -1380,14 +1382,14 @@ namespace SubNpcBench
 		{
 			Sections += FString::Printf(TEXT(" %s=%.3f"), SubNpcProfiling::GetSectionName(static_cast<ESection>(s)), R.SectionMs[s]);
 		}
-		UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %s N=%d (실제 평균 %.0f명, 가까움 %.0f명, %d프레임) | 프레임 평균 %.2fms p95 %.2fms p99 %.2fms (%.0f FPS) | 군중 구간(ms/프레임):%s"),
+		UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] %s N=%d (실제 평균 %.0f명, 가까움 %.0f명, %d프레임) | 프레임 평균 %.2fms p95 %.2fms p99 %.2fms (%.0f FPS) | 군중 구간(ms/프레임):%s"),
 			*State.Label, N, R.AvgActive, R.AvgNear, R.Frames, R.AvgMs, R.P95Ms, R.P99Ms,
 			R.AvgMs > 0.f ? 1000.f / R.AvgMs : 0.f, *Sections);
 
 		const SubNpcOverlapCheck::FTotals& Overlap = SubNpcOverlapCheck::Totals;
 		if (SubNpcOverlapCheck::Enabled != 0)
 		{
-			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %s N=%d 겹침: %s (겹친 프레임 %.1f%%, 최대 동시 %d쌍, 가장 깊은 %.0fcm)"),
+			UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] %s N=%d 겹침: %s (겹친 프레임 %.1f%%, 최대 동시 %d쌍, 가장 깊은 %.0fcm)"),
 				*State.Label, N, Overlap.OverlapFrames > 0 ? TEXT("있음") : TEXT("없음"),
 				100.f * Overlap.OverlapFrames / FMath::Max(1, Overlap.Frames), Overlap.MaxPairs, Overlap.WorstDepth);
 		}
@@ -1418,8 +1420,8 @@ namespace SubNpcBench
 			}
 			Csv += TEXT("\n");
 
-			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] ===== 요약 (%s) ====="), *State.Label);
-			UE_LOG(LogTemp, Log, TEXT("[CrowdBench]    N | 평균ms |  p95ms |  p99ms |   FPS | 군중합계ms(GT) | 경로이동(GT) | 회피 | 겹침금지"));
+			UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] ===== 요약 (%s) ====="), *State.Label);
+			UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench]    N | 평균ms |  p95ms |  p99ms |   FPS | 군중합계ms(GT) | 경로이동(GT) | 회피 | 겹침금지"));
 			for (const FResult& R : State.Results)
 			{
 				Csv += FString::Printf(TEXT("%s,%d,%.1f,%.1f,%d,%.3f,%.3f,%.3f,%.1f"),
@@ -1445,7 +1447,7 @@ namespace SubNpcBench
 					+ R.SectionMs[static_cast<int32>(ESection::BodySeparation)]
 					+ R.SectionMs[static_cast<int32>(ESection::GroupLogic)]
 					+ R.SectionMs[static_cast<int32>(ESection::LodSlice)];
-				UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %4d | %6.2f | %6.2f | %6.2f | %5.0f | %10.3f | %8.3f | %4.3f | %8.3f"),
+				UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] %4d | %6.2f | %6.2f | %6.2f | %5.0f | %10.3f | %8.3f | %4.3f | %8.3f"),
 					R.Requested, R.AvgMs, R.P95Ms, R.P99Ms, R.AvgMs > 0.f ? 1000.f / R.AvgMs : 0.f, CrowdTotal,
 					PathGameThreadMs,
 					R.SectionMs[static_cast<int32>(ESection::Avoidance)],
@@ -1455,12 +1457,12 @@ namespace SubNpcBench
 			const FString Path = FPaths::ProjectSavedDir() / TEXT("Profiling/CrowdBench")
 				/ FString::Printf(TEXT("Summary_%s_%s.csv"), *State.Label, *State.Stamp);
 			FFileHelper::SaveStringToFile(Csv, *Path, FFileHelper::EEncodingOptions::ForceUTF8);
-			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] 요약 파일: %s"), *FPaths::ConvertRelativePathToFull(Path));
-			UE_LOG(LogTemp, Log, TEXT("[CrowdBench] 단계별 CSV 캡처(게임/렌더/GPU 스레드 포함): %s"),
+			UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] 요약 파일: %s"), *FPaths::ConvertRelativePathToFull(Path));
+			UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] 단계별 CSV 캡처(게임/렌더/GPU 스레드 포함): %s"),
 				*FPaths::ConvertRelativePathToFull(FPaths::ProfilingDir() / TEXT("CSV")));
 		}
 
-		UE_LOG(LogTemp, Log, TEXT("[CrowdBench] %s"), bAborted ? TEXT("중단했습니다.") : TEXT("측정을 마쳤습니다."));
+		UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] %s"), bAborted ? TEXT("중단했습니다.") : TEXT("측정을 마쳤습니다."));
 		RestoreFrameLimit();
 		State = FState();
 	}
@@ -1530,12 +1532,12 @@ namespace SubNpcBench
 		USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
 		if (!Director)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[CrowdBench] 게임 월드에서 실행하세요 (PIE 또는 Standalone)."));
+			UE_LOG(LogSubNpc, Warning, TEXT("[CrowdBench] 게임 월드에서 실행하세요 (PIE 또는 Standalone)."));
 			return;
 		}
 		if (State.Phase != EPhase::Idle)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[CrowdBench] 이미 측정 중입니다. crowd.BenchStop으로 멈춘 뒤 다시 실행하세요."));
+			UE_LOG(LogSubNpc, Warning, TEXT("[CrowdBench] 이미 측정 중입니다. crowd.BenchStop으로 멈춘 뒤 다시 실행하세요."));
 			return;
 		}
 
@@ -1581,7 +1583,7 @@ namespace SubNpcBench
 		{
 			CountList += FString::Printf(TEXT(" %d"), C);
 		}
-		UE_LOG(LogTemp, Log, TEXT("[CrowdBench] 시작 (%s): 인원%s / 단계마다 안정화 %.0f초 + 측정 %.0f초. 카메라를 움직이지 마세요."),
+		UE_LOG(LogSubNpc, Log, TEXT("[CrowdBench] 시작 (%s): 인원%s / 단계마다 안정화 %.0f초 + 측정 %.0f초. 카메라를 움직이지 마세요."),
 			*State.Label, *CountList, State.WarmupSeconds, State.RecordSeconds);
 
 		ApplyCount(Director, World, State.Counts[0]);
@@ -1604,7 +1606,7 @@ namespace SubNpcBench
 			USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
 			if (!Director || Args.Num() == 0 || State.Phase != EPhase::Idle)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[Crowd] crowd.Count <인원> - 게임 중에, crowd.Bench가 돌고 있지 않을 때 쓰세요."));
+				UE_LOG(LogSubNpc, Warning, TEXT("[Crowd] crowd.Count <인원> - 게임 중에, crowd.Bench가 돌고 있지 않을 때 쓰세요."));
 				return;
 			}
 			const int32 N = FCString::Atoi(*Args[0]);
@@ -1612,11 +1614,11 @@ namespace SubNpcBench
 			{
 				GSubNpcBenchTargetOverride = -1;
 				Director->SetMaxActiveNpcs(Director->GetActiveCount() + Director->GetPooledCount());
-				UE_LOG(LogTemp, Log, TEXT("[Crowd] 인원 덮어쓰기 해제 - 스포너 설정을 따릅니다."));
+				UE_LOG(LogSubNpc, Log, TEXT("[Crowd] 인원 덮어쓰기 해제 - 스포너 설정을 따릅니다."));
 				return;
 			}
 			ApplyCount(Director, World, N);
-			UE_LOG(LogTemp, Log, TEXT("[Crowd] 인원을 %d명으로 맞춥니다 (해제: crowd.Count -1)."), N);
+			UE_LOG(LogSubNpc, Log, TEXT("[Crowd] 인원을 %d명으로 맞춥니다 (해제: crowd.Count -1)."), N);
 		}));
 
 	static FAutoConsoleCommandWithWorldAndArgs CmdBenchStop(
@@ -1681,7 +1683,7 @@ namespace SubNpcPathDebug
 				}
 				if (!Line.IsEmpty())
 				{
-					UE_LOG(LogTemp, Log, TEXT("[CrowdSpot] t=%.1f %s%s"), Now, *GetNameSafe(Spot).Right(10), *Line);
+					UE_LOG(LogSubNpc, Log, TEXT("[CrowdSpot] t=%.1f %s%s"), Now, *GetNameSafe(Spot).Right(10), *Line);
 				}
 			}
 		}
@@ -1875,7 +1877,7 @@ namespace SubNpcPathDebug
 				{
 					++S.Failed;
 				}
-				UE_LOG(LogTemp, Log, TEXT("[CrowdBlockTest] %s<%s> %s %.1f초 | 누적 통과 %d (평균 %.1f초, 최대 %.1f초) 실패 %d"),
+				UE_LOG(LogSubNpc, Log, TEXT("[CrowdBlockTest] %s<%s> %s %.1f초 | 누적 통과 %d (평균 %.1f초, 최대 %.1f초) 실패 %d"),
 					*GetNameSafe(Npc), bGone ? TEXT("-") : *GetRole(Npc).Replace(TEXT("\n"), TEXT(" ")),
 					bPassed ? TEXT("통과") : (Elapsed > 15.f ? TEXT("실패(15초)") : TEXT("중단(경로 바뀜·스팟)")), Elapsed,
 					S.Passed, S.Passed > 0 ? S.TotalTime / S.Passed : 0.f, S.MaxTime, S.Failed);
@@ -1937,13 +1939,13 @@ namespace SubNpcPathDebug
 				{
 					Exits += GetNameSafe(Exit.NextPath) + TEXT(" ");
 				}
-				UE_LOG(LogTemp, Log, TEXT("[CrowdPath] %s 길이%.0f 반폭%.0f 출구=[%s]"),
+				UE_LOG(LogSubNpc, Log, TEXT("[CrowdPath] %s 길이%.0f 반폭%.0f 출구=[%s]"),
 					*GetNameSafe(Path), Path->GetPathLength(), Path->GetLaneHalfWidth(), *Exits);
 				for (float D = 0.f; D <= Path->GetPathLength() + 1.f; D += 200.f)
 				{
 					const FVector Loc = Path->GetLocationAtDistance(D);
 					const FVector Dir = Path->GetDirectionAtDistance(D);
-					UE_LOG(LogTemp, Log, TEXT("[CrowdPath]   %5.0f: (%6.0f,%6.0f,%5.0f) 방향 %4.0f도"),
+					UE_LOG(LogSubNpc, Log, TEXT("[CrowdPath]   %5.0f: (%6.0f,%6.0f,%5.0f) 방향 %4.0f도"),
 						D, Loc.X, Loc.Y, Loc.Z, FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X)));
 				}
 			}
@@ -2043,7 +2045,7 @@ void USubNpcDirectorSubsystem::Tick(float DeltaTime)
 		if (StatsTimer >= 1.f)
 		{
 			StatsTimer = 0.f;
-			UE_LOG(LogTemp, Log, TEXT("[Crowd] 활성 %d / 풀 %d / 상한 %d"),
+			UE_LOG(LogSubNpc, Log, TEXT("[Crowd] 활성 %d / 풀 %d / 상한 %d"),
 				ActiveNpcs.Num(), PooledNpcs.Num(), MaxActiveNpcs);
 		}
 	}
@@ -2222,7 +2224,7 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 	{
 		if (SubNpcCrowdCVars::TraceSpawn != 0)
 		{
-			UE_LOG(LogTemp, Warning,
+			UE_LOG(LogSubNpc, Warning,
 				TEXT("[Crowd] 등장 실패: %s (활성 %d / 상한 %d / 풀 %d)"),
 				(PooledNpcs.Num() == 0) ? TEXT("풀이 비었다") : TEXT("정원이 찼다"),
 				ActiveNpcs.Num(), MaxActiveNpcs, PooledNpcs.Num());
@@ -2245,7 +2247,7 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 	{
 		if (SubNpcCrowdCVars::TraceSpawn != 0)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[Crowd] 등장 실패: 풀에 유효한 개체가 없다."));
+			UE_LOG(LogSubNpc, Warning, TEXT("[Crowd] 등장 실패: 풀에 유효한 개체가 없다."));
 		}
 		return nullptr;
 	}
@@ -2300,7 +2302,7 @@ ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, flo
 			PooledNpcs.Add(Npc);
 			if (SubNpcCrowdCVars::TraceSpawn != 0)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[Crowd] 등장 보류: %s 근처에 빈자리가 없다 (겹쳐 세우지 않는다)."), *GetNameSafe(Path));
+				UE_LOG(LogSubNpc, Warning, TEXT("[Crowd] 등장 보류: %s 근처에 빈자리가 없다 (겹쳐 세우지 않는다)."), *GetNameSafe(Path));
 			}
 			return nullptr;
 		}
@@ -2967,11 +2969,11 @@ void USubNpcDirectorSubsystem::UpdateAvoidance()
 					*GetNameSafe(B.Key), B.Value, *State, *B.Key->GetActorLocation().ToCompactString());
 			}
 
-			UE_LOG(LogTemp, Log, TEXT("[CrowdBlock] 근처 걷는 사람 %d명 중 0.5초 넘게 정지 %d명 | 감속 이유:%s | 많이 막는 상대:%s"),
+			UE_LOG(LogSubNpc, Log, TEXT("[CrowdBlock] 근처 걷는 사람 %d명 중 0.5초 넘게 정지 %d명 | 감속 이유:%s | 많이 막는 상대:%s"),
 				Walking, Stopped, *Reasons, *Blockers);
 			for (const FString& Line : StallChainLog)
 			{
-				UE_LOG(LogTemp, Log, TEXT("[CrowdStall]%s"), *Line);
+				UE_LOG(LogSubNpc, Log, TEXT("[CrowdStall]%s"), *Line);
 			}
 			StallChainLog.Reset();
 		}
