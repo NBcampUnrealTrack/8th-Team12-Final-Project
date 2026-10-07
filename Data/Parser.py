@@ -43,7 +43,7 @@ FALLBACK_CONDITION_TYPES = [
  
 # AutoAdvance 계열은 액션이 아니라 노드 필드라 별도 처리
 AUTO_COMMANDS = {"wait", "wait_near", "wait_arrive", "hide"}
-FLOW_COMMANDS = {"cast", "label", "menu", "jump", "end", "branch", "if", "cam"}
+FLOW_COMMANDS = {"cast", "label", "menu", "jump", "end", "branch", "if", "cam", "SE3d"}
  
 EMPTY = "None"   # UE에서 빈 FName의 표현
  
@@ -123,6 +123,7 @@ class Choice:
     target: str = ""            # "" = 메뉴 블록 다음 노드로 합류
     actions: list = field(default_factory=list)
     conditions: list = field(default_factory=list)
+    yes_no: bool = False
     line: int = 0
  
     def to_json(self):
@@ -130,6 +131,7 @@ class Choice:
             "Text": self.text,
             "Conditions": [c.to_json() for c in self.conditions],
             "Actions": [a.to_json() for a in self.actions],
+            "YesNo": self.yes_no,
             "NextNodeId": self.target or EMPTY,
         }
  
@@ -142,6 +144,7 @@ class Node:
     text: str = ""
     actions: list = field(default_factory=list)
     choices: list = field(default_factory=list)
+    choice_yes_or_no: bool = False
     branches: list = field(default_factory=list)
     next_id: str = ""           # "" = 미정, 2패스에서 채움
     next_fixed: bool = False    # jump/end/menu로 확정됨
@@ -154,6 +157,12 @@ class Node:
     cam_rot: tuple = (0.0, 0.0, 0.0)     # 디테일 패널 순서: X=Roll, Y=Pitch, Z=Yaw
     cam_blend: float = 0.0
     cam_focus: float = 100000.00
+
+    se_channel = ""
+    se_name = ""
+    se_target = ""
+    se_blend = 0.0
+
     phantom: bool = False        # 붙을 대사가 없어 파서가 만들어낸 노드
     line: int = 0
  
@@ -165,6 +174,7 @@ class Node:
             "Text": self.text,
             "OnEnterActions": [a.to_json() for a in self.actions],
             "Choices": [c.to_json() for c in self.choices],
+            "bYesNo": self.choice_yes_or_no,
             "Branches": [b.to_json() for b in self.branches],
             "NextNodeId": self.next_id or EMPTY,
             "AutoAdvance": self.auto,
@@ -184,6 +194,12 @@ class Node:
                 "MoveTime": self.cam_blend,
                 "Focus": self.cam_focus,
             },
+            "SoundLocation": {
+                "SoundChannel": self.se_channel,
+                "SoundName": self.se_name,
+                "Target": self.se_target,
+                "Blend": self.se_blend,
+            }
         }
         return data
  
@@ -211,6 +227,7 @@ class Parser:
         self.p_auto = None      # (mode, value, npc)
         self.p_hide = False
         self.p_cam = None       # (mode, loc, rot, blend)
+        self.p_se = None        # (channel, name, target, blend)
         self.p_line = 0
  
         self.auto_counter = 0
@@ -287,11 +304,21 @@ class Parser:
             else:
                 node.cam_mode, node.cam_loc, node.cam_rot, node.cam_blend, node.cam_focus = self.p_cam
             self.p_cam = None
- 
+
+        if self.p_se:
+            if len(self.p_se) == 2:
+                node.se_channel, node.se_name = self.p_se
+            elif len(self.p_se) == 3:
+                node.se_channel, node.se_name, node.se_target = self.p_se
+            elif len(self.p_se) == 4:
+                node.se_channel, node.se_name, node.se_target, node.se_blend = self.p_se
+
+            self.p_se = None
+
         if node.hide_box and node.auto == "None":
             self.error(node.line,
                        "@hide를 썼으나 @wait 계열이 없음 - 대화창이 닫힌 채 영구 정지한다")
- 
+
         self.nodes.append(node)
         return node
  
@@ -301,7 +328,7 @@ class Parser:
  
     def has_pending(self):
         return (bool(self.p_actions) or self.p_auto is not None
-                or self.p_hide or self.p_cam is not None)
+                or self.p_hide or self.p_cam or self.p_se is not None)
  
     def close_pending(self, line):
         """대사 없이 남은 대기 상태를 빈 노드로 닫는다 (이동 대기 노드)."""
@@ -318,6 +345,11 @@ class Parser:
             phantom = False
         else:
             phantom = True
+        temp_node = Node(line=self.p_line or line)
+
+        #if len(temp_node.choices) > 0:
+
+
         node = self.commit(Node(line=self.p_line or line))
         node.phantom = phantom
  
@@ -334,7 +366,7 @@ class Parser:
         for arg in args:
             try:
                 value = int(arg)
-                continue
+                continue    
             except ValueError:
                 pass
             if slot == 0:
@@ -445,6 +477,14 @@ class Parser:
                     menu_node = self.nodes[-1]
                     menu_node.next_fixed = True
                     menu_node.next_id = EMPTY
+
+                    menu_node.yes_no = False
+
+                    if len(parts) == 2:
+                        if parts[1] == "YesNo":
+                            menu_node.choice_yes_or_no = True
+
+
                     if menu_node.auto != "None":
                         self.warn(line_no, "선택지 노드의 AutoAdvance는 무시되므로 None으로 강제함")
                         menu_node.auto = "None"
@@ -495,7 +535,11 @@ class Parser:
                 elif low == "cam":
                     self.mark_pending(line_no)
                     self.cmd_cam(args, line_no)
- 
+
+                elif low == "playse3d":
+                    self.mark_pending(line_no)
+                    self.cmd_se(args, line_no)
+
                 elif low in AUTO_COMMANDS:
                     self.mark_pending(line_no)
                     self.cmd_auto(low, args, line_no)
@@ -680,7 +724,19 @@ class Parser:
             self.error(line_no, f"@cam 전환 시간이 음수: {blend}")
             return
         self.p_cam = ("Cinematic", loc, rot, blend, focus)
- 
+
+    def cmd_se(self, args, line_no):
+        if not args:
+            self.error(line_no, "@PlaySE3d에 값이 없음")
+            return
+        self.p_se = (args[0], args[1], None, 0)
+        if len(args) == 3:
+            self.p_se = (args[0], args[1], args[2], 0)
+        elif len(args) == 4:
+            self.p_se = (args[0], args[1], args[2], args[3])
+
+        return
+
     def cmd_dialogue(self, line, line_no):
         node = Node(line=line_no)
  
@@ -817,7 +873,7 @@ def process(path, action_types, condition_types, outdir, check_only):
  
 def main():
     ap = argparse.ArgumentParser(description="Febricula dialogue script parser")
-    ap.add_argument("inputs", nargs="*", default=["FixedDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
+    ap.add_argument("inputs", nargs="*", default=["DT_DoorDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
     ap.add_argument("--outdir", help="JSON 출력 폴더 (기본: 입력 파일과 같은 위치)")
     ap.add_argument("--enum-header", nargs="*", default=["D:\\febricula\\Febricula\\Source\\Febricula\\Public\\Dialogue\\DialogueDataTypes.h"],
                     help="EGameActionType / EGameConditionType이 정의된 .h 경로 (여러 개 가능)")

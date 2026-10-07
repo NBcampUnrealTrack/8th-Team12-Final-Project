@@ -29,18 +29,22 @@ class AFebriculaCharacter : public ACharacter
 	GENERATED_BODY()
 
 	/** Camera boom positioning the camera behind the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
 
 	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
-	
+
 protected:
-	UPROPERTY(EditAnywhere, Category="Speed")
+	UPROPERTY(EditAnywhere, Category = "Speed")
 	float WalkSpeed;
-	UPROPERTY(EditAnywhere, Category="Speed")
+	UPROPERTY(EditAnywhere, Category = "Speed")
 	float SprintSpeed;
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components | Interaction", meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<AInteractableProp>> OverlappedActors;
 
 	/**
 	 *	여기 적힌 레벨에서는 **스프린트가 안 먹는다.** 비우면 어디서나 된다.
@@ -87,56 +91,57 @@ protected:
 	UFUNCTION(BlueprintPure, Category="Speed")
 	float GetEffectiveWalkSpeed() const;
 
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
-	TArray<TObjectPtr<AInteractableProp>> OverlappedActors; 
 	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* JumpAction;
 
 	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* MoveAction;
 
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* SprintAction;
-	
+
+	/** ��� ���� �ѱ��(��ŵ) Input Action. ������ ���� ��ȭ�� ������ ����ȴ� */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* FastForwardAction;
+
 	/** Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* LookAction;
 
 	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* MouseLookAction;
 
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* InteractAction;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Character Animation Component")
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character Animation Component")
 	TObjectPtr<UCharacterAnimationComponent> CharacterAnimationComponent;
 
 public:
-	AFebriculaCharacter();	
+	AFebriculaCharacter();
 
-	
+
 	UFUNCTION()
 	void OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-	                             const FHitResult& SweepResult);
+		const FHitResult& SweepResult);
 	UFUNCTION()
 	void OnComponentEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	/** Constructor */
 	virtual void BeginPlay() override;
-	
+
 	void FaceTowards(const AActor* TargetActor);
 
-	
+
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components | Interaction", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInteractionComponent> InteractComponent;
-	
+
 protected:
-	
-	
+
+
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -145,26 +150,31 @@ protected:
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
-	
+
 	void StartSprint(const FInputActionValue& Value);
 	void EndSprint(const FInputActionValue& Value);
+
+	/** Ctrl ���� ������ ���� ��縦 ������ �ѱ�� */
+	void StartFastForward(const FInputActionValue& Value);
+	/** Ű�� ���� ���� �ӵ��� �ǵ����� */
+	void EndFastForward(const FInputActionValue& Value);
 
 public:
 
 	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoMove(float Right, float Forward);
 
 	/** Handles look inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoLook(float Yaw, float Pitch);
 
 	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoJumpStart();
 
 	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoJumpEnd();
 
 public:
@@ -174,9 +184,9 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-	
+
 private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components | Interaction | Debug", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components | Interaction | Debug", meta = (AllowPrivateAccess = "true"))
 	float InteractionCos;
 
 };

@@ -1,0 +1,66 @@
+﻿@label Room_Root
+학교로 갈까?
+
+@menu YesNo
+- 예 -> Room_GoSchool
+- 아니요 -> Room_Cancle
+
+@end
+
+@label Room_GoSchool
+@ChangeLevel SchoolOutside true
+@hide
+@wait .1
+@end
+
+@label Room_Cancle
+@hide
+@wait .1
+@end
+
+@label Classroom_Root
+어디로 갈까
+
+@menu YesNo
+- 복도로 -> Classroom_Hallway
+- 밖으로 -> Classroom_Outside
+- 그만둔다
+@end
+
+@label Classroom_Hallway
+@ChangeLevel SchoolHallway1 true
+@hide
+@wait .1
+@end
+
+@label Classroom_Outside
+@ChangeLevel SchoolOutside true
+@hide
+@wait .1
+@end
+
+
+@label Hallway1_Root
+들어갈까?
+@menu YesNo
+- 들어간다 -> Hallway1_Go
+- 그만둔다 -> Hallway1_Cancle
+@end
+
+@label Hallway1_Go
+@hide
+@ChangeLevel
+@wait .1
+@end
+
+@label Hallway1_Cancle
+@hide
+@wait .1
+@end
+
+@label HallwayBlock_Root
+어디로 갈까?
+@menu YesNo
+- 학교 밖으로 @if   
+- 운동장으로 
+- 그만둔다

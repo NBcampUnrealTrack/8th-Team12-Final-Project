@@ -123,7 +123,11 @@ public:
 
 	/** 재생 중인 슬롯 애니메이션을 중단하고 원래 상태로 블렌드 아웃 */
 	UFUNCTION(BlueprintCallable, Category = "NPC|Animation")
-	void StopNpcAnim(float BlendOutTime = 0.25f);
+	void StopNpcAnim(float BlendOutTime = 0.25f, bool bFromLogic = false);
+	
+	UFUNCTION(BlueprintCallable, Category = "NPC|LookAt")
+	const AActor* GetLookAtActor() const { return LookAtTarget.Get(); }
+	
 
 	UPROPERTY(BlueprintAssignable, Category = "NPC|Movement")
 	FOnNpcMovementStateChanged OnNpcMovementStateChanged;
@@ -166,4 +170,7 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NPC | Component")
 	TObjectPtr<UCharacterAnimationComponent> CharacterAnimationComponent;
+	
+private:
+	TWeakObjectPtr<const AActor> LookAtTarget; 
 };

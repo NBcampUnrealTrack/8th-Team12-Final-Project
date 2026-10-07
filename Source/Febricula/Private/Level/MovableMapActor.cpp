@@ -5,7 +5,10 @@
 
 #include "TimerManager.h"
 #include "Components/ArrowComponent.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AMovableMapActor::AMovableMapActor()
@@ -19,29 +22,34 @@ AMovableMapActor::AMovableMapActor()
 void AMovableMapActor::StartMove(AActor* Interactor, bool bInstant)
 {
 	UE_LOG(LogTemp, Warning, TEXT("AMovableMapActor::StartMove() %d"), bInstant);
-	bNowMove = true;
-	GetWorldTimerManager().ClearTimer(MoveTimer);
-	if (NowState == EMoveState::OPENING)
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
-		CurrentMove = 0.f;
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::OpenActor, Interactor, bInstant);
-
-		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
-		NowState = EMoveState::CLOSING;
-	}
-	else if (NowState == EMoveState::CLOSING)
-	{
-		if (CurrentMove == 0)
+		if (DialogueSubsystem->GetResult())
 		{
-			CurrentMove = MaxMovement;
+			bNowMove = true;
+			GetWorldTimerManager().ClearTimer(MoveTimer);
+			if (NowState == EMoveState::OPENING)
+			{
+				CurrentMove = 0.f;
+				FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::OpenActor, Interactor, bInstant);
+
+				GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
+				NowState = EMoveState::CLOSING;
+			}
+			else if (NowState == EMoveState::CLOSING)
+			{
+				if (CurrentMove == 0)
+				{
+					CurrentMove = MaxMovement;
+				}
+				FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::CloseActor, Interactor, bInstant);
+
+				GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
+				NowState = EMoveState::OPENING;
+			}
+			bNowMove = true;
 		}
-		FTimerDelegate Del = FTimerDelegate::CreateUObject(this, &AMovableMapActor::CloseActor, Interactor, bInstant);
-
-		GetWorldTimerManager().SetTimer(MoveTimer, Del, .1f, true);
-		NowState = EMoveState::OPENING;
 	}
-	bNowMove = true;
-
 }
 
 void AMovableMapActor::OpenActor(AActor* Interactor, bool bInstant)
@@ -52,6 +60,14 @@ void AMovableMapActor::OpenActor(AActor* Interactor, bool bInstant)
 void AMovableMapActor::CloseActor(AActor* Interactor, bool bInstant)
 {
 	bInteracted = false;
+}
+
+void AMovableMapActor::FinishDialogue()
+{
+	if (bUsed)
+	{
+		StartMove(UGameplayStatics::GetPlayerCharacter(this, 0), false);
+	}
 }
 
 void AMovableMapActor::StartMoveWrapper(AActor* Interactor, EMoveState MoveState, bool bInstant)
@@ -66,7 +82,7 @@ void AMovableMapActor::StartMoveWrapper(AActor* Interactor, EMoveState MoveState
 void AMovableMapActor::Interact_Implementation(AActor* Interactor)
 {
 	Super::Interact_Implementation(Interactor);
-	StartMove(Interactor);
+	//StartMove(Interactor, false);
 	//Super::Interact_Implementation(Interactor);
 }
 
@@ -80,6 +96,10 @@ void AMovableMapActor::BeginPlay()
 		{
 			Hinges.Add(Hinge);
 		}
+	}
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		DialogueSubsystem->OnDialogueFinished.AddDynamic(this, &AMovableMapActor::FinishDialogue);
 	}
 }
 // Called every frame

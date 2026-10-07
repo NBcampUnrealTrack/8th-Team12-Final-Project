@@ -16,11 +16,16 @@ class FEBRICULA_API UCharacterAnimationComponent : public UActorComponent
 public:
 	// Sets default values for this component's properties
 	UCharacterAnimationComponent();
+
+	UFUNCTION()
+	void HandleAnimInitialized();
+	virtual void BeginPlay() override;
 	
 	UFUNCTION(BlueprintCallable, Category = "Animation Component")
 	bool PlayAnim(FName AnimId, bool bLoop = false);
 	
 	UFUNCTION(BlueprintCallable, Category = "Animation Component")
+	void StopAnim(float BlendOutTime = 0.25f, bool bFromLogic = false);
 	void StopAnim(float BlendOutTime = 0.25f);
 
 	/**
@@ -35,7 +40,9 @@ public:
 	void StopAnimOnSlot(FName SlotName, float BlendOutTime = 0.25f);
 	
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
+	
+	UFUNCTION()
+	void HandleMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 protected:
 	// Called when the game starts
 	/**
@@ -69,4 +76,7 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category = "Debug")
 	bool bLogSlotWeight = false;
+	
+	int32 LastAnimMode;
+	const UAnimInstance* LastAnimInstance;
 };

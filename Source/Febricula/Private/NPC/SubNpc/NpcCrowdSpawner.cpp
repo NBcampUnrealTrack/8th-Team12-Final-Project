@@ -266,8 +266,8 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 	float TotalLength = 0.f;
 	for (TActorIterator<ANpcCrowdPath> It(World); It; ++It)
 	{
-		const float Len = It->GetPathLength();
-		if (Len >= 200.f)
+		const float Len = It->GetPathLength(); 
+		if (Len >= 200.f && It->IsSpawnEntry()) //2026-09-23 이지민 수정 (시나리오 연출용 Crowd 구분) 
 		{
 			Paths.Add(*It);
 			TotalLength += Len;

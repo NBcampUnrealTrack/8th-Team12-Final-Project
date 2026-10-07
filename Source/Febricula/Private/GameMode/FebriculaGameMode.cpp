@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "NPC/BaseNpcCharacter.h"
 #include "Progress/GameProgressSubsystem.h"
+#include "SaveGame/SaveGameSubsystem.h"
 
 AFebriculaGameMode::AFebriculaGameMode()
 {
@@ -21,19 +22,19 @@ AFebriculaGameMode::AFebriculaGameMode()
 
 AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
-	FGameplayTag NowSchedule; 
+	FGameplayTag NowSchedule;
 	if (UActivitySubsystem* ActivitySubsystem = GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
 		NowSchedule = ActivitySubsystem->GetNowScheduleTag();
-		
-		
+
+
 		ActivitySubsystem->FindRunnableActivities();
 		//const FGameplayTag SpawnLocationTag = 
-	} 
-	
+	}
+
 	AFebriculaPlayerStart* Matched = nullptr;
 	AFebriculaPlayerStart* Fallback = nullptr;
-	
+
 	for (TActorIterator<AFebriculaPlayerStart> It(GetWorld()); It; ++It)
 	{
 		AFebriculaPlayerStart* Now = *It;
@@ -55,14 +56,14 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 				if (ProgressSubsystem->EvaluateConditions(Now->Conditions))
 				{
 					Matched = Now;
-					break;		
+					break;
 				}
 			}
 		}
 	}
 	if (Matched) return Matched;
 	if (Fallback) return Fallback;
-	
+
 	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
@@ -73,7 +74,14 @@ void AFebriculaGameMode::BeginPlay()
 	{
 		DialogueSubsystem->BlockPlayerInput(false);
 	}
-	
+
+	// ���̺� �ε�� ������ �̵��� �� ���, ��� ���̴� �÷��̾� ��ġ/��ȭ ��α׸� ���⼭ ���� �����Ѵ�.
+	// ��� ���� �ε尡 ������ �ƹ� �ϵ� ���� �����Ƿ� �׻� ȣ���ص� �����ϴ�.
+	if (USaveGameSubsystem* SaveGameSubsystem = GetGameInstance()->GetSubsystem<USaveGameSubsystem>())
+	{
+		SaveGameSubsystem->ApplyPendingLoadIfAny();
+	}
+
 	NPCCharacterMap = GetDefault<UNPCSetting>()->NPCCharacterMap;
 
 	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
@@ -116,7 +124,7 @@ bool AFebriculaGameMode::PlayEvent()
 		AutoDialogueTable = AES->AutoDialogueRow;
 		if (AutoEventTable)
 		{
-			if(UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+			if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 			{
 				UE_LOG(LogTemp, Warning, TEXT("WOW!!!!!"));
 				if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
