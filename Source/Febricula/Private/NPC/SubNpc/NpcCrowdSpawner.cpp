@@ -12,6 +12,7 @@
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
+#include "NPC/SubNpc/SubNpcLog.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 
@@ -51,13 +52,13 @@ void ANpcCrowdSpawner::BeginPlay()
 	USubNpcDirectorSubsystem* Director = World->GetSubsystem<USubNpcDirectorSubsystem>();
 	if (!Director)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Crowd] Director 서브시스템을 찾지 못했습니다."));
+		SUBNPC_LOG(Warning, TEXT("[Crowd] Director 서브시스템을 찾지 못했습니다."));
 		return;
 	}
 
 	if (!NpcClass)
 	{
-		UE_LOG(LogTemp, Warning,
+		SUBNPC_LOG(Warning,
 			TEXT("[Crowd] %s: Npc Class가 지정되지 않아 군중이 생성되지 않습니다."), *GetNameSafe(this));
 		return;
 	}
@@ -81,7 +82,7 @@ void ANpcCrowdSpawner::BeginPlay()
 
 		if (EntryPaths.Num() == 0)
 		{
-			UE_LOG(LogTemp, Warning,
+			SUBNPC_LOG(Warning,
 				TEXT("[Crowd] 입구 경로가 없습니다. NpcCrowdPath 액터 중 하나 이상에서 'Spawn Entry'를 켜세요."));
 		}
 	}
@@ -266,8 +267,10 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 	float TotalLength = 0.f;
 	for (TActorIterator<ANpcCrowdPath> It(World); It; ++It)
 	{
-		const float Len = It->GetPathLength(); 
-		if (Len >= 200.f && It->IsSpawnEntry()) //2026-09-23 이지민 수정 (시나리오 연출용 Crowd 구분) 
+		// 입구 경로만이 아니라 모든 경로에 흩뿌린다. 연출 전용 맵(일반 행인이 없어야 하는 맵)은
+		// 그 맵 스포너의 bSpreadInitialPopulation을 끈다.
+		const float Len = It->GetPathLength();
+		if (Len >= 200.f)
 		{
 			Paths.Add(*It);
 			TotalLength += Len;
@@ -276,7 +279,7 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 
 	if (Paths.Num() == 0 || TotalLength <= 0.f)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Crowd] 초기 배치: 쓸 만한 경로가 없습니다."));
+		SUBNPC_LOG(Warning, TEXT("[Crowd] 초기 배치: 쓸 만한 경로가 없습니다."));
 		return;
 	}
 
@@ -287,13 +290,13 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 	// 사람을 아무리 고르게 뿌려도 1미터에 한 명씩이면 그건 인파다.
 	// 편하게 걷는 거리의 밀도는 대략 3미터에 한 명(0.3명/m) 수준이다.
 	const float Density = Target / (TotalLength / 100.f);   // 명/m
-	UE_LOG(LogTemp, Log,
+	SUBNPC_LOG(Log,
 		TEXT("[Crowd] 경로 총 길이 %.0fm / 목표 %d명 → 밀도 %.2f명/m"),
 		TotalLength / 100.f, Target, Density);
 
 	if (Density > 0.5f)
 	{
-		UE_LOG(LogTemp, Warning,
+		SUBNPC_LOG(Warning,
 			TEXT("[Crowd] 밀도가 높습니다(%.2f명/m). 이 인원이 겹쳐 보이는 건 정상입니다. ")
 			TEXT("경로를 더 길게 그리거나(권장 총 %.0fm 이상) 목표 인원을 %d명 이하로 줄이세요."),
 			Density, Target / 0.3f / 1.f, FMath::RoundToInt(TotalLength / 100.f * 0.3f));
@@ -368,7 +371,7 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 		Remaining -= Placed;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[Crowd] 초기 배치 완료: 경로 %d개에 %d명"),
+	SUBNPC_LOG(Log, TEXT("[Crowd] 초기 배치 완료: 경로 %d개에 %d명"),
 		Paths.Num(), Target - FMath::Max(0, Remaining));
 }
 
@@ -412,7 +415,7 @@ void ANpcCrowdSpawner::TickSpawn()
 		ANpcCrowdPath* Entry = PickEntryPath();
 		if (!Entry)
 		{
-			UE_LOG(LogTemp, Warning,
+			SUBNPC_LOG(Warning,
 				TEXT("[Crowd] 보충 불가: 입구 경로가 없습니다. ")
 				TEXT("NpcCrowdPath 중 하나 이상에서 'Spawn Entry'를 켜거나 ")
 				TEXT("스포너의 Entry Paths에 직접 넣으세요. (목표 %d / 활성 %d)"),

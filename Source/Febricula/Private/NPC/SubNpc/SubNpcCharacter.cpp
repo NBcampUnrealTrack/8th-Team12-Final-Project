@@ -14,6 +14,7 @@
 #include "NPC/SubNpc/NpcActivitySpot.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
+#include "NPC/SubNpc/SubNpcLog.h"
 #include "NPC/SubNpc/SubNpcProfiling.h"
 
 /** crowd.Mass - 1이면 걷는 행인의 이동을 Mass 프로세서가 병렬로 계산한다 (SubNpcMassProcessors.cpp) */
@@ -1778,7 +1779,7 @@ void ASubNpcCharacter::AdvanceToNextPath()
 		if (!ReportedShortPaths.Contains(CurrentPath))
 		{
 			ReportedShortPaths.Add(CurrentPath);
-			UE_LOG(LogTemp, Warning,
+			SUBNPC_LOG(Warning,
 				TEXT("[Crowd] 경로 '%s'의 길이가 %.0fcm뿐입니다. 스플라인 점을 벌려 최소 %.0fcm 이상으로 만드세요."),
 				*GetNameSafe(CurrentPath), PathLength, MinUsablePathLength);
 		}
@@ -1871,7 +1872,7 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	constexpr float AcceptableGapSq = 300.f * 300.f;
 	if (GapSq > AcceptableGapSq)
 	{
-		UE_LOG(LogTemp, Warning,
+		SUBNPC_LOG(Warning,
 			TEXT("[Crowd] 경로 이음매가 %.0f cm 벌어져 있습니다: %s -> %s. 스플라인 끝점을 서로 붙여주세요."),
 			FMath::Sqrt(GapSq), *GetNameSafe(PrevPath), *GetNameSafe(Next));
 	}
@@ -3214,7 +3215,7 @@ void ASubNpcCharacter::BeginGroupSpotVisit(ASubNpcCharacter* Visitor, ANpcActivi
 		Director->StartGroupChatFor(this, Waiters, GroupSize, Spot->GetMaxGroupVisitWait());
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[CrowdGroup] 일행 스팟 들르기 시작: %s 무리 %d명 | %s 이(가) %s 에 들어감, %d명이 기다림"),
+	SUBNPC_LOG(Log, TEXT("[CrowdGroup] 일행 스팟 들르기 시작: %s 무리 %d명 | %s 이(가) %s 에 들어감, %d명이 기다림"),
 		*GetName(), GroupSize, *Visitor->GetName(), *Spot->GetName(), Waiters.Num());
 }
 
@@ -3330,7 +3331,7 @@ void ASubNpcCharacter::EndGroupSpotVisit(bool bTimedOut)
 	GroupSpotVisitor = nullptr;
 
 	const UWorld* World = GetWorld();
-	UE_LOG(LogTemp, Log, TEXT("[CrowdGroup] 일행 스팟 들르기 끝: %s | %s, %.1f초 기다림"),
+	SUBNPC_LOG(Log, TEXT("[CrowdGroup] 일행 스팟 들르기 끝: %s | %s, %.1f초 기다림"),
 		*GetName(), bTimedOut ? TEXT("시간 초과 - 들른 사람은 일행에서 빠짐") : TEXT("들른 사람이 나옴 - 같이 출발"),
 		(World && GroupWaitSpot.IsValid())
 			? World->GetTimeSeconds() - (GroupVisitDeadline - GroupWaitSpot->GetMaxGroupVisitWait()) : 0.f);

@@ -15,6 +15,7 @@
 #include "MassExecutionContext.h"
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
+#include "NPC/SubNpc/SubNpcLog.h"
 #include "NPC/SubNpc/SubNpcProfiling.h"
 
 int32 GSubNpcUseMass = 1;
@@ -172,7 +173,7 @@ bool ASubNpcFarCrowdInstancer::Initialize(UAnimToTextureDataAsset* InAnimData)
 	UStaticMesh* Mesh = InAnimData->StaticMesh.LoadSynchronous();
 	if (!Mesh || InAnimData->Animations.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Crowd] 원경 표현 데이터 %s 에 스태틱 메시나 구운 애니메이션이 없습니다. 원경 표현을 쓰지 않습니다."),
+		SUBNPC_LOG(Warning, TEXT("[Crowd] 원경 표현 데이터 %s 에 스태틱 메시나 구운 애니메이션이 없습니다. 원경 표현을 쓰지 않습니다."),
 			*GetNameSafe(InAnimData));
 		return false;
 	}
@@ -211,7 +212,7 @@ bool ASubNpcFarCrowdInstancer::Initialize(UAnimToTextureDataAsset* InAnimData)
 		IdleAnimIndex = WalkAnimIndex;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[Crowd] 원경 표현 준비: 메시 %s, 애니메이션 %d개 (걷기 %d, 대기 %d)"),
+	SUBNPC_LOG(Log, TEXT("[Crowd] 원경 표현 준비: 메시 %s, 애니메이션 %d개 (걷기 %d, 대기 %d)"),
 		*GetNameSafe(Mesh), InAnimData->Animations.Num(), WalkAnimIndex, IdleAnimIndex);
 	return true;
 }
@@ -272,7 +273,7 @@ ASubNpcFarCrowdInstancer* UMassSubNpcRepresentationProcessor::GetOrCreateInstanc
 	if (!AnimData)
 	{
 		bInstancerUnavailable = true;
-		UE_LOG(LogTemp, Log, TEXT("[Crowd] 원경 표현 데이터가 없어 멀리 있는 행인도 스켈레탈 메시로 그립니다 (스포너의 Far Crowd Anim Data)."));
+		SUBNPC_LOG(Log, TEXT("[Crowd] 원경 표현 데이터가 없어 멀리 있는 행인도 스켈레탈 메시로 그립니다 (스포너의 Far Crowd Anim Data)."));
 		return nullptr;
 	}
 

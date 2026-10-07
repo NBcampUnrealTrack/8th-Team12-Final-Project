@@ -27,6 +27,7 @@
 #include "StructUtils/InstancedStruct.h"
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
+#include "NPC/SubNpc/SubNpcLog.h"
 #include "NPC/SubNpc/SubNpcProfiling.h"
 #include "ProfilingDebugging/MiscTrace.h"
 
@@ -43,6 +44,14 @@
 //
 // 되돌릴 때는 값을 1로 주면 된다. ECVF_Cheat이라 배포 빌드에는 안 들어간다.
 // ---------------------------------------------------------------------------
+/** SubNpcLog.h의 SUBNPC_LOG 스위치 */
+int32 GSubNpcCrowdLog = 0;
+static FAutoConsoleVariableRef CVarSubNpcCrowdLog(
+	TEXT("crowd.Log"),
+	GSubNpcCrowdLog,
+	TEXT("1이면 행인(군중) 로그를 남긴다: 등장·회수, 경로 설정 경고, 겹침·속도·높이 요약 등. 기본은 꺼서 출력 로그를 깨끗하게 둔다."),
+	ECVF_Cheat);
+
 namespace SubNpcCrowdCVars
 {
 	static int32 EnableLod = 1;
@@ -130,8 +139,8 @@ namespace SubNpcCrowdCVars
 		TEXT("PIE·게임 중에도 행인 경로를 그린다. 흰색=중심선, 초록=걷는 폭, 회색=추월 최대 폭, 하늘=방향, 빨간 X=퇴장구."),
 		ECVF_Cheat);
 
-	/** 1이면 2초마다 정체 요약(감속 이유별 인원, 가장 많이 막는 상대)을 로그로 남긴다. 튜닝 중이라 기본으로 켜 둔다 */
-	static int32 LogBlock = 1;
+	/** 1이면 2초마다 정체 요약(감속 이유별 인원, 가장 많이 막는 상대)을 로그로 남긴다. 튜닝할 때만 켠다 */
+	static int32 LogBlock = 0;
 	static FAutoConsoleVariableRef CVarLogBlock(
 		TEXT("crowd.LogBlock"),
 		LogBlock,
@@ -361,7 +370,7 @@ namespace SubNpcMassBinding
 				CachedTree = It->LoadCrowdStateTree();
 				break;
 			}
-			UE_LOG(LogTemp, Log, TEXT("[Crowd] 행인 상태 결정: %s"),
+			SUBNPC_LOG(Log, TEXT("[Crowd] 행인 상태 결정: %s"),
 				CachedTree.IsValid() ? *FString::Printf(TEXT("Mass StateTree (%s)"), *GetNameSafe(CachedTree.Get())) : TEXT("액터 코드 (StateTree 없음)"));
 		}
 		return CachedTree.Get();
@@ -738,13 +747,13 @@ namespace SubNpcOverlapCheck
 			}
 			if (Window.FastSamples > 0)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[CrowdSpeed] 걸음 속도의 1.3배를 넘은 순간 %d번 | 가장 빠른 x%.2f: %s"),
+				SUBNPC_LOG(Warning, TEXT("[CrowdSpeed] 걸음 속도의 1.3배를 넘은 순간 %d번 | 가장 빠른 x%.2f: %s"),
 					Window.FastSamples, Window.WorstSpeedRatio, *Window.WorstSpeedDesc);
 			}
 
 			if (BadHeight > 0)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[CrowdHeight] 발이 바닥에서 25cm 넘게 %s 행인 %d명 | 가장 심한 %+.0fcm: %s"),
+				SUBNPC_LOG(Warning, TEXT("[CrowdHeight] 발이 바닥에서 25cm 넘게 %s 행인 %d명 | 가장 심한 %+.0fcm: %s"),
 					WorstGap > 0.f ? TEXT("뜬") : TEXT("묻힌"), BadHeight, WorstGap, *WorstHeightDesc);
 			}
 
@@ -765,19 +774,19 @@ namespace SubNpcOverlapCheck
 					default: break;
 					}
 				}
-				UE_LOG(LogTemp, Log, TEXT("[CrowdActivity] 걷기 %d | 스팟·줄 %d | 반응 %d"), Walking, AtSpot, Reacting);
+				SUBNPC_LOG(Log, TEXT("[CrowdActivity] 걷기 %d | 스팟·줄 %d | 반응 %d"), Walking, AtSpot, Reacting);
 			}
 
 			if (Window.OverlapFrames > 0)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | %.1f초 중 %.0f%% 프레임에서 겹침, 최대 동시 %d쌍 | 가장 깊은 겹침 %.0fcm: %s"),
+				SUBNPC_LOG(Warning, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | %.1f초 중 %.0f%% 프레임에서 겹침, 최대 동시 %d쌍 | 가장 깊은 겹침 %.0fcm: %s"),
 					Npcs.Num(), Bodies.Num(), Now - Window.StartTime,
 					100.f * Window.OverlapFrames / FMath::Max(1, Window.Frames), Window.MaxPairs,
 					Window.WorstDepth, *Window.WorstDesc);
 			}
 			else
 			{
-				UE_LOG(LogTemp, Log, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | 겹침 없음"), Npcs.Num(), Bodies.Num());
+				SUBNPC_LOG(Log, TEXT("[CrowdOverlap] 활성 %d명(가까움 %d) | 겹침 없음"), Npcs.Num(), Bodies.Num());
 			}
 			Window = FWindow();
 			Window.StartTime = Now;
@@ -2125,7 +2134,7 @@ void USubNpcDirectorSubsystem::PrewarmPool(TSubclassOf<ASubNpcCharacter> NpcClas
 		ASubNpcCharacter* Npc = World->SpawnActor<ASubNpcCharacter>(NpcClass, Nowhere, FRotator::ZeroRotator, Params);
 		if (!Npc)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[Crowd] 풀 생성 실패 (%d/%d). 클래스 설정을 확인하세요."), i, Count);
+			SUBNPC_LOG(Warning, TEXT("[Crowd] 풀 생성 실패 (%d/%d). 클래스 설정을 확인하세요."), i, Count);
 			break;
 		}
 
@@ -2147,7 +2156,7 @@ void USubNpcDirectorSubsystem::PrewarmPool(TSubclassOf<ASubNpcCharacter> NpcClas
 		PooledNpcs.AddUnique(Npc);
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[Crowd] 풀 준비 완료: %d명"), PooledNpcs.Num());
+	SUBNPC_LOG(Log, TEXT("[Crowd] 풀 준비 완료: %d명"), PooledNpcs.Num());
 }
 
 void USubNpcDirectorSubsystem::SetArchetypeTable(UDataTable* InTable)
@@ -2159,7 +2168,7 @@ void USubNpcDirectorSubsystem::SetArchetypeTable(UDataTable* InTable)
 		InTable = GetDefault<UNPCSetting>()->DefaultSubNpcArchetypeTable.LoadSynchronous();
 		if (!InTable)
 		{
-			UE_LOG(LogTemp, Warning,
+			SUBNPC_LOG(Warning,
 				TEXT("[Crowd] 아키타입 테이블이 없습니다. 프로젝트 설정 > NPC Setting > Default Sub Npc Archetype Table을 지정하세요. ")
 				TEXT("지정 전까지 행인은 기본값으로 움직이고, 대사가 없어 말 걸기가 비활성화됩니다."));
 		}
