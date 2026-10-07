@@ -427,7 +427,8 @@ namespace SubNpcMassBinding
 	/** 스포너에 지정된 행인 StateTree. 월드마다 한 번만 찾는다 (없으면 nullptr - 예전처럼 액터가 스스로 정한다) */
 	static UStateTree* FindCrowdStateTree(UWorld* World)
 	{
-		if (UseStateTree == 0)
+		// 명령줄 -NoCrowdStateTree: 콘솔 변수는 행인이 Mass에 등록된 뒤에야 적용될 수 있어 비교 측정에는 이걸 쓴다
+		if (UseStateTree == 0 || FParse::Param(FCommandLine::Get(), TEXT("NoCrowdStateTree")))
 		{
 			return nullptr;
 		}
@@ -487,7 +488,16 @@ namespace SubNpcMassBinding
 			Shared.Sort();
 		}
 
-		const FMassEntityHandle Entity = EntityManager.CreateEntity(Fragments, Shared);
+		// CreateEntity(프래그먼트 목록, 공유 값)은 아키타입 구성에 공유 프래그먼트를 넣지 않아서
+		// 엔진의 StateTree 활성화 쿼리에 걸리지 않는다. 아키타입을 만들고 공유 값과 함께 엔티티를 만든 뒤 값을 채운다.
+		TArray<const UScriptStruct*, TInlineAllocator<4>> FragmentTypes;
+		for (const FInstancedStruct& Fragment : Fragments)
+		{
+			FragmentTypes.Add(Fragment.GetScriptStruct());
+		}
+		const FMassArchetypeHandle Archetype = EntityManager.CreateArchetype(FragmentTypes);
+		const FMassEntityHandle Entity = EntityManager.CreateEntity(Archetype, Shared);
+		EntityManager.SetEntityFragmentValues(Entity, Fragments);
 		Npc->SetMassEntity(Entity);
 		Npc->SetSpotDecisionByStateTree(StateTree != nullptr);
 	}
