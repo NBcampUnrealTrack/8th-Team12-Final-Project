@@ -91,7 +91,6 @@ void ANpcCrowdSpawner::BeginPlay()
 	{
 		SpreadInitialPopulation();
 	}
-	bInitialFillDone = true;
 
 	// 반복 타이머가 아니라 매번 다시 건다. 간격을 흔들려면 이 방법뿐이다.
 	RearmSpawnTimer();
@@ -404,7 +403,11 @@ void ANpcCrowdSpawner::TickSpawn()
 		? FMath::Max(1, MaxGroupsPerTick)
 		: 1;
 
-	for (int32 g = 0; g < GroupBudget && Deficit > 0; ++g)
+	// 한 주기에 등장시킬 수 있는 인원 (MaxSpawnPerTick). 무리는 쪼개지 않으므로 첫 무리는 크기와 상관없이
+	// 내보내고, 그 뒤 무리는 남은 인원 안에 들어갈 때만 내보낸다.
+	int32 PersonBudget = FMath::Max(1, MaxSpawnPerTick);
+
+	for (int32 g = 0; g < GroupBudget && Deficit > 0 && PersonBudget > 0; ++g)
 	{
 		ANpcCrowdPath* Entry = PickEntryPath();
 		if (!Entry)
@@ -462,6 +465,10 @@ void ANpcCrowdSpawner::TickSpawn()
 		}
 
 		const int32 GroupSize = FMath::Min(RollGroupSize(), Deficit);
+		if (g > 0 && GroupSize > PersonBudget)
+		{
+			return;   // 이번 주기 몫을 다 썼다. 다음 주기에 나온다
+		}
 		const TArray<ASubNpcCharacter*> Spawned =
 			(GroupSize <= 1)
 			? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Entry, StartDistance, bReversed) }
@@ -483,6 +490,7 @@ void ANpcCrowdSpawner::TickSpawn()
 		}
 
 		Deficit -= Actual;
+		PersonBudget -= Actual;
 	}
 }
 

@@ -125,23 +125,11 @@ public:
 	/** 그룹으로 다닐 때 앞사람. 있으면 앞사람의 경로 진행도를 따라간다 */
 	void SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap, float LaneOffset);
 
-	// ---- StateTree 진입점 ----------------------------------------------------
-	//
-	// StateTree 태스크가 부르는 함수들. 후보 선정·확률 판정·점유 같은 로직은
-	// 이미 이 클래스에 있으므로 태스크에서 다시 구현하지 않고 여기로 위임한다.
-	// 나중에 Mass로 옮길 때 태스크는 그대로 두고 이 구현만 갈아끼우면 된다.
-
-	/** 근처 스팟 중 하나에 들어가 본다. 성공하면 상태가 AtSpot으로 바뀐다 */
-	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
-	bool TryEnterNearbySpot();
+	// ---- 스팟 ----------------------------------------------------------------
 
 	/** 지정한 스팟에 들어가 본다 */
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
 	bool TryEnterSpot(ANpcActivitySpot* Spot);
-
-	/** 스팟에 있으면 나온다. 없으면 아무 일도 하지 않는다 */
-	UFUNCTION(BlueprintCallable, Category = "Crowd|Spot")
-	void LeaveSpotIfAny();
 
 	// ---- 반응 --------------------------------------------------------------
 
@@ -314,16 +302,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Interaction", meta = (ClampMin = "0.0"))
 	float BumpMemoryDuration = 12.f;
 
-	/**
-	 * [사용 안 함] 속도 기준은 아키타입 테이블의 BumpTiers로 옮겼다 (DT_SubNpcArchetypes).
-	 *
-	 * 지우지 않고 남겨둔 이유: 이 클래스의 프로퍼티를 빼면 뒤쪽 WalkSpeed / bIsMoving /
-	 * CurrentSpeed의 오프셋이 밀려 ABP_Passerby의 Property Access가 엉뚱한 값을 읽는다.
-	 * 에디터에서 헷갈리지 않도록 숨겨둔다.
-	 */
-	UPROPERTY(meta = (DeprecatedProperty, DeprecationMessage = "DT_SubNpcArchetypes의 BumpTiers를 쓰세요."))
-	float BumpSpeedThreshold_DEPRECATED = 700.f;
-
 	/** 반응 후 다시 반응하기까지의 쿨다운 (초). 없으면 벽에 끼었을 때 무한 반복된다 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0"))
 	float ReactionCooldown = 4.f;
@@ -335,13 +313,6 @@ protected:
 	/** 피하기 반응에서 옆으로 비키는 거리 (cm) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction")
 	float DodgeSideStep = 90.f;
-
-	/**
-	 * 지나가는 플레이어를 힐끗 보는 확률 (0~1). 매 경로 진입마다 판정.
-	 * 비용이 거의 없는데 "나를 인식한다"는 느낌이 커서 가성비가 제일 좋은 연출이다.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Reaction", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float GlanceChance = 0.2f;
 
 	/**
 	 * 이동할 때 캡슐 스윕을 쓸지.
@@ -381,18 +352,6 @@ protected:
 	float SpotEngageRadius = 400.f;
 
 	// ---- 소프트 회피 ---------------------------------------------------------
-
-	/**
-	 * 가까운 행인끼리 좌우로 살짝 비켜서게 한다.
-	 *
-	 * RVO 같은 정식 회피와는 다르다. 진로를 다시 계산하지 않고, 이미 갖고 있는
-	 * 좌우 오프셋 값 하나만 서로 반대로 민다. "스스로 판단하지 않는다"는 원칙을
-	 * 깨지 않으면서 겹침만 줄이는 절충안이다.
-	 *
-	 * Director가 Near/Mid 대역에 대해서만 계산한다. 멀리서 겹치는 건 어차피 안 보인다.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance")
-	bool bSoftAvoidance = true;
 
 	/** 회피 오프셋이 목표값을 향해 움직이는 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Avoidance", meta = (ClampMin = "0.1"))
@@ -589,9 +548,6 @@ public:
 
 	bool IsReversedOnPath() const { return bReversedOnPath; }
 
-	/** 앞이 막혀 크게 감속한 상태인가. 뒷사람이 기다릴지 추월할지 판단하는 데 쓴다 */
-	bool IsHeldUp() const { return CurrentSpeedScale < 0.6f; }
-
 	/**
 	 * 일행과 걸으면서 이야기한다. Director가 그룹 단위로 같은 시간에 부른다.
 	 * 멈추지 않고, 상체 슬롯(UpperBody)에만 손짓을 얹는다 - 하체는 계속 걷는다.
@@ -616,9 +572,6 @@ public:
 	/** 기다리기를 그만두고 길로 돌아간다 */
 	void EndGroupWait();
 
-	/** 일행 대기 중인가 (대기 자리로 걸어가는 중 포함) */
-	bool IsGroupWaiting() const { return bGroupWaiting; }
-
 	/** 리더: 일행 한 명이 스팟에 들러 나머지가 기다리는 중인가 */
 	bool IsHostingGroupVisit() const { return GroupSpotVisitor.IsValid(); }
 
@@ -630,7 +583,7 @@ public:
 
 	/**
 	 * 스팟 근처 상태 (디버그 표시 crowd.DebugSpot). 길 위를 그냥 걷는 중이면 false.
-	 * OutLabel: "줄2 이동"·"이벤트"·"합류 대기" 등, OutTarget: 지금 가려는 지점
+	 * OutLabel: "줄2 이동"·"이벤트"·"길로 복귀" 등, OutTarget: 지금 가려는 지점
 	 */
 	bool GetSpotDebugState(FString& OutLabel, FVector& OutTarget) const;
 
@@ -657,17 +610,8 @@ public:
 	bool IsRejoiningPath() const { return bRejoiningPath; }
 
 	/**
-	 * 길에 합류할 자리에 사람이 있으면 Director가 true로 세운다. 길가에 서서 틈을 기다린다.
-	 * 예전에는 돌아오는 사람이 다른 행인을 보지 않고 곧장 걸어 들어가 몸을 뚫었다.
-	 */
-	void SetMergeHold(bool bHold) { bMergeHold = bHold && MergeHoldTime < MaxMergeHoldSeconds; }
-
-	/** 합류 대기 최대 시간 (초). 넘으면 Director가 세워도 무시하고 들어간다 */
-	static constexpr float MaxMergeHoldSeconds = 3.f;
-
-	/**
 	 * 길 밖에서 움직이는 중인가: 스팟으로 가는 중, 줄 자리로 옮기는 중, 길로 돌아오는 중.
-	 * 이때는 경로 차선 계획을 쓰지 않으므로 Director가 서로 겹치지 않게 따로 양보시킨다.
+	 * 이때는 길 위 속도 회피를 쓰지 않으므로 Director가 서로 겹치지 않게 따로 양보시킨다.
 	 */
 	bool IsMovingOffLane() const
 	{
@@ -740,7 +684,6 @@ public:
 	 * 액터 자체(이동·충돌·상호작용)는 그대로 돈다 - 그리는 방식만 바뀐다.
 	 */
 	void SetInstancedRepresentation(bool bInstanced);
-	bool IsInstancedRepresentation() const { return bInstancedRepresentation; }
 
 	/** ABP에 넘기는 현재 걸음 속도 (cm/s). 인스턴스 쪽 걷기/대기 애니메이션을 고를 때 쓴다 */
 	float GetAnimSpeed() const { return CurrentSpeed; }
@@ -820,12 +763,6 @@ protected:
 
 	/** 일행을 이끄는 리더인가. 리더는 스팟에 들르지 않는다 (일행이 길에서 기다리며 길을 막는다) */
 	bool bHasGroupFollowers = false;
-
-	/** 길에 합류할 틈을 기다리는 중인가 (Director가 정한다) */
-	bool bMergeHold = false;
-
-	/** 합류할 틈을 기다린 시간 (초) */
-	float MergeHoldTime = 0.f;
 
 	/** (일행) 리더 차선 기준 좌우 위치 (cm). 리더가 차선을 바꾸면 따라 옮긴다 */
 	float GroupLaneOffset = 0.f;
@@ -924,7 +861,7 @@ protected:
 	/**
 	 * 스팟에 들를지를 Mass StateTree가 정한다 (Mass 3단계).
 	 * true면 걷는 중의 자동 스팟 판정(RollForActivitySpot)을 하지 않고, StateTree의
-	 * "행인: 스팟 들르기 판정" 태스크가 TryEnterNearbySpot을 부를 때만 들른다.
+	 * "행인: 스팟 들르기 판정" 태스크가 RequestSpotRoll로 요청할 때만 들른다.
 	 */
 	bool bSpotDecisionByStateTree = false;
 
@@ -937,7 +874,6 @@ protected:
 
 public:
 	void SetSpotDecisionByStateTree(bool bEnable) { bSpotDecisionByStateTree = bEnable; }
-	bool IsSpotDecisionByStateTree() const { return bSpotDecisionByStateTree; }
 
 	/** 스팟 들르기 판정을 요청한다 (어느 스레드에서나 불러도 된다) */
 	void RequestSpotRoll() { bSpotRollRequested = true; }

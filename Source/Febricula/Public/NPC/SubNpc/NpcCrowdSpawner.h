@@ -74,15 +74,6 @@ protected:
 	/** 다음 보충까지의 시간을 랜덤으로 굴려 타이머를 다시 건다 */
 	void RearmSpawnTimer();
 
-	/**
-	 * 초기 충원을 끝냈는가.
-	 *
-	 * 시작 직후 한 번만 경로 전체에 흩어 놓고, 그 뒤의 보충은 입구에서만 등장시킨다.
-	 * 목표 인원을 다 채운 시점에 켜진다.
-	 */
-	UPROPERTY(Transient)
-	bool bInitialFillDone = false;
-
 	/** 플레이어 폰 위치 (없으면 false) */
 	bool GetViewerLocation(FVector& OutLocation) const;
 
@@ -136,7 +127,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner")
 	bool bSpreadInitialPopulation = true;
 
-	/** 한 번에 최대 몇 명까지 등장시킬지. 크면 한꺼번에 우르르 나타나 티가 난다 */
+	/**
+	 * 보충 한 주기에 최대 몇 명까지 등장시킬지. 크면 한꺼번에 우르르 나타나 티가 난다.
+	 * 무리는 쪼개지 않는다 - 첫 무리는 이보다 커도 통째로 나오고, 그다음 무리부터 이 한도를 본다.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner", meta = (ClampMin = "1"))
 	int32 MaxSpawnPerTick = 2;
 

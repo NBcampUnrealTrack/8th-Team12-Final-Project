@@ -69,17 +69,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
 	TArray<ASubNpcCharacter*> SpawnGroupOnPath(ANpcCrowdPath* Path, float StartDistance, bool bReversed, int32 GroupSize);
 
-	/**
-	 * 월드 좌표를 주면 가장 가까운 경로를 찾아 그 지점에 등장시킨다.
-	 *
-	 * "여기에 한 명 세워줘" 식으로 배치 위치 기준으로 스폰하는 쪽을 위한 입구다.
-	 * 스포너를 만드는 사람이 어느 스플라인의 몇 cm 지점인지 계산할 필요가 없다.
-	 *
-	 * @param SearchRadius  이 반경 안에 경로가 없으면 nullptr (0 이하면 거리 제한 없음)
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
-	ASubNpcCharacter* SpawnAtNearestPath(const FVector& WorldLocation, float SearchRadius = 2000.f);
-
 	/** 풀로 회수 */
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
 	void ReturnToPool(ASubNpcCharacter* Npc);
@@ -137,7 +126,7 @@ protected:
 
 	/**
 	 * 길 밖에서 움직이는 사람(스팟으로 가는/줄 자리로 옮기는/길로 돌아오는)끼리 겹치지 않게
-	 * 앞을 막는 사람이 있으면 잠깐 양보시킨다. 이들은 경로 차선 계획을 쓰지 않는다.
+	 * 앞을 막는 사람이 있으면 잠깐 양보시킨다. 이들은 길 위 속도 회피를 쓰지 않는다.
 	 */
 	void UpdateOffLaneYield();
 

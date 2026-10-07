@@ -6,7 +6,6 @@
 #include "Components/ArrowComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
-#include "NPC/SubNpc/NpcActivitySpot.h"
 
 int32 NpcWeightedPick::PickIndex(const TArray<float>& Weights)
 {

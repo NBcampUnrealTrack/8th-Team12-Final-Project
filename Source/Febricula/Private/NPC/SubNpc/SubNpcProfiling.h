@@ -28,7 +28,7 @@ namespace SubNpcProfiling
 		MassPathFollow,   // Mass 프로세서 전체가 게임 스레드를 붙잡은 시간 (병렬 계산 + 적용)
 		GroundSnap,       // 지면 스냅 라인 트레이스
 		WorldBlock,       // 벽 캡슐 스윕
-		Avoidance,        // 차선 계획·회피 (0.1초마다)
+		Avoidance,        // 속도 회피 (0.1초마다)
 		BodySeparation,   // 몸 겹침 금지 (매 프레임)
 		GroupLogic,       // 일행 대화·대열·길 밖 양보 (0.1초마다)
 		LodSlice,         // LOD 재계산

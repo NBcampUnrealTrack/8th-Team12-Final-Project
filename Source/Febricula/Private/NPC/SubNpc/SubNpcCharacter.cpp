@@ -11,8 +11,6 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
-#include "GameFramework/PlayerController.h"
-#include "Kismet/GameplayStatics.h"
 #include "NPC/SubNpc/NpcActivitySpot.h"
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
@@ -348,7 +346,7 @@ namespace SubNpcSpotWalk
 	/**
 	 * Self가 Target으로 걸어갈 때 서 있는 사람(스팟 칸·줄·일행 대기)을 돌아갈 중간 목표.
 	 * 걷는 사람은 여기서 보지 않는다 - 길 밖에서 움직이는 사람은 ChooseSteerDirection이, 길 위 행인은
-	 * Director의 차선 계획(길 가는 사람이 비킨다)이 맡는다.
+	 * Director의 속도 회피(길 가는 사람이 비킨다)이 맡는다.
 	 */
 	static FVector DetourForSpotWalk(const ASubNpcCharacter* Self, const FVector& Target)
 	{
@@ -463,7 +461,7 @@ namespace SubNpcSpotWalk
 			{
 				continue;
 			}
-			// 길 위를 걷는 사람은 그쪽이 비킨다 (Director의 차선 계획이 스팟을 오가는 사람을 장애물로 본다).
+			// 길 위를 걷는 사람은 그쪽이 비킨다 (Director의 속도 회피이 스팟을 오가는 사람을 장애물로 본다).
 			// 여기서까지 피하면 스팟 쪽 동선(줄·칸·일행 대기)이 길 가는 사람마다 휘어 꼬였다.
 			if (Other->IsWalkingOnPath() && !Other->IsMovingOffLane())
 			{
@@ -833,8 +831,6 @@ void ASubNpcCharacter::ClearRuntimeState()
 	StalledTime = 0.f;
 	bWaitingForGroup = false;
 	bHasGroupFollowers = false;
-	bMergeHold = false;
-	MergeHoldTime = 0.f;
 	GroupLaneOffset = 0.f;
 	bOffLaneYield = false;
 	PlannedNextPath = nullptr;
@@ -1066,12 +1062,11 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 
 	// [버그 수정] 길로 돌아오는 동안은 몸이 감속과 상관없이 제 속도로 걷는다.
 	// 애니메이션 속도를 감속 값에 맞추면, 몸은 움직이는데 서 있는 자세로 미끄러졌다.
-	// 합류할 틈을 기다리는 중이면 실제로 서 있으므로 0이다.
+	// 다른 사람에게 양보하며 서 있는 중이면 실제로 서 있으므로 0이다.
 	if (CurrentActivity == ESubNpcActivity::Walking && bRejoiningPath)
 	{
-		const bool bHolding = bMergeHold || bOffLaneYield;
-		bIsMoving = !bHolding;
-		CurrentSpeed = bHolding ? 0.f : WalkSpeed * SubNpcSpotWalk::RejoinSpeedScale;
+		bIsMoving = !bOffLaneYield;
+		CurrentSpeed = bOffLaneYield ? 0.f : WalkSpeed * SubNpcSpotWalk::RejoinSpeedScale;
 	}
 	// 스팟·줄로 걸어가다 양보하며 서 있으면 서 있는 자세로 보여야 한다.
 	else if (CurrentActivity == ESubNpcActivity::AtSpot && bOffLaneYield && (bApproachingSpot || bQueueMoving || bGroupWaitMoving))
@@ -1294,12 +1289,9 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 
 	// 스팟·줄에서 길로 돌아오는 동안은 진행을 늦춘다. 몸은 평소 속도로 걸으면서
 	// 늦게 가는 목표점을 따라잡으므로 서두르는 것처럼 보이지 않는다.
-	// 합류할 틈을 기다리는 중이면 목표점도 멈춰 둔다.
 	if (bRejoiningPath)
 	{
-		PathDistance = bMergeHold
-			? PathDistanceBefore
-			: PathDistanceBefore + (PathDistance - PathDistanceBefore) * SubNpcSpotWalk::RejoinPathProgressScale;
+		PathDistance = PathDistanceBefore + (PathDistance - PathDistanceBefore) * SubNpcSpotWalk::RejoinPathProgressScale;
 	}
 
 	const float HalfWidth = CurrentPath->GetLaneHalfWidth();
@@ -1438,16 +1430,10 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 		if (Remaining <= FMath::Max(Step, SubNpcSpotWalk::ArriveTolerance))
 		{
 			bRejoiningPath = false;
-			bMergeHold = false;
 		}
-		else if (bMergeHold || bOffLaneYield)
+		else if (bOffLaneYield)
 		{
-			// 합류할 자리에 사람이 있거나 다른 사람이 앞을 지나가는 중이다. 서서 기다린다.
-			// 오래 기다리면 SetMergeHold가 더는 세우지 않는다 (MaxMergeHoldSeconds).
-			if (bMergeHold)
-			{
-				MergeHoldTime += DeltaTime;
-			}
+			// 다른 사람이 앞을 지나가는 중이다. 서서 기다린다.
 			const FVector Dir2D = FVector(ToTarget.X, ToTarget.Y, 0.f) / Remaining;
 			Out.Result = FSubNpcPathStep::EResult::RotateOnly;
 			Out.Rotation = FMath::RInterpTo(GetActorRotation(), Dir2D.Rotation(), DeltaTime, 6.f);
@@ -2125,12 +2111,6 @@ void ASubNpcCharacter::RollForActivitySpot()
 	}
 }
 
-bool ASubNpcCharacter::TryEnterNearbySpot()
-{
-	RollForActivitySpot();
-	return CurrentActivity == ESubNpcActivity::AtSpot;
-}
-
 bool ASubNpcCharacter::TryEnterSpot(ANpcActivitySpot* Spot)
 {
 	if (!Spot || OccupiedSpot || !Spot->CanEnterNow(this))
@@ -2410,16 +2390,6 @@ void ASubNpcCharacter::BeginRejoinPath()
 		}
 	}
 	NextSpotCheckDistance = PathDistance;
-	bMergeHold = false;
-	MergeHoldTime = 0.f;
-}
-
-void ASubNpcCharacter::LeaveSpotIfAny()
-{
-	if (CurrentActivity == ESubNpcActivity::AtSpot || OccupiedSpot)
-	{
-		EndSpotActivity();
-	}
 }
 
 void ASubNpcCharacter::BeginSpotActivity(ANpcActivitySpot* Spot, const FNpcActivityOption& Option, int32 SlotIndex)
@@ -3179,7 +3149,7 @@ bool ASubNpcCharacter::GetSpotDebugState(FString& OutLabel, FVector& OutTarget) 
 	}
 	if (CurrentActivity == ESubNpcActivity::Walking && bRejoiningPath)
 	{
-		OutLabel = bMergeHold ? TEXT("합류 대기") : FString::Printf(TEXT("길로 복귀%s"), Yield);
+		OutLabel = FString::Printf(TEXT("길로 복귀%s"), Yield);
 		if (CurrentPath)
 		{
 			OutTarget = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);

@@ -59,9 +59,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Spot")
 	float GetEngageChance() const { return EngageChance; }
 
-	/** 동시 정원 (Mass 경로 캐시를 구울 때 읽는다) */
-	int32 GetMaxOccupants() const { return MaxOccupants; }
-
 	/**
 	 * 재생할 행동을 고른다. 고정 확률(Chance) 행동을 먼저 굴리고,
 	 * 안 뽑히면 나머지를 가중 랜덤으로 고른다. 독점 행동 중 누가 하고 있는 건 빠진다.
