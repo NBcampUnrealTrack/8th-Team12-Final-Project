@@ -26,7 +26,6 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Animation Component")
 	void StopAnim(float BlendOutTime = 0.25f, bool bFromLogic = false);
-	void StopAnim(float BlendOutTime = 0.25f);
 
 	/**
 	 * 지정한 슬롯에 재생한다. 상체 전용 슬롯("UpperBody")에 걸면 하체는 걷기를 유지한 채
