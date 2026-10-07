@@ -140,6 +140,9 @@ namespace SubNpcCrowdFlow
 
 	/** 한 걸음에 몸이 실제로 움직일 수 있는 최대 속도 (걸음 속도 대비). 이음매·따라잡기에서 달려 보이지 않게 한다 */
 	constexpr float MaxSpeedRatio = 1.25f;
+
+	/** 목표점(진행도)이 몸보다 이만큼(cm) 넘게 앞서 있으면 진행도를 더 올리지 않는다. 몸이 따라붙을 때까지 기다린다 */
+	constexpr float MaxTargetLead = 80.f;
 }
 
 namespace SubNpcLightBump
@@ -256,6 +259,13 @@ namespace SubNpcSpotWalk
 	/** 설 자리·차선에 이만큼(cm) 안으로 들어오면 도착으로 본다 */
 	constexpr float ArriveTolerance = 5.f;
 
+	/** 줄 반응 지연 (초). 앞자리가 비거나 칸이 빈 뒤 이 사이 랜덤 시간이 지나야 움직인다 */
+	constexpr float QueueReactMin = 0.3f;
+	constexpr float QueueReactMax = 1.0f;
+
+	/** 칸에 들어가기 전, 칸 둘레 이 반경(cm) 안에 다른 사람(나가는 앞사람)이 없어야 한다 */
+	constexpr float StandClearRadius = 80.f;
+
 	/**
 	 * 스팟에서 차선으로 돌아갈 때의 걸음 속도 배율.
 	 * [튜닝] 1.5 → 1.0. 1.5배로 걸으니 행동을 마친 사람만 뛰듯이 빨라 보였다.
@@ -265,12 +275,265 @@ namespace SubNpcSpotWalk
 
 	/**
 	 * 차선으로 돌아가는 동안 경로 진행(목표점이 앞으로 가는 속도)의 배율.
-	 * 1보다 작아야 평소 속도로 걷는 몸이 목표점을 따라잡는다. 0.6이면 비스듬히 합류한다.
+	 * 1보다 작아야 평소 속도로 걷는 몸이 목표점을 따라잡는다.
+	 * [튜닝] 0.6 → 0.85. 0.6이면 따라잡은 뒤 0.6배로 걸어서, 길로 나가는 사람만 느리고 발이 미끄러져 보였다.
+	 * 합류 지점을 앞쪽으로 잡으므로(RejoinLeadDistance) 0.85로도 비스듬히 따라잡는다.
 	 */
-	constexpr float RejoinPathProgressScale = 0.6f;
+	constexpr float RejoinPathProgressScale = 0.85f;
 
 	/** 길 가장자리(LaneHalfWidth)에서 이 거리(cm) 안이면 이미 길 위에 있는 것으로 본다 */
 	constexpr float OnPathTolerance = 25.f;
+
+	/**
+	 * 스팟·줄에서 길로 돌아갈 때 진행 방향 앞쪽으로 이만큼(cm) 떨어진 곳으로 비스듬히 합류한다.
+	 * 들어오는 사람은 뒤쪽(상류)에서 오므로 나가는 흐름과 엇갈리지 않는다 (가게 출입구처럼 한 방향으로 돈다).
+	 * 0이면 예전처럼 가장 가까운 길 지점으로 곧장 나가서, 스팟 앞에서 들어오는 사람과 서로 길을 막았다.
+	 */
+	constexpr float RejoinLeadDistance = 150.f;
+
+	/** 서 있는 사람을 돌아갈 때 그 사람 중심에서 떨어지는 거리 (cm). 캡슐 두 개(약 68cm)보다 커야 몸이 닿지 않는다 */
+	constexpr float DetourClearance = 80.f;
+
+	/** 이 반경(cm) 안에 서 있는 사람만 장애물로 본다 */
+	constexpr float DetourScanRadius = 500.f;
+
+	/**
+	 * 스팟 근처를 걸어갈 때 서 있는 사람(이벤트·줄·일행 대기)을 장애물로 보고 돌아가는 중간 목표를 준다.
+	 * [버그 수정] 줄이 이벤트하는 사람 뒤로 서게 되면서, 길에서 줄 끝으로 곧장 걸어가는 선이 이벤트하는 사람·
+	 * 줄 선 사람 몸을 관통했다. 겹침 금지가 그 앞에서 세워서, 줄로 안 가고 이벤트하는 사람 앞에 서서 기다리는
+	 * 모양이 됐다. 매 틱 다시 계산한다 - 가장 먼저 부딪힐 사람 옆을 경유하고, 지나가면 다음 사람, 다 지나가면 목표로.
+	 * 길찾기(내비메시)를 다시 돌리지 않는다: 장애물이 몇 명뿐이고 계속 바뀌어서 매 틱 반응하는 쪽이 싸고 덜 흔들린다.
+	 */
+	static FVector DetourAroundStanders(TConstArrayView<FVector> Obstacles, const FVector& From, const FVector& To)
+	{
+		const FVector D(To.X - From.X, To.Y - From.Y, 0.f);
+		const float LenSq = D.SizeSquared();
+		if (LenSq < 1.f)
+		{
+			return To;
+		}
+		float BestT = 2.f;
+		FVector BestWaypoint = To;
+		for (const FVector& C : Obstacles)
+		{
+			// 목표 바로 옆에 선 사람(줄에서 내 앞사람)은 장애물이 아니다 - 그 뒤에 서야 한다.
+			if (FVector::DistSquared2D(To, C) < FMath::Square(DetourClearance))
+			{
+				continue;
+			}
+			const FVector FromToC(C.X - From.X, C.Y - From.Y, 0.f);
+			const float T = FVector::DotProduct(FromToC, D) / LenSq;
+			if (T <= 0.f || T >= 1.f || T >= BestT)
+			{
+				continue;
+			}
+			const FVector Closest = FVector(From.X, From.Y, 0.f) + D * T;
+			FVector Away = Closest - FVector(C.X, C.Y, 0.f);
+			if (Away.SizeSquared() >= FMath::Square(DetourClearance))
+			{
+				continue;   // 충분히 떨어져 지나간다
+			}
+			// 지금 서 있는 쪽(직선 기준 왼쪽/오른쪽)으로 그 사람 옆을 돌아간다.
+			if (!Away.Normalize())
+			{
+				const FVector Perp(-D.Y, D.X, 0.f);
+				Away = (FVector::DotProduct(Perp, -FromToC) >= 0.f ? Perp : -Perp).GetSafeNormal();
+			}
+			BestT = T;
+			BestWaypoint = FVector(C.X, C.Y, To.Z) + Away * (DetourClearance + 10.f);
+		}
+		return BestWaypoint;
+	}
+
+	/**
+	 * Self가 Target으로 걸어갈 때 서 있는 사람(스팟 칸·줄·일행 대기)을 돌아갈 중간 목표.
+	 * 걷는 사람은 여기서 보지 않는다 - 길 밖에서 움직이는 사람은 ChooseSteerDirection이, 길 위 행인은
+	 * Director의 차선 계획(길 가는 사람이 비킨다)이 맡는다.
+	 */
+	static FVector DetourForSpotWalk(const ASubNpcCharacter* Self, const FVector& Target)
+	{
+		const UWorld* World = Self ? Self->GetWorld() : nullptr;
+		const USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
+		if (!Director)
+		{
+			return Target;
+		}
+		const FVector From = Self->GetActorLocation();
+		TArray<FVector, TInlineAllocator<16>> Obstacles;
+		for (const ASubNpcCharacter* Other : Director->GetActiveNpcs())
+		{
+			if (Other == Self || !IsValid(Other) || Other->IsPooled())
+			{
+				continue;
+			}
+			const FVector Loc = Other->GetActorLocation();
+			const float DistSq = FVector::DistSquared2D(Loc, From);
+			const bool bStanding = Other->GetActivity() == ESubNpcActivity::AtSpot && !Other->IsMovingOffLane();
+			if (bStanding)
+			{
+				if (DistSq <= FMath::Square(DetourScanRadius))
+				{
+					Obstacles.Add(Loc);
+				}
+				continue;
+			}
+			// 걷는 사람은 경유점이 아니라 ChooseSteerDirection(속도 기반)이 피한다. 길 위 행인은 그쪽이 비킨다.
+		}
+		return DetourAroundStanders(Obstacles, From, Target);
+	}
+
+	// ---- 속도 기반 회피 (길 밖에서 걷는 사람: 줄·칸·일행 대기로 가기, 길로 돌아가기) ----
+
+	/** 두 사람 몸이 닿는 거리 (cm). 캡슐 두 개 + 약간의 여유 */
+	constexpr float SteerBodyDistance = 72.f;
+
+	/** 이 시간(초) 안에 부딪히면 그 방향은 피한다. 길면 일찍·크게 돌고, 짧으면 바짝 붙어 지나간다 */
+	constexpr float SteerHorizon = 1.5f;
+
+	/** 이 시간(초) 안에 부딪히는 방향뿐이면 서서 기다린다 */
+	constexpr float SteerStopTtc = 0.35f;
+
+	/** 이 반경(cm) 안의 사람만 본다 */
+	constexpr float SteerScanRadius = 350.f;
+
+	/** 지금 속도 Vel로 걸을 때 Rel 위치·RelVelOther 속도의 상대와 부딪히기까지의 시간 (초). 안 부딪히면 큰 값 */
+	static float TimeToCollision(const FVector2D& Rel, const FVector2D& RelVel)
+	{
+		// |Rel - RelVel·t| = R 의 가장 작은 양의 해.
+		const float R = SteerBodyDistance;
+		const float C = Rel.SizeSquared() - R * R;
+		if (C <= 0.f)
+		{
+			// [버그 수정] 이미 몸이 닿아 있을 때 모든 방향을 "지금 부딪힘(0초)"으로 보면 어느 쪽도 못 골라 영영 섰다
+			// (기록: 줄 당길 때 뒤에서 온 사람과 겹친 사람이 4초 넘게 그 자리에 정지). 멀어지는 방향은 충돌이 아니다.
+			return (FVector2D::DotProduct(Rel, RelVel) > 0.f) ? 0.f : 1000.f;
+		}
+		const float A = RelVel.SizeSquared();
+		if (A < 1.f)
+		{
+			return 1000.f;
+		}
+		const float B = -2.f * FVector2D::DotProduct(Rel, RelVel);
+		const float Disc = B * B - 4.f * A * C;
+		if (Disc < 0.f)
+		{
+			return 1000.f;
+		}
+		const float T = (-B - FMath::Sqrt(Disc)) / (2.f * A);
+		return T > 0.f ? T : 1000.f;
+	}
+
+	/**
+	 * 길 밖에서 Target으로 걸어갈 방향을 고른다. 0이면 서서 기다린다.
+	 * [개선] 예전 돌아가기(DetourForSpotWalk)는 상대 위치 하나만 봐서, 걷는 사람과 엇갈릴 때 언제·어느 쪽으로
+	 * 비킬지 몰라 그대로 직진하다 부딪혔다. 목표 방향과 좌우 ±20·40·60·90도를 후보로 두고, 주변 사람이
+	 * 지금 속도로 계속 움직인다고 보고 각 방향의 충돌 시간을 잰다. 1.5초 안에 안 부딪히면서 목표에 가장 가까운
+	 * 방향으로 걷는다. 다가오는 사람이 있으면 그 사람 뒤로 비켜 지나간다. 모든 방향이 곧 부딪히면 그때만 선다.
+	 * 목표 바로 옆에 선 사람(줄에서 내 앞사람)은 장애물로 치지 않는다 - 그 뒤에 서야 한다.
+	 */
+	static FVector ChooseSteerDirection(const ASubNpcCharacter* Self, const FVector& Target, float MySpeed)
+	{
+		const FVector From = Self->GetActorLocation();
+		FVector2D Desired(Target.X - From.X, Target.Y - From.Y);
+		const float DesiredLen = Desired.Size();
+		if (DesiredLen < 1.f)
+		{
+			return FVector::ZeroVector;
+		}
+		Desired /= DesiredLen;
+
+		const UWorld* World = Self->GetWorld();
+		const USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
+		if (!Director)
+		{
+			return FVector(Desired.X, Desired.Y, 0.f);
+		}
+
+		struct FNeighbor { FVector2D Pos; FVector2D Vel; };
+		TArray<FNeighbor, TInlineAllocator<24>> Neighbors;
+		for (const ASubNpcCharacter* Other : Director->GetActiveNpcs())
+		{
+			if (Other == Self || !IsValid(Other) || Other->IsPooled())
+			{
+				continue;
+			}
+			const FVector Loc = Other->GetActorLocation();
+			if (FVector::DistSquared2D(Loc, From) > FMath::Square(SteerScanRadius)
+				|| FVector::DistSquared2D(Loc, Target) < FMath::Square(DetourClearance))
+			{
+				continue;
+			}
+			// 길 위를 걷는 사람은 그쪽이 비킨다 (Director의 차선 계획이 스팟을 오가는 사람을 장애물로 본다).
+			// 여기서까지 피하면 스팟 쪽 동선(줄·칸·일행 대기)이 길 가는 사람마다 휘어 꼬였다.
+			if (Other->IsWalkingOnPath() && !Other->IsMovingOffLane())
+			{
+				continue;
+			}
+			// 실제로 움직인 속도로 예측한다 (줄에서 서서 기다리는 사람은 0 - 예전엔 걷는 속도로 가정해 헛피했다)
+			Neighbors.Add({ FVector2D(Loc.X - From.X, Loc.Y - From.Y), Other->GetMeasuredVelocity() });
+		}
+		if (Neighbors.Num() == 0)
+		{
+			Self->SteerHoldDir = Desired;
+			return FVector(Desired.X, Desired.Y, 0.f);
+		}
+
+		// 목표까지 남은 거리보다 멀리 보면 목표 너머 사람까지 피한다
+		const float Horizon = FMath::Min(SteerHorizon, DesiredLen / FMath::Max(MySpeed, 1.f) + 0.2f);
+		static const float Angles[] = { 0.f, 20.f, -20.f, 40.f, -40.f, 60.f, -60.f, 90.f, -90.f };
+		float BestCost = TNumericLimits<float>::Max();
+		FVector2D BestDir = FVector2D::ZeroVector;
+		float BestTtc = 0.f;
+		for (const float Deg : Angles)
+		{
+			const FVector2D Dir = Desired.GetRotated(Deg);
+			const FVector2D MyVel = Dir * MySpeed;
+			float MinTtc = 1000.f;
+			for (const FNeighbor& N : Neighbors)
+			{
+				MinTtc = FMath::Min(MinTtc, TimeToCollision(N.Pos, MyVel - N.Vel));
+			}
+			// 목표에서 벗어나는 각도 + 곧 부딪히는 정도
+			float Cost = FMath::Abs(Deg) / 90.f + FMath::Max(0.f, Horizon - MinTtc) * 3.f;
+			// [흔들림 방지] 직전에 걷던 방향에서 많이 꺾일수록 벌점. 없으면 비용이 비슷한 좌우 후보를
+			// 프레임마다 번갈아 골라 줄로 들어오는 사람이 좌우로 크게 흔들렸다.
+			if (!Self->SteerHoldDir.IsNearlyZero())
+			{
+				Cost += 0.5f * (1.f - FVector2D::DotProduct(Dir, Self->SteerHoldDir));
+			}
+			if (Cost < BestCost)
+			{
+				BestCost = Cost;
+				BestDir = Dir;
+				BestTtc = MinTtc;
+			}
+		}
+		if (BestTtc < SteerStopTtc)
+		{
+			return FVector::ZeroVector;   // 어느 쪽도 곧 부딪힌다 - 잠깐 선다
+		}
+		// 방향도 한 번에 꺾지 않고 조금씩 돌린다 (사람은 걸으며 부드럽게 방향을 튼다)
+		if (!Self->SteerHoldDir.IsNearlyZero())
+		{
+			const FVector2D Blended = (Self->SteerHoldDir * 0.75f + BestDir * 0.25f).GetSafeNormal();
+			if (!Blended.IsNearlyZero())
+			{
+				BestDir = Blended;
+			}
+		}
+		Self->SteerHoldDir = BestDir;
+		return FVector(BestDir.X, BestDir.Y, 0.f);
+	}
+
+	/**
+	 * 길 밖에서 Target으로 걸어갈 방향 (0이면 이번 틱은 선다).
+	 * 서 있는 사람(이벤트·줄·일행 대기)은 옆을 경유해 돌아가고, 길 밖에서 움직이는 사람은 속도 기반으로 피한다.
+	 * 길 위 행인은 피하지 않는다 - 그쪽이 비킨다.
+	 */
+	static FVector SteerForSpotWalk(const ASubNpcCharacter* Self, const FVector& Target, float Speed)
+	{
+		return ChooseSteerDirection(Self, DetourForSpotWalk(Self, Target), Speed);
+	}
 }
 
 namespace SubNpcGroupTuning
@@ -279,16 +542,18 @@ namespace SubNpcGroupTuning
 	constexpr float CatchUpRange = 150.f;
 
 	/** 추종자 속도 배율 범위. 하한이 0보다 커야 뒷걸음질이 없다 */
-	constexpr float SpeedScaleMin = 0.55f;
-	// [튜닝] 1.65 → 1.2. 경로를 갈아탄 직후 리더와의 간격이 크게 잡히면 1.65배로 달려가서
+	// [튜닝] 0.55~1.2 → 0.8~1.15. 일행은 되도록 리더와 같은 속도로 걷는다 (빨라졌다 느려졌다 하면 일행으로 안 보인다).
+	// 벌어진 간격은 조금 더 천천히 메운다.
+	constexpr float SpeedScaleMin = 0.8f;
+	// [튜닝] 1.65 → 1.2 → 1.15. 경로를 갈아탄 직후 리더와의 간격이 크게 잡히면 1.65배로 달려가서
 	// 앞사람에 닿아 서고, 풀리면 또 달려가기를 반복했다 (이음매에서 빨라지고 겹치는 원인 중 하나).
-	constexpr float SpeedScaleMax = 1.2f;   // 걸음 속도 상한(MaxSpeedRatio 1.25)보다 낮아야 뒤처짐이 쌓이지 않는다
+	constexpr float SpeedScaleMax = 1.15f;   // 걸음 속도 상한(MaxSpeedRatio 1.25)보다 낮아야 뒤처짐이 쌓이지 않는다
 
-	/** 일행 걸음 속도를 리더 속도에서 이 비율(±)만큼 다르게 준다. 0.03 = ±3% */
-	constexpr float MemberSpeedJitter = 0.03f;
+	/** 일행 걸음 속도를 리더 속도에서 이 비율(±)만큼 다르게 준다. 0이면 리더와 같은 속도 */
+	constexpr float MemberSpeedJitter = 0.f;
 
 	/** 자기 자리보다 앞서 있을 때의 최소 속도 배율. 0이면 길 한가운데 서서 정체를 만든다 */
-	constexpr float AheadSpeedScaleMin = 0.3f;
+	constexpr float AheadSpeedScaleMin = 0.6f;
 
 	/** 일행이 리더 옆 자리로 돌아가는 속도 (1/초) */
 	constexpr float LaneFollowRate = 2.f;
@@ -587,6 +852,11 @@ void ASubNpcCharacter::ClearRuntimeState()
 	PendingAvoidNudge = 0.f;
 	bPendingRecycle = false;
 	NextSpotCheckDistance = 0.f;
+	bGroupWaiting = false;
+	bGroupWaitMoving = false;
+	GroupWaitSpot = nullptr;
+	GroupSpotVisitor = nullptr;
+	GroupVisitDeadline = 0.f;
 }
 
 // ---------------------------------------------------------------------------
@@ -787,7 +1057,7 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 	// ABP가 읽을 값을 갱신한다.
 	// 프로퍼티라 Property Access로 스레드 안전하게 읽힌다.
 	bIsMoving = (CurrentActivity == ESubNpcActivity::Walking) ||
-		(CurrentActivity == ESubNpcActivity::AtSpot && (bApproachingSpot || bQueueMoving)) ||
+		(CurrentActivity == ESubNpcActivity::AtSpot && (bApproachingSpot || bQueueMoving || bGroupWaitMoving)) ||
 		(CurrentActivity == ESubNpcActivity::Reacting && CurrentReaction == ESubNpcReaction::Dodge);
 	// 감속까지 반영해야 걷기 애니메이션 재생 속도가 실제 이동과 맞는다.
 	CurrentSpeed = bIsMoving
@@ -804,7 +1074,7 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 		CurrentSpeed = bHolding ? 0.f : WalkSpeed * SubNpcSpotWalk::RejoinSpeedScale;
 	}
 	// 스팟·줄로 걸어가다 양보하며 서 있으면 서 있는 자세로 보여야 한다.
-	else if (CurrentActivity == ESubNpcActivity::AtSpot && bOffLaneYield && (bApproachingSpot || bQueueMoving))
+	else if (CurrentActivity == ESubNpcActivity::AtSpot && bOffLaneYield && (bApproachingSpot || bQueueMoving || bGroupWaitMoving))
 	{
 		bIsMoving = false;
 		CurrentSpeed = 0.f;
@@ -813,7 +1083,11 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 	switch (CurrentActivity)
 	{
 	case ESubNpcActivity::AtSpot:
-		if (QueuedSpot.IsValid() && !OccupiedSpot)
+		if (bGroupWaiting)
+		{
+			TickGroupWait(DeltaTime, Now);
+		}
+		else if (QueuedSpot.IsValid() && !OccupiedSpot)
 		{
 			TickSpotQueue(DeltaTime, Now);
 		}
@@ -875,6 +1149,43 @@ void ASubNpcCharacter::Tick(float DeltaTime)
 			TickPathFollow(DeltaTime);
 		}
 		return;
+	}
+}
+
+void ASubNpcCharacter::PushApart(const FVector& WorldPush)
+{
+	const FVector Push(WorldPush.X, WorldPush.Y, 0.f);
+	if (Push.IsNearlyZero())
+	{
+		return;
+	}
+
+	// 길 위를 걷는 중이면 목표점(진행도·차선)을 옮기고, 몸은 목표점이 실제로 옮겨진 만큼만 옮긴다.
+	// [버그 수정] 몸을 민 만큼 그대로 옮기면, 길 가장자리에서 차선이 길 폭에 잘린 만큼 몸과 목표점이 어긋나
+	// 다음 걸음에 목표점으로 끌려 돌아갔다 (서 있는 일행이 290cm/s로 움직이고 다시 겹치기를 반복).
+	// 진행도는 스플라인 정방향 기준이라 역방향으로 걷는 사람도 같은 식이다.
+	FVector Applied = Push;
+	const bool bOnPath = IsWalkingOnPath() && !bRejoiningPath;
+	if (bOnPath)
+	{
+		const FVector OldTarget = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
+		const FVector Base = CurrentPath->GetLocationAtDistance(PathDistance, 0.f);
+		const FVector Right = (CurrentPath->GetLocationAtDistance(PathDistance, 1.f) - Base).GetSafeNormal2D();
+		const FVector Tangent = CurrentPath->GetDirectionAtDistance(PathDistance).GetSafeNormal2D();
+		const float HalfWidth = CurrentPath->GetLaneHalfWidth();
+		LaneOffset = FMath::Clamp(LaneOffset + FVector::DotProduct(Push, Right), -HalfWidth, HalfWidth);
+		PathDistance = FMath::Clamp(PathDistance + FVector::DotProduct(Push, Tangent), 0.f, CurrentPath->GetPathLength());
+		const FVector NewTarget = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
+		Applied = FVector(NewTarget.X - OldTarget.X, NewTarget.Y - OldTarget.Y, 0.f).GetClampedToMaxSize2D(Push.Size2D());
+	}
+
+	// 가까운(Near) 행인은 목표점만 옮긴다. 매 프레임 걸음을 계산하므로 다음 걸음에 따라오고, 걸음 상한(1.25배)이
+	// 전체 속도를 묶어 준다 - 몸까지 옮기면 옆걸음(추월·회피)에 더해져 1.4~1.5배로 튀었다.
+	// 중간 거리 행인은 0.1초마다만 걸음을 계산하므로 몸도 바로 옮긴다 (안 그러면 그동안 겹친 채로 있다).
+	// 길 밖에서 움직이는 사람(스팟·줄·합류)은 목표점이 따로 없으니 몸을 옮긴다.
+	if (!Applied.IsNearlyZero() && (!bOnPath || CurrentLodBand != ESubNpcLodBand::Near))
+	{
+		SetActorLocation(GetActorLocation() + Applied);
 	}
 }
 
@@ -1144,7 +1455,14 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 		}
 		else
 		{
-			const FVector Dir2D = FVector(ToTarget.X, ToTarget.Y, 0.f) / Remaining;
+			// 서 있는 사람(줄·이벤트)은 돌아가고, 길 밖에서 움직이는 사람은 피해서 길로 나간다
+			const FVector Dir2D = SubNpcSpotWalk::SteerForSpotWalk(this, Target, Step / FMath::Max(DeltaTime, KINDA_SMALL_NUMBER));
+			if (Dir2D.IsNearlyZero())
+			{
+				Out.Result = FSubNpcPathStep::EResult::RotateOnly;   // 곧 부딪힌다 - 이번 틱은 선다
+				Out.Rotation = GetActorRotation();
+				return;
+			}
 			FVector Next = Location + Dir2D * Step;
 			// [버그 수정] 높이는 목표점이 아니라 내 발밑 바닥에 맞춘다. 목표점(진행도)은 계속 앞으로 가서
 			// 오르막 위에 있을 수 있다 - 그 높이를 따라가면 평지를 걸으면서 허공으로 올라갔다
@@ -1241,6 +1559,15 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 		const FVector Delta2D(Target.X - Current.X, Target.Y - Current.Y, 0.f);
 		const float MaxStep = WalkSpeed * SubNpcCrowdFlow::MaxSpeedRatio * DeltaTime;
 		const float StepSize = Delta2D.Size();
+
+		// 몸이 목표점보다 많이 뒤처졌으면(목표점이 진행 방향 앞) 진행도를 묶어 둔다. 진행도가 몸보다 몇 미터씩
+		// 앞서 나가면 몸은 그 목표점까지 사람들 사이를 직선으로 가로지르고, 진행도로 정하는 앞뒤 판정도 틀어진다.
+		// 목표점이 몸 뒤에 있으면 묶지 않는다 - 묶으면 몸이 뒤로 걸어간다.
+		if (StepSize > SubNpcCrowdFlow::MaxTargetLead && FVector::DotProduct(Delta2D, Dir) > 0.f)
+		{
+			PathDistance = PathDistanceBefore;
+		}
+
 		if (StepSize > MaxStep && StepSize > KINDA_SMALL_NUMBER)
 		{
 			const FVector Clamped = Delta2D * (MaxStep / StepSize);
@@ -1698,9 +2025,18 @@ void ASubNpcCharacter::RollForActivitySpot()
 {
 	// [버그 수정] 일행을 이끄는 리더도 스팟에 들르지 않는다. 리더가 스팟·줄에서 수십 초를 보내는 동안
 	// 일행은 길 한가운데서 리더를 기다리고, 그 뒤로 정체가 생겼다 (측정: 스팟 옆에 20명 넘게 정지).
-	if (!CurrentPath || OccupiedSpot || QueuedSpot.IsValid() || GroupLeader.IsValid() || bHasGroupFollowers)
+	if (!CurrentPath || OccupiedSpot || QueuedSpot.IsValid() || bHasGroupFollowers || bGroupWaiting)
 	{
-		// 그룹 추종 중인 개체는 멈추지 않는다 (리더만 멈추면 대열이 깨진다).
+		return;
+	}
+
+	// [일행 스팟 들르기] 일행(리더 아님)은 "일행 들르기"를 켠 스팟에만 들른다 (자리가 없으면 줄을 선다).
+	// 들르면 리더와 나머지 일행이 스팟 옆 대기 자리에 비켜서서 기다린다 (BeginGroupSpotVisit).
+	// 리더는 들르지 않는다 - 무리 전체를 세우는 사람이라 리더가 빠지면 대열을 다시 짜야 한다.
+	ASubNpcCharacter* Leader = GroupLeader.Get();
+	if (GroupLeader.IsValid() && (!Leader || Leader->IsHostingGroupVisit() || !Leader->IsWalkingOnPath()
+		|| Leader->GetCurrentPath() != CurrentPath))
+	{
 		return;
 	}
 
@@ -1740,6 +2076,11 @@ void ASubNpcCharacter::RollForActivitySpot()
 		}
 		RolledSpots.Add(Spot);
 
+		if (Leader && !Spot->AllowsGroupVisit())
+		{
+			continue;
+		}
+
 		if (FMath::FRand() > Spot->GetEngageChance())
 		{
 			continue;
@@ -1748,7 +2089,25 @@ void ASubNpcCharacter::RollForActivitySpot()
 		// 자리가 있고 기다리는 사람도 없으면 바로 들어간다.
 		if (TryEnterSpot(Spot))
 		{
+			if (Leader)
+			{
+				Leader->BeginGroupSpotVisit(this, Spot);
+			}
 			return;
+		}
+
+		// [변경] 일행도 줄을 선다. 예전에는 줄을 안 서서, 1인용 스팟에 줄이 늘 있으니 일행은 거의 못 들렀다.
+		// 들른 사람만 줄에 서고 나머지는 일행 대기 자리에서 기다린다 (MaxGroupVisitWait를 넘으면 그 사람만 일행에서 빠진다).
+
+		// [줄은 길 가장자리를 따라 상류 쪽으로 선다] 줄 끝이 이미 내 뒤에 있으면 거슬러 걸어가야 하니 서지 않는다.
+		// 줄 끝이 내 앞에 있을 때만 옆으로 한 걸음 비켜 붙는다 - 걷던 흐름 그대로 줄에 들어간다.
+		{
+			const FVector QueueEnd = Spot->GetQueueLocation(Spot->GetQueueLength());
+			const FVector Along = CurrentPath->GetDirectionAtDistance(PathDistance).GetSafeNormal2D() * (bReversedOnPath ? -1.f : 1.f);
+			if (FVector::DotProduct(FVector(QueueEnd - MyLocation).GetSafeNormal2D(), Along) < 0.f)
+			{
+				continue;
+			}
 		}
 
 		// [줄 서기] 자리가 없거나 먼저 기다리는 사람이 있으면 줄 끝에 선다.
@@ -1757,6 +2116,10 @@ void ASubNpcCharacter::RollForActivitySpot()
 		if (Spot->TryJoinQueue(this))
 		{
 			BeginSpotQueue(Spot);
+			if (Leader)
+			{
+				Leader->BeginGroupSpotVisit(this, Spot);
+			}
 			return;
 		}
 	}
@@ -1818,9 +2181,28 @@ void ASubNpcCharacter::TickSpotQueue(float DeltaTime, float Now)
 	}
 
 	// 차례가 왔으면 들어간다. 줄의 맨 앞만 통과하므로 순서가 지켜진다.
-	if (TryEnterSpot(Spot))
+	// [자연스러운 차례] 칸이 비었다고 바로 들어가지 않는다. 앞사람이 칸에서 완전히 벗어난 걸 보고,
+	// 잠깐(랜덤) 뒤에 들어간다. 예전에는 앞사람이 나가는 순간 다음 사람이 같은 자리로 들어가 겹치고 어색했다.
+	if (Spot->CanEnterNow(this))
 	{
-		return;
+		if (!IsSpotStandClear(Spot))
+		{
+			SpotEnterReadyTime = -1.f;
+		}
+		else if (SpotEnterReadyTime < 0.f)
+		{
+			SpotEnterReadyTime = Now + FMath::FRandRange(SubNpcSpotWalk::QueueReactMin, SubNpcSpotWalk::QueueReactMax);
+		}
+		else if (Now >= SpotEnterReadyTime && TryEnterSpot(Spot))
+		{
+			SpotEnterReadyTime = -1.f;
+			QueueStepReadyTime = -1.f;
+			return;
+		}
+	}
+	else
+	{
+		SpotEnterReadyTime = -1.f;
 	}
 
 	const int32 Index = Spot->GetQueueIndex(this);
@@ -1855,8 +2237,86 @@ void ASubNpcCharacter::TickSpotQueue(float DeltaTime, float Now)
 
 	if (!bQueueMoving)
 	{
+		// 앞자리가 비었다. 앞사람이 걸어가는 걸 잠깐 보고 나서 따라 당긴다 (줄 전체가 한꺼번에 움직이지 않게).
+		if (QueueStepReadyTime < 0.f)
+		{
+			QueueStepReadyTime = Now + FMath::FRandRange(SubNpcSpotWalk::QueueReactMin, SubNpcSpotWalk::QueueReactMax);
+		}
+		if (Now < QueueStepReadyTime)
+		{
+			return;
+		}
+		QueueStepReadyTime = -1.f;
 		bQueueMoving = true;
 		SetMovementState(ENpcMovementState::Walk);
+	}
+
+	// [줄 안에서 당겨 서기] 이미 줄 위에 서 있다가 앞자리로 당기는 중이면 줄을 따라 똑바로 걷는다.
+	// 앞사람이 비킨 만큼만 따라붙는다 (간격의 85%보다 가까우면 기다린다). 피하기·양보를 쓰지 않는다 -
+	// 예전에는 줄 안 이동도 길 밖 걸음으로 취급해서, 앞사람이 아직 안 비켰을 때 피하기·양보·겹침 금지가
+	// 서로 세워 줄 전체가 몇 초씩 멈췄다 (crowd.DebugSpot 2 기록).
+	{
+		const FVector Q0 = Spot->GetQueueLocation(0);
+		FVector Axis = Spot->GetQueueLocation(1) - Q0;   // 스팟에서 멀어지는 쪽
+		Axis.Z = 0.f;
+		const float Spacing = Axis.Size();
+		if (Spacing > KINDA_SMALL_NUMBER)
+		{
+			Axis /= Spacing;
+			const FVector Origin = Q0 - Axis * Spacing;   // 줄 0번 앞 = 이벤트 칸
+			const FVector Rel = Location - Origin;
+			const float MyAlong = FVector::DotProduct(Rel, Axis);
+			const float MyLateral = FMath::Abs(FVector::DotProduct(Rel, FVector(-Axis.Y, Axis.X, 0.f)));
+			const float TargetAlong = FVector::DotProduct(Target - Origin, Axis);
+			if (MyLateral < 40.f && MyAlong >= TargetAlong - 5.f)
+			{
+				// 내 바로 앞사람(줄 Index-1번, 0번이면 칸으로 들어가는 사람)과의 간격
+				float AheadGap = TNumericLimits<float>::Max();
+				if (const UWorld* World = GetWorld())
+				{
+					if (const USubNpcDirectorSubsystem* Director = World->GetSubsystem<USubNpcDirectorSubsystem>())
+					{
+						for (const ASubNpcCharacter* Other : Director->GetActiveNpcs())
+						{
+							// 같은 스팟 줄·칸 사람 + 스팟에서 나와 줄 옆을 지나 길로 돌아가는 사람 (예전엔 안 봐서 그대로 밀고 들어갔다)
+							const bool bSameSpot = Other->GetQueuedSpot() == Spot || Other->GetOccupiedSpot() == Spot;
+							if (Other == this || !IsValid(Other) || !(bSameSpot || Other->IsRejoiningPath()))
+							{
+								continue;
+							}
+							const FVector OtherRel = Other->GetActorLocation() - Origin;
+							const float OtherAlong = FVector::DotProduct(OtherRel, Axis);
+							if (!bSameSpot && FMath::Abs(FVector::DotProduct(OtherRel, FVector(-Axis.Y, Axis.X, 0.f))) > 60.f)
+							{
+								continue;   // 줄 선에서 벗어난 사람은 상관없다
+							}
+							if (OtherAlong < MyAlong)
+							{
+								AheadGap = FMath::Min(AheadGap, MyAlong - OtherAlong);
+							}
+						}
+					}
+				}
+				if (AheadGap < Spacing * 0.85f)
+				{
+					// 앞사람이 아직 덜 비켰다. 서 있는 자세로 기다린다 (걷는 자세로 제자리걸음하지 않게).
+					bIsMoving = false;
+					CurrentSpeed = 0.f;
+					return;
+				}
+				const FVector Dir = (Target - Location).GetSafeNormal2D();
+				FVector Next = Location + Dir * FMath::Min(Step, Remaining);
+				Next.Z = Location.Z;
+				if (!SnapToGround(Next))
+				{
+					Next.Z = Location.Z;
+				}
+				// 줄에서는 앞(스팟 쪽)을 보고 걷는다
+				const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), (-Axis).Rotation(), DeltaTime, 8.f);
+				SetActorLocationAndRotation(Next, NewRot, /*bSweep=*/false);
+				return;
+			}
+		}
 	}
 
 	// 다른 사람이 앞을 지나가는 중이면 잠깐 기다린다 (Director의 길 밖 양보).
@@ -1865,7 +2325,14 @@ void ASubNpcCharacter::TickSpotQueue(float DeltaTime, float Now)
 		return;
 	}
 
-	const FVector Dir = ToTarget / Remaining;
+	// 서 있는 사람(이벤트하는 사람·줄 앞사람들)은 옆으로 돌아서 간다 (줄은 이벤트하는 사람 뒤에 선다)
+	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, Target, WalkSpeed);
+	if (Dir.IsNearlyZero())
+	{
+		bIsMoving = false;   // 곧 부딪힌다 - 이번 틱은 서 있는 자세로 선다
+		CurrentSpeed = 0.f;
+		return;
+	}
 	FVector Next = Location + Dir * Step;
 	// 줄 자리로 옮길 때도 발밑 바닥에 붙인다 (길로 돌아갈 때와 같은 이유).
 	Next.Z = Location.Z;
@@ -1887,6 +2354,8 @@ void ASubNpcCharacter::LeaveSpotQueue()
 	const bool bWasQueued = QueuedSpot.IsValid() || bQueueMoving;
 	QueuedSpot = nullptr;
 	bQueueMoving = false;
+	QueueStepReadyTime = -1.f;
+	SpotEnterReadyTime = -1.f;
 
 	// 줄에만 서 있던 경우(아직 스팟을 차지하지 않음) 길로 걸어서 돌아간다.
 	if (CurrentActivity == ESubNpcActivity::AtSpot && !OccupiedSpot)
@@ -1932,6 +2401,12 @@ void ASubNpcCharacter::BeginRejoinPath()
 		if (FMath::Abs(Lateral) <= HalfWidth + SubNpcSpotWalk::OnPathTolerance)
 		{
 			bRejoiningPath = false;
+		}
+		else
+		{
+			// 길 밖에서 돌아가는 중이면 진행 방향 앞쪽으로 비스듬히 합류한다 (들어오는 흐름과 엇갈리지 않게)
+			const float Along = bReversedOnPath ? -1.f : 1.f;
+			PathDistance = FMath::Clamp(PathDistance + Along * SubNpcSpotWalk::RejoinLeadDistance, 0.f, CurrentPath->GetPathLength());
 		}
 	}
 	NextSpotCheckDistance = PathDistance;
@@ -2005,7 +2480,14 @@ void ASubNpcCharacter::TickApproachSpot(float DeltaTime)
 	}
 
 	// 걸어가는 방향을 본다. 높이는 설 자리 쪽으로 같이 맞춰 간다.
-	const FVector Dir = ToStand / Remaining;
+	// 서 있는 사람은 돌아가고, 길 밖에서 움직이는 사람은 피해서 간다
+	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, SpotStandLocation, WalkSpeed);
+	if (Dir.IsNearlyZero())
+	{
+		bIsMoving = false;   // 곧 부딪힌다 - 이번 틱은 서 있는 자세로 선다
+		CurrentSpeed = 0.f;
+		return;
+	}
 	FVector Next = Location + Dir * Step;
 	// 스팟까지 걸어가는 동안에도 발밑 바닥에 붙인다 (오르막을 가로지를 때 허공을 걷지 않게).
 	Next.Z = Location.Z;
@@ -2335,6 +2817,18 @@ void ASubNpcCharacter::EndReaction()
 	}
 
 	bResumeSpotAfterReaction = false;
+
+	// 일행 대기 중에 부딪혔으면 대기 자리로 돌아간다 (일행이 아직 기다리는 중일 때만)
+	if (bGroupWaiting && GroupWaitSpot.IsValid())
+	{
+		CurrentActivity = ESubNpcActivity::AtSpot;
+		bGroupWaitMoving = true;
+		SetMovementState(ENpcMovementState::Walk);
+		return;
+	}
+	bGroupWaiting = false;
+	bGroupWaitMoving = false;
+
 	CurrentActivity = ESubNpcActivity::Walking;
 	SetMovementState(ENpcMovementState::Walk);
 
@@ -2565,12 +3059,18 @@ FVector ASubNpcCharacter::ResolveWorldBlocking(const FVector& From, const FVecto
 }
 
 bool ASubNpcCharacter::StartGroupChat(float Duration, FName TalkAnimId, int32 MemberIndex, int32 MemberCount, float TurnLength,
-	ASubNpcCharacter* Partner)
+	ASubNpcCharacter* Partner, FName ListenAnimId)
 {
 	const UWorld* World = GetWorld();
-	if (!World || !IsWalkingOnPath() || TalkAnimId.IsNone())
+	// 걷는 중이거나, 일행이 스팟에 들러 길가에서 기다리는 중이어야 한다
+	if (!World || (!IsWalkingOnPath() && !bGroupWaiting) || TalkAnimId.IsNone())
 	{
 		return false;
+	}
+	// 이미 다른 동작을 걸어 두었으면 거둔다 (새 대화의 역할로 다시 건다)
+	if (bGroupChatting)
+	{
+		StopGroupChat();
 	}
 
 	// [변경] 예전에는 길에서 멈춰 서로 마주 보고 이야기했다. 걸음을 멈추면 뒤가 막히고
@@ -2585,6 +3085,8 @@ bool ASubNpcCharacter::StartGroupChat(float Duration, FName TalkAnimId, int32 Me
 	GroupChatIndex = MemberIndex;
 	GroupChatCount = FMath::Max(1, MemberCount);
 	GroupChatAnimId = TalkAnimId;
+	GroupListenAnimId = ListenAnimId;
+	GroupChatShownRole = -1;
 	GroupChatPartner = Partner;
 
 	TickGroupChat(Now);
@@ -2599,7 +3101,8 @@ void ASubNpcCharacter::TickGroupChat(float Now)
 	}
 
 	// 걷기를 그만뒀으면(스팟·반응·대화창) 일행 대화도 끝낸다. 상체 손짓이 그 동작 위에 얹히면 어색하다.
-	if (Now >= GroupChatEndTime || CurrentActivity != ESubNpcActivity::Walking)
+	// 일행 대기(상태는 AtSpot)는 예외 - 기다리는 동안 이야기하는 게 연출이다.
+	if (Now >= GroupChatEndTime || (CurrentActivity != ESubNpcActivity::Walking && !bGroupWaiting))
 	{
 		StopGroupChat();
 		return;
@@ -2610,19 +3113,24 @@ void ASubNpcCharacter::TickGroupChat(float Now)
 	const int32 Turn = FMath::FloorToInt((Now - GroupChatStartTime) / GroupChatTurnLength);
 	const bool bMyTurn = (Turn % GroupChatCount) == GroupChatIndex;
 
-	if (bMyTurn && !bGroupChatGesturing)
+	// [그룹 동작] 말하는 차례면 말하기, 아니면 듣기 동작을 상체에 건다. 듣기 동작이 없으면 손짓을 거둔다.
+	// 같은 슬롯에 다시 걸면 앞 동작에서 블렌드로 넘어간다. 역할이 바뀔 때만 건다.
+	const int8 WantRole = bMyTurn ? 1 : (GroupListenAnimId.IsNone() ? -1 : 0);
+	if (WantRole == GroupChatShownRole || !CharacterAnimationComponent)
 	{
-		bGroupChatGesturing = CharacterAnimationComponent
-			&& CharacterAnimationComponent->PlayAnimOnSlot(GroupChatAnimId, SubNpcGroupChat::UpperBodySlot, /*bLoop=*/true);
+		return;
 	}
-	else if (!bMyTurn && bGroupChatGesturing)
+	if (WantRole < 0)
 	{
+		CharacterAnimationComponent->StopAnimOnSlot(SubNpcGroupChat::UpperBodySlot, SubNpcGroupChat::GestureBlendOut);
 		bGroupChatGesturing = false;
-		if (CharacterAnimationComponent)
-		{
-			CharacterAnimationComponent->StopAnimOnSlot(SubNpcGroupChat::UpperBodySlot, SubNpcGroupChat::GestureBlendOut);
-		}
 	}
+	else
+	{
+		const FName AnimId = (WantRole == 1) ? GroupChatAnimId : GroupListenAnimId;
+		bGroupChatGesturing = CharacterAnimationComponent->PlayAnimOnSlot(AnimId, SubNpcGroupChat::UpperBodySlot, /*bLoop=*/true);
+	}
+	GroupChatShownRole = WantRole;
 }
 
 void ASubNpcCharacter::StopGroupChat()
@@ -2633,7 +3141,238 @@ void ASubNpcCharacter::StopGroupChat()
 	}
 	bGroupChatting = false;
 	bGroupChatGesturing = false;
+	GroupChatShownRole = -1;
 	GroupChatPartner = nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// 일행 스팟 들르기
+//
+// 일행 중 한 명(리더 아님)이 "일행 들르기"를 켠 스팟에 들어가면, 리더와 나머지 일행은 스팟 옆 대기 자리
+// (스팟의 초록 원)로 비켜서서 그룹 동작을 하며 기다린다. 들른 사람이 스팟에서 나오면 모두 길로 돌아가
+// 같이 떠난다. 너무 오래(스팟의 MaxGroupVisitWait) 걸리면 들른 사람만 일행에서 빠지고 나머지는 떠난다.
+// 예전처럼 길 한가운데서 기다리면 그 뒤로 정체가 생겼으므로(측정: 스팟 옆에 20명 넘게 정지) 길 밖에서 기다린다.
+// ---------------------------------------------------------------------------
+
+bool ASubNpcCharacter::GetSpotDebugState(FString& OutLabel, FVector& OutTarget) const
+{
+	const TCHAR* Yield = bOffLaneYield ? TEXT(" (양보)") : TEXT("");
+	OutTarget = GetActorLocation();
+	if (bGroupWaiting)
+	{
+		OutLabel = FString::Printf(TEXT("일행 대기%s%s"), bGroupWaitMoving ? TEXT(" 이동") : TEXT(""), Yield);
+		OutTarget = GroupWaitLocation;
+		return true;
+	}
+	if (const ANpcActivitySpot* Queued = QueuedSpot.Get(); Queued && !OccupiedSpot)
+	{
+		const int32 Index = Queued->GetQueueIndex(this);
+		OutLabel = FString::Printf(TEXT("줄%d %s%s"), Index + 1, bQueueMoving ? TEXT("이동") : TEXT("대기"), Yield);
+		OutTarget = (Index != INDEX_NONE) ? Queued->GetQueueLocation(Index) : GetActorLocation();
+		return true;
+	}
+	if (OccupiedSpot)
+	{
+		OutLabel = bApproachingSpot ? FString::Printf(TEXT("칸으로%s"), Yield) : FString(TEXT("이벤트"));
+		OutTarget = bApproachingSpot ? SpotStandLocation : GetActorLocation();
+		return true;
+	}
+	if (CurrentActivity == ESubNpcActivity::Walking && bRejoiningPath)
+	{
+		OutLabel = bMergeHold ? TEXT("합류 대기") : FString::Printf(TEXT("길로 복귀%s"), Yield);
+		if (CurrentPath)
+		{
+			OutTarget = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
+		}
+		return true;
+	}
+	if (CurrentActivity == ESubNpcActivity::Reacting)
+	{
+		OutLabel = TEXT("반응");
+		return true;
+	}
+	return false;
+}
+
+void ASubNpcCharacter::BeginGroupSpotVisit(ASubNpcCharacter* Visitor, ANpcActivitySpot* Spot)
+{
+	UWorld* World = GetWorld();
+	USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
+	if (!Visitor || !Spot || !Director || IsHostingGroupVisit())
+	{
+		return;
+	}
+	const float Now = World->GetTimeSeconds();
+	GroupSpotVisitor = Visitor;
+	GroupVisitDeadline = Now + Spot->GetMaxGroupVisitWait();
+
+	// 기다릴 사람: 리더(나) + 들른 사람을 뺀 일행
+	TArray<ASubNpcCharacter*, TInlineAllocator<5>> Waiters;
+	Waiters.Add(this);
+	int32 GroupSize = 1;
+	for (ASubNpcCharacter* Npc : Director->GetActiveNpcs())
+	{
+		if (IsValid(Npc) && Npc->GroupLeader.Get() == this)
+		{
+			++GroupSize;
+			if (Npc != Visitor && Npc->IsWalkingOnPath())
+			{
+				Waiters.Add(Npc);
+			}
+		}
+	}
+
+	// 대기 중심을 둘러싸고 서서 서로 마주 본다 (모여 이야기하는 무리). 스팟 쪽 자리부터 채운다.
+	const FVector WaitCenter = Spot->GetGroupWaitCenter();
+	for (int32 i = 0; i < Waiters.Num(); ++i)
+	{
+		const FVector Location = Spot->GetGroupWaitLocation(i, Waiters.Num());
+		FVector ToCenter = WaitCenter - Location;
+		ToCenter.Z = 0.f;
+		if (ToCenter.IsNearlyZero())
+		{
+			ToCenter = Spot->GetActorLocation() - Location;   // 혼자 기다리면 스팟을 본다
+			ToCenter.Z = 0.f;
+		}
+		const FRotator Facing = ToCenter.IsNearlyZero() ? Spot->GetActorRotation() : ToCenter.Rotation();
+		Waiters[i]->BeginGroupWait(Spot, Location, Facing);
+	}
+
+	// 기다리는 동안 이야기한다 (무리 크기별 동작). 기다리는 시간 내내 이어진다.
+	if (Waiters.Num() >= 2)
+	{
+		Director->StartGroupChatFor(this, Waiters, GroupSize, Spot->GetMaxGroupVisitWait());
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[CrowdGroup] 일행 스팟 들르기 시작: %s 무리 %d명 | %s 이(가) %s 에 들어감, %d명이 기다림"),
+		*GetName(), GroupSize, *Visitor->GetName(), *Spot->GetName(), Waiters.Num());
+}
+
+void ASubNpcCharacter::BeginGroupWait(ANpcActivitySpot* Spot, const FVector& WaitLocation, const FRotator& WaitRotation)
+{
+	StopGroupChat();
+	bGroupWaiting = true;
+	bGroupWaitMoving = true;
+	GroupWaitSpot = Spot;
+	GroupWaitLocation = WaitLocation;
+	GroupWaitRotation = WaitRotation;
+
+	CurrentActivity = ESubNpcActivity::AtSpot;
+	bApproachingSpot = false;
+	bRejoiningPath = false;
+	SetMovementState(ENpcMovementState::Walk);
+}
+
+void ASubNpcCharacter::EndGroupWait()
+{
+	if (!bGroupWaiting)
+	{
+		return;
+	}
+	StopGroupChat();
+	bGroupWaiting = false;
+	bGroupWaitMoving = false;
+	GroupWaitSpot = nullptr;
+
+	// 반응 중이면 반응이 끝나고 알아서 길로 돌아간다 (EndReaction)
+	if (CurrentActivity == ESubNpcActivity::AtSpot)
+	{
+		CurrentActivity = ESubNpcActivity::Walking;
+		SetMovementState(ENpcMovementState::Walk);
+		BeginRejoinPath();
+	}
+}
+
+void ASubNpcCharacter::TickGroupWait(float DeltaTime, float Now)
+{
+	// 리더: 들른 사람이 끝났는지(스팟을 떠남·회수됨), 너무 오래 걸리는지 본다.
+	if (IsHostingGroupVisit() || GroupSpotVisitor.IsStale())
+	{
+		const ASubNpcCharacter* Visitor = GroupSpotVisitor.Get();
+		// 줄에 서 있는 동안도 아직 끝나지 않은 것이다 (일행도 줄을 선다)
+		const bool bVisitorDone = !IsValid(Visitor) || Visitor->IsPooled()
+			|| (Visitor->OccupiedSpot != GroupWaitSpot.Get() && Visitor->QueuedSpot.Get() != GroupWaitSpot.Get()
+				&& Visitor->CurrentActivity != ESubNpcActivity::Reacting);
+		if (bVisitorDone || Now >= GroupVisitDeadline || !GroupWaitSpot.IsValid())
+		{
+			EndGroupSpotVisit(!bVisitorDone);
+			return;
+		}
+	}
+	else
+	{
+		// 일행: 리더가 사라졌거나 기다리기를 끝냈으면 나도 그만 기다린다 (영영 서 있지 않게)
+		const ASubNpcCharacter* Leader = GroupLeader.Get();
+		if (!IsValid(Leader) || Leader->IsPooled() || !Leader->IsHostingGroupVisit())
+		{
+			EndGroupWait();
+			return;
+		}
+	}
+
+	if (!bGroupWaitMoving)
+	{
+		return;
+	}
+
+	// 대기 자리로 걸어간다 (스팟·줄로 가는 걸음과 같다)
+	const FVector Location = GetActorLocation();
+	FVector ToTarget = GroupWaitLocation - Location;
+	ToTarget.Z = 0.f;
+	const float Remaining = ToTarget.Size();
+	const float Step = WalkSpeed * DeltaTime;
+	if (Remaining <= FMath::Max(Step, SubNpcSpotWalk::ArriveTolerance))
+	{
+		bGroupWaitMoving = false;
+		SetActorLocationAndRotation(FVector(GroupWaitLocation.X, GroupWaitLocation.Y, Location.Z), GroupWaitRotation, /*bSweep=*/false);
+		SetMovementState(ENpcMovementState::Idle);
+		return;
+	}
+
+	// 다른 사람이 앞을 지나가는 중이면 잠깐 기다린다 (Director의 길 밖 양보)
+	if (bOffLaneYield)
+	{
+		return;
+	}
+
+	// 서 있는 사람(이벤트·줄·먼저 온 일행)은 돌아가고, 길 밖에서 움직이는 사람은 피해서 간다
+	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, GroupWaitLocation, WalkSpeed);
+	if (Dir.IsNearlyZero())
+	{
+		bIsMoving = false;   // 곧 부딪힌다 - 이번 틱은 서 있는 자세로 선다
+		CurrentSpeed = 0.f;
+		return;
+	}
+	FVector Next = Location + Dir * Step;
+	Next.Z = Location.Z;
+	if (!SnapToGround(Next))
+	{
+		Next.Z = FMath::FInterpConstantTo(Location.Z, GroupWaitLocation.Z, DeltaTime, WalkSpeed);
+	}
+	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Dir.Rotation(), DeltaTime, 8.f);
+	bool bBlockedByWorld = false;
+	SetActorLocationAndRotation(ResolveWorldBlocking(Location, Next, bBlockedByWorld), NewRot, /*bSweep=*/false);
+}
+
+void ASubNpcCharacter::EndGroupSpotVisit(bool bTimedOut)
+{
+	ASubNpcCharacter* Visitor = GroupSpotVisitor.Get();
+	GroupSpotVisitor = nullptr;
+
+	const UWorld* World = GetWorld();
+	UE_LOG(LogTemp, Log, TEXT("[CrowdGroup] 일행 스팟 들르기 끝: %s | %s, %.1f초 기다림"),
+		*GetName(), bTimedOut ? TEXT("시간 초과 - 들른 사람은 일행에서 빠짐") : TEXT("들른 사람이 나옴 - 같이 출발"),
+		(World && GroupWaitSpot.IsValid())
+			? World->GetTimeSeconds() - (GroupVisitDeadline - GroupWaitSpot->GetMaxGroupVisitWait()) : 0.f);
+
+	// 너무 오래 걸렸으면 들른 사람만 일행에서 빠진다 (혼자 다니는 행인이 된다)
+	if (bTimedOut && IsValid(Visitor) && Visitor->GroupLeader.Get() == this)
+	{
+		Visitor->GroupLeader = nullptr;
+	}
+
+	// 나(리더)부터 길로 돌아가고, 일행은 다음 틱에 리더가 기다리기를 끝낸 걸 보고 따라 나온다
+	EndGroupWait();
 }
 
 void ASubNpcCharacter::SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap, float InLaneOffset)
@@ -2649,9 +3388,27 @@ void ASubNpcCharacter::SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap,
 	if (Leader)
 	{
 		// 리더와 같은 경로·방향을 공유해야 간격 계산이 맞는다.
+		// [버그 수정] 이미 같은 경로·방향에 서 있으면 진행도를 덮어쓰지 않는다. 등장할 자리가 붐비면 SpawnOnPath가
+		// 경로를 따라 앞으로 밀어 세우는데, 여기서 진행도를 "리더 - 간격"으로 덮으면 몸은 수 미터 앞에 있고
+		// 목표점은 리더 뒤라서, 몸이 사람들 사이를 거슬러 걸어 목표점으로 돌아갔다
+		// (로그: 경로 A 입구에서 일행 진행도 0~60, 몸은 리더 옆, 목표점과 2~9m 차이 → 겹침의 대부분).
+		// 앞에 섰으면 간격 보정이 천천히 걷게 해서 리더 뒤로 자리를 잡는다.
+		const bool bSamePath = (CurrentPath == Leader->CurrentPath && bReversedOnPath == Leader->bReversedOnPath);
 		CurrentPath = Leader->CurrentPath;
 		bReversedOnPath = Leader->bReversedOnPath;
-		PathDistance = Leader->PathDistance - FollowGap;
+		if (!bSamePath)
+		{
+			PathDistance = Leader->PathDistance + (bReversedOnPath ? FollowGap : -FollowGap);
+		}
+
+		// 등장한 그 프레임에 부르므로 몸을 새 목표점(리더 옆 차선)으로 바로 옮긴다. 안 옮기면 그 차이만큼 걸어서 따라간다.
+		if (CurrentPath)
+		{
+			PathDistance = FMath::Clamp(PathDistance, 0.f, CurrentPath->GetPathLength());
+			FVector Location = CurrentPath->GetLocationAtDistance(PathDistance, LaneOffset);
+			SnapToGround(Location);
+			SetActorLocation(Location);
+		}
 
 		// 일행은 리더와 거의 같은 속도로 걷되 아주 조금씩 다르게 한다.
 		// 완전히 같으면 발걸음까지 똑같아 행진처럼 보인다. 벌어지는 건 위의 간격 보정이 잡아준다.
@@ -2661,4 +3418,42 @@ void ASubNpcCharacter::SetGroupLeader(ASubNpcCharacter* Leader, float FollowGap,
 		// 리더와 같은 다음 경로·갈아탈 지점을 쓴다.
 		PlanNextPath();
 	}
+}
+
+void ASubNpcCharacter::SampleMeasuredVelocity(float Now)
+{
+	const FVector Location = GetActorLocation();
+	const float Dt = Now - LastMeasureTime;
+	if (LastMeasureTime >= 0.f && Dt > KINDA_SMALL_NUMBER && Dt < 0.5f)
+	{
+		const FVector2D Raw = FVector2D(Location - LastMeasureLocation) / Dt;
+		// 순간이동(풀에서 꺼냄·일행 맞추기)은 속도가 아니다
+		MeasuredVelocity = (Raw.SizeSquared() < FMath::Square(WalkSpeed * 2.f + 100.f)) ? Raw : FVector2D::ZeroVector;
+	}
+	else
+	{
+		MeasuredVelocity = FVector2D::ZeroVector;
+	}
+	LastMeasureLocation = Location;
+	LastMeasureTime = Now;
+}
+
+bool ASubNpcCharacter::IsSpotStandClear(const ANpcActivitySpot* Spot) const
+{
+	const UWorld* World = GetWorld();
+	const USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
+	if (!Spot || !Director)
+	{
+		return true;
+	}
+	const FVector Stand = Spot->GetStandLocation(0);
+	for (const ASubNpcCharacter* Other : Director->GetActiveNpcs())
+	{
+		if (Other != this && IsValid(Other) && !Other->IsPooled()
+			&& FVector::DistSquared2D(Other->GetActorLocation(), Stand) < FMath::Square(SubNpcSpotWalk::StandClearRadius))
+		{
+			return false;
+		}
+	}
+	return true;
 }

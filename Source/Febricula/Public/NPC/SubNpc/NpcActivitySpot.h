@@ -98,11 +98,26 @@ public:
 	/** 줄에서 몇 번째인가 (0 = 맨 앞). 줄에 없으면 INDEX_NONE */
 	int32 GetQueueIndex(const ASubNpcCharacter* Npc) const;
 
+	/** 지금 줄 선 인원 (새로 서는 사람은 이 번호 자리에 선다) */
+	int32 GetQueueLength() const;
+
 	/** 줄의 Index번째 사람이 기다릴 위치 */
 	FVector GetQueueLocation(int32 Index) const;
 
 	/** 줄에서 이 시간(초)보다 오래 기다리면 포기하고 지나간다 */
 	float GetMaxQueueWait() const { return MaxQueueWait; }
+
+	/** 일행 중 한 명이 들를 수 있는 스팟인가 (나머지가 기다릴 자리가 있다) */
+	bool AllowsGroupVisit() const { return bAllowGroupVisit; }
+
+	/** 일행이 모여 기다릴 자리의 중심 (월드) */
+	FVector GetGroupWaitCenter() const;
+
+	/** Count명이 둘러설 때 Index번째 사람의 자리 (월드). 중심을 보고 서면 서로 마주 본다 */
+	FVector GetGroupWaitLocation(int32 Index, int32 Count) const;
+
+	/** 일행이 이 시간(초)보다 오래 기다리면 들른 사람만 일행에서 빠지고 나머지는 떠난다 */
+	float GetMaxGroupVisitWait() const { return MaxGroupVisitWait; }
 
 	/** SlotIndex번 칸의 중심 (흔들기 전). 서는 자리와 디버그 표시가 같이 쓴다 */
 	FVector GetSlotCenter(int32 SlotIndex) const;
@@ -166,15 +181,38 @@ protected:
 	float QueueSpacing = 80.f;
 
 	/**
-	 * 줄이 늘어설 방향 (스팟 로컬). 기본은 스팟의 오른쪽 - 칸들 바로 옆에서 이어진다.
-	 * 줄이 길(경로) 쪽으로 뻗지 않게 방향을 잡아준다.
+	 * 줄이 늘어설 방향 (스팟 로컬). 기본은 스팟의 뒤쪽 - 이벤트하는 사람 뒤로 한 줄로 서서 앞을 본다.
+	 * 스팟은 길을 바라보게 놓으므로 줄은 길에서 멀어지는 쪽으로 뻗는다.
+	 * [변경] 예전 기본값은 오른쪽(0,1,0)이라, 정원이 1이면 이벤트하는 사람 옆에 가로로 서서 옆을 쳐다보는 모양이었다.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Queue")
-	FVector QueueDirection = FVector(0.f, 1.f, 0.f);
+	FVector QueueDirection = FVector(-1.f, 0.f, 0.f);
 
 	/** 줄에서 이 시간(초)보다 오래 기다리면 포기하고 지나간다. 영원히 서 있는 사람을 막는다 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Queue", meta = (ClampMin = "1.0"))
 	float MaxQueueWait = 20.f;
+
+	/**
+	 * 일행(2~5명 무리) 중 한 명이 이 스팟에 들를 수 있다. 나머지는 일행 대기 자리(초록 원)에 비켜서서
+	 * 이야기하며 기다렸다가 같이 떠난다. 길가에 4명이 설 공간이 있는 스팟에만 켠다 - 좁은 곳에서 켜면 병목이 된다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Group")
+	bool bAllowGroupVisit = false;
+
+	/**
+	 * 일행이 모여 기다릴 자리의 중심 (스팟 로컬). 뷰포트에 끌어서 옮기는 표시가 나온다 - 줄(주황 원)·길에서
+	 * 떨어진 빈 곳에 놓는다. 기다리는 사람들은 이 점을 둘러싸고 서로 마주 보고 선다 (초록 원).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Group", meta = (MakeEditWidget = true))
+	FVector GroupWaitCenter = FVector(-250.f, -250.f, 0.f);
+
+	/** 둘러설 원의 최소 반지름 (cm). 인원이 많으면 어깨가 닿지 않게 자동으로 넓어진다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Group", meta = (ClampMin = "40.0"))
+	float GroupWaitRadius = 55.f;
+
+	/** 일행이 기다리는 최대 시간 (초). 넘으면 들른 사람만 일행에서 빠지고 나머지는 떠난다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spot|Group", meta = (ClampMin = "1.0"))
+	float MaxGroupVisitWait = 30.f;
 
 #if WITH_EDITORONLY_DATA
 	/**

@@ -164,12 +164,13 @@ protected:
 
 	// ---- 그룹 ----
 
-	/** 일행 없이 혼자 다닐 확률 (0~1). 나머지는 2~MaxGroupSize명 무리 */
+	/** 일행 없이 혼자 다닐 확률 (0~1). 나머지는 2·3·5명 무리 (MaxGroupSize 이하만) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Group", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float SoloChance = 0.65f;
+	float SoloChance = 0.4f;
 
+	/** 무리 최대 인원. 무리는 2·3·5명 중에서 이 값 이하만 만든다 (5명 무리를 빼려면 3) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Group", meta = (ClampMin = "2"))
-	int32 MaxGroupSize = 3;
+	int32 MaxGroupSize = 5;
 
 	// ---- 시간대 연동 ----
 

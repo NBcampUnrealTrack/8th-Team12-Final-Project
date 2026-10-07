@@ -174,7 +174,29 @@ int32 ANpcCrowdSpawner::RollGroupSize() const
 	{
 		return 1;
 	}
-	return FMath::RandRange(2, FMath::Max(2, MaxGroupSize));
+	// [그룹 동작] 무리는 2·3·5명만 만든다. 크기마다 동작이 달라서(SubNpcDirectorSubsystem의 GroupTalk/Point/Phone)
+	// 멀리서도 무리가 구별된다. MaxGroupSize보다 큰 크기는 빼고 고른다.
+	static constexpr int32 Sizes[] = { 2, 3, 5 };
+	static constexpr float Weights[] = { 0.5f, 0.3f, 0.2f };
+	float Total = 0.f;
+	for (int32 i = 0; i < UE_ARRAY_COUNT(Sizes); ++i)
+	{
+		Total += (Sizes[i] <= MaxGroupSize) ? Weights[i] : 0.f;
+	}
+	float Roll = FMath::FRand() * Total;
+	for (int32 i = 0; i < UE_ARRAY_COUNT(Sizes); ++i)
+	{
+		if (Sizes[i] > MaxGroupSize)
+		{
+			continue;
+		}
+		Roll -= Weights[i];
+		if (Roll <= 0.f)
+		{
+			return Sizes[i];
+		}
+	}
+	return 2;
 }
 
 bool ANpcCrowdSpawner::GetViewerLocation(FVector& OutLocation) const

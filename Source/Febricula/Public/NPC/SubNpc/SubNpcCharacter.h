@@ -575,6 +575,18 @@ public:
 		PendingSpeedScale = FMath::Min(PendingSpeedScale, FMath::Clamp(Scale, 0.f, 1.f));
 	}
 
+	/**
+	 * 겹친 몸을 떼어 낸다 (월드 수평 방향 이동량). Director의 겹침 금지 마지막 단계에서 부른다.
+	 * 길 위를 걷는 중이면 진행도·차선도 같이 옮긴다 - 몸만 옮기면 다음 걸음에서 원래 자리로 돌아간다.
+	 */
+	void PushApart(const FVector& WorldPush);
+
+	/** 경로를 갈아탈 때 생긴 위치 어긋남 (진단용). 몸이 따라가는 목표점 = 경로 위치 + 이 값 */
+	FVector GetPathHandoffOffset() const { return PathHandoffOffset; }
+
+	/** 일행 리더 (없으면 nullptr) */
+	const ASubNpcCharacter* GetGroupLeaderNpc() const { return GroupLeader.Get(); }
+
 	bool IsReversedOnPath() const { return bReversedOnPath; }
 
 	/** 앞이 막혀 크게 감속한 상태인가. 뒷사람이 기다릴지 추월할지 판단하는 데 쓴다 */
@@ -587,10 +599,40 @@ public:
 	 * 걷는 중이 아니면 아무것도 하지 않고 false.
 	 */
 	bool StartGroupChat(float Duration, FName TalkAnimId, int32 MemberIndex, int32 MemberCount, float TurnLength,
-		ASubNpcCharacter* Partner);
+		ASubNpcCharacter* Partner, FName ListenAnimId = NAME_None);
 
 	/** 일행 대화를 끝낸다 (손짓을 거둔다). 대화 중이 아니면 아무 일도 없다 */
 	void StopGroupChat();
+
+	/**
+	 * [일행 스팟 들르기] 일행 중 한 명(Visitor)이 스팟에 들어갔다. 리더가 부른다.
+	 * 리더와 나머지 일행은 스팟의 일행 대기 자리로 비켜서서 그룹 동작을 하며 기다린다.
+	 */
+	void BeginGroupSpotVisit(ASubNpcCharacter* Visitor, ANpcActivitySpot* Spot);
+
+	/** 일행 대기 자리로 가서 기다린다 */
+	void BeginGroupWait(ANpcActivitySpot* Spot, const FVector& WaitLocation, const FRotator& WaitRotation);
+
+	/** 기다리기를 그만두고 길로 돌아간다 */
+	void EndGroupWait();
+
+	/** 일행 대기 중인가 (대기 자리로 걸어가는 중 포함) */
+	bool IsGroupWaiting() const { return bGroupWaiting; }
+
+	/** 리더: 일행 한 명이 스팟에 들러 나머지가 기다리는 중인가 */
+	bool IsHostingGroupVisit() const { return GroupSpotVisitor.IsValid(); }
+
+	/** 줄 선 스팟 (줄에 없으면 nullptr). 같은 줄 사람끼리는 겹침 금지가 서로를 세우지 않는다 */
+	const ANpcActivitySpot* GetQueuedSpot() const { return QueuedSpot.Get(); }
+
+	/** 이벤트 중이거나 칸으로 가는 스팟 (없으면 nullptr) */
+	const ANpcActivitySpot* GetOccupiedSpot() const { return OccupiedSpot; }
+
+	/**
+	 * 스팟 근처 상태 (디버그 표시 crowd.DebugSpot). 길 위를 그냥 걷는 중이면 false.
+	 * OutLabel: "줄2 이동"·"이벤트"·"합류 대기" 등, OutTarget: 지금 가려는 지점
+	 */
+	bool GetSpotDebugState(FString& OutLabel, FVector& OutTarget) const;
 
 	/** 다음에 일행 대화를 굴려볼 시각. 0이면 아직 정하지 않았다 (리더만 쓴다) */
 	float GetNextGroupChatTime() const { return NextGroupChatTime; }
@@ -629,7 +671,7 @@ public:
 	 */
 	bool IsMovingOffLane() const
 	{
-		return (CurrentActivity == ESubNpcActivity::AtSpot && (bApproachingSpot || bQueueMoving))
+		return (CurrentActivity == ESubNpcActivity::AtSpot && (bApproachingSpot || bQueueMoving || bGroupWaitMoving))
 			|| (CurrentActivity == ESubNpcActivity::Walking && bRejoiningPath);
 	}
 
@@ -899,4 +941,61 @@ public:
 
 	/** 스팟 들르기 판정을 요청한다 (어느 스레드에서나 불러도 된다) */
 	void RequestSpotRoll() { bSpotRollRequested = true; }
+
+	// [AnimBP 오프셋 안전] 새 멤버는 클래스 끝에 둔다 (Docs·메모리: 헤더 변경 시 에디터 재시작).
+protected:
+	/** 일행 대화에서 내 차례가 아닐 때 상체에 거는 동작 (듣기). 없으면 손짓을 거둔다 */
+	FName GroupListenAnimId;
+
+	/** 지금 상체에 걸어 둔 일행 동작. -1 없음, 0 듣기, 1 말하기 */
+	int8 GroupChatShownRole = -1;
+
+	// ---- 일행 스팟 들르기 (BeginGroupSpotVisit) ----
+
+	/** 일행 대기 중 (상태는 AtSpot). 대기 자리로 걸어가는 중이면 bGroupWaitMoving도 true */
+	bool bGroupWaiting = false;
+	bool bGroupWaitMoving = false;
+	FVector GroupWaitLocation = FVector::ZeroVector;
+	FRotator GroupWaitRotation = FRotator::ZeroRotator;
+	TWeakObjectPtr<ANpcActivitySpot> GroupWaitSpot;
+
+	/** 리더: 지금 스팟에 들른 일행과, 그 사람을 기다리는 마감 시각 (넘으면 그 사람만 일행에서 빠진다) */
+	TWeakObjectPtr<ASubNpcCharacter> GroupSpotVisitor;
+	float GroupVisitDeadline = 0.f;
+
+	/** 대기 자리로 걸어가고, 리더면 끝났는지 본다 */
+	void TickGroupWait(float DeltaTime, float Now);
+
+	/** 리더: 기다리기를 끝내고 모두 길로 돌아간다. 시간 초과면 들른 사람은 일행에서 빠진다 */
+	void EndGroupSpotVisit(bool bTimedOut);
+
+	// ---- 실제 속도 (회피 예측용) ---------------------------------------------
+
+public:
+	/**
+	 * 실제로 움직인 속도 (cm/s, 수평). Director가 회피 갱신 때 위치 차이로 잰다.
+	 * 회피는 상대가 이 속도로 계속 간다고 보고 피한다. 예전에는 "길 밖에서 움직이는 중이면 걷는 속도"로 가정해서
+	 * 줄에서 서서 기다리는 사람도 다가오는 걸로 보여 행인이 멈췄다.
+	 */
+	FVector2D GetMeasuredVelocity() const { return MeasuredVelocity; }
+	void SampleMeasuredVelocity(float Now);
+
+	/** 길 밖 걸음에서 직전에 고른 방향 (수평 단위 벡터). 매 프레임 방향을 새로 골라 좌우로 흔들리지 않게 이어 쓴다 */
+	mutable FVector2D SteerHoldDir = FVector2D::ZeroVector;
+
+private:
+	/**
+	 * 줄 반응 지연. 앞자리가 비어도(앞사람이 칸으로 들어감·한 칸 당김) 바로 따라 움직이지 않고 잠깐 뒤에 움직인다.
+	 * 줄 전체가 동시에 움직이면 기계처럼 보였다. -1이면 타이머 없음.
+	 */
+	float QueueStepReadyTime = -1.f;
+	/** 줄 맨 앞: 칸이 비고 앞사람이 칸을 벗어난 뒤, 이 시각에 들어간다 */
+	float SpotEnterReadyTime = -1.f;
+
+	/** 스팟 칸 둘레에 나 말고 아무도 없는가 (앞사람이 칸을 완전히 벗어났나) */
+	bool IsSpotStandClear(const ANpcActivitySpot* Spot) const;
+
+	FVector2D MeasuredVelocity = FVector2D::ZeroVector;
+	FVector LastMeasureLocation = FVector::ZeroVector;
+	float LastMeasureTime = -1.f;
 };

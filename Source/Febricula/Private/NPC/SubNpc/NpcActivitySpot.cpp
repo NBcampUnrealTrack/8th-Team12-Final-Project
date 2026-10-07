@@ -186,6 +186,19 @@ void ANpcActivitySpot::DrawSpotDebug(float Lifetime) const
 		DrawDebugString(World, Q + FVector(0.f, 0.f, 30.f), FString::Printf(TEXT("줄 %d"), Index + 1), nullptr, FColor::Orange, Lifetime);
 	}
 
+	// 일행 대기 자리 (일행 들르기를 켠 스팟만). 가장 많이 기다리는 5명 무리(4명 대기) 기준으로 그린다.
+	if (bAllowGroupVisit)
+	{
+		const FVector WaitCenter = GetGroupWaitCenter() + Down;
+		DrawDebugLine(World, GetActorLocation() + Down, WaitCenter, FColor::Green, false, Lifetime, 0, 1.f);
+		DrawDebugString(World, WaitCenter + FVector(0.f, 0.f, 50.f), TEXT("일행 대기"), nullptr, FColor::Green, Lifetime);
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			const FVector W = GetGroupWaitLocation(Index, 4) + Down;
+			DrawDebugCircle(World, W, BodyRadius, 20, FColor::Green, false, Lifetime, 0, 2.f, Up, Side, false);
+		}
+	}
+
 	// 행인이 바라볼 방향 (스팟 정면)
 	const FVector Center = GetActorLocation() + Down;
 	DrawDebugDirectionalArrow(World, Center, Center + GetActorForwardVector() * 120.f, 40.f, FColor::Cyan, false, Lifetime, 0, 3.f);
@@ -269,6 +282,16 @@ void ANpcActivitySpot::LeaveQueue(ASubNpcCharacter* Npc)
 	});
 }
 
+int32 ANpcActivitySpot::GetQueueLength() const
+{
+	int32 Count = 0;
+	for (const TWeakObjectPtr<ASubNpcCharacter>& Weak : WaitQueue)
+	{
+		Count += Weak.IsValid() ? 1 : 0;
+	}
+	return Count;
+}
+
 int32 ANpcActivitySpot::GetQueueIndex(const ASubNpcCharacter* Npc) const
 {
 	// 죽은 참조는 세지 않는다. 앞사람이 회수되면 그 자리를 바로 당겨 선다.
@@ -290,10 +313,37 @@ int32 ANpcActivitySpot::GetQueueIndex(const ASubNpcCharacter* Npc) const
 
 FVector ANpcActivitySpot::GetQueueLocation(int32 Index) const
 {
-	// 줄은 마지막 칸 바로 옆에서 시작해 QueueDirection으로 늘어선다.
+	// 줄은 칸 바로 다음에서 시작해 QueueDirection으로 늘어선다. 칸은 스팟 오른쪽으로 나란히 놓이므로
+	// 줄이 옆으로 뻗을 때만 칸 폭만큼 비켜서 시작한다 (뒤로 뻗으면 칸 바로 뒤부터).
 	const FVector Dir = GetActorTransform().TransformVectorNoScale(QueueDirection).GetSafeNormal2D();
 	const float SlotsHalfWidth = (MaxOccupants - 1) * 0.5f * SlotSpacing;
-	return GetActorLocation() + Dir * (SlotsHalfWidth + QueueSpacing * (Index + 1));
+	const float Sideways = FMath::Abs(FVector::DotProduct(Dir, GetActorRightVector().GetSafeNormal2D()));
+	return GetActorLocation() + Dir * (SlotsHalfWidth * Sideways + QueueSpacing * (Index + 1));
+}
+
+FVector ANpcActivitySpot::GetGroupWaitCenter() const
+{
+	return GetActorTransform().TransformPosition(GroupWaitCenter);
+}
+
+FVector ANpcActivitySpot::GetGroupWaitLocation(int32 Index, int32 Count) const
+{
+	// [변경] 예전에는 스팟 옆으로 일렬(최대 4칸, 3.4m)로 늘어서서 줄·길과 가까워졌고, 5명 무리가 기다리면 병목이 됐다.
+	// 이제 사람이 배치한 중심(GroupWaitCenter)을 둘러싸고 작은 원으로 선다 - 자리를 적게 차지하고 모여 이야기하는 무리로 보인다.
+	const FVector Center = GetGroupWaitCenter();
+	if (Count <= 1)
+	{
+		return Center;
+	}
+	// 옆 사람과 어깨가 닿지 않게: 원 위 이웃 간 거리(현) 2R·sin(π/N) ≥ 75cm
+	constexpr float MinNeighborDistance = 75.f;
+	const float Radius = FMath::Max(GroupWaitRadius, MinNeighborDistance * 0.5f / FMath::Sin(PI / Count));
+	// 첫 자리는 스팟 쪽 - 들른 친구가 보이는 쪽부터 채운다
+	FVector ToSpot = GetActorLocation() - Center;
+	ToSpot.Z = 0.f;
+	const float BaseAngle = ToSpot.IsNearlyZero() ? 0.f : FMath::Atan2(ToSpot.Y, ToSpot.X);
+	const float Angle = BaseAngle + 2.f * PI * Index / Count;
+	return Center + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.f) * Radius;
 }
 
 FVector ANpcActivitySpot::GetLookAtLocation(const FNpcActivityOption& Option) const

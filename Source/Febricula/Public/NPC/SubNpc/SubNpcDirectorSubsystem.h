@@ -91,6 +91,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Director")
 	int32 GetActiveCount() const { return ActiveNpcs.Num(); }
 
+	/** 활성 행인 목록 (일행 찾기 등 읽기 전용) */
+	const TArray<TObjectPtr<ASubNpcCharacter>>& GetActiveNpcs() const { return ActiveNpcs; }
+
+	/**
+	 * 무리에 일행 동작을 건다 (무리 크기별: 2명 말하기↔듣기, 3명 설명↔듣기, 5명 + 휴대폰).
+	 * Members[0]이 리더. 걷는 중이 아니어도 일행 대기 중이면 건다 (일행 스팟 들르기).
+	 */
+	void StartGroupChatFor(ASubNpcCharacter* Leader, TConstArrayView<ASubNpcCharacter*> Members, int32 GroupSize, float Duration);
+
 	UFUNCTION(BlueprintPure, Category = "Crowd|Director")
 	int32 GetPooledCount() const { return PooledNpcs.Num(); }
 
