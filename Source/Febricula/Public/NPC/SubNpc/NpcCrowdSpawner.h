@@ -206,7 +206,7 @@ protected:
 	 *
 	 * 걷기·대기 애니메이션을 텍스처로 구워 둔 데이터다. 스태틱 메시와 머티리얼은 이 데이터에 들어 있는 것을 쓴다.
 	 * 애니메이션 이름에 "Walk"/"Idle"이 들어간 것을 걷기/대기로 쓴다.
-	 * 기본값은 엔진 AnimToTexture 플러그인의 샘플 마네킹(이미 구워져 있음)이다.
+	 * 기본값은 행인 Manny를 LOD별로 구운 DA_PasserbyFar다. 다시 구우려면 crowd.BakeFarCrowd (Docs/CrowdFarLOD.md).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|FarCrowd")
 	TSoftObjectPtr<UAnimToTextureDataAsset> FarCrowdAnimData;

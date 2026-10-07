@@ -23,9 +23,9 @@ ANpcCrowdSpawner::ANpcCrowdSpawner()
 	USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
 
-	// 엔진 AnimToTexture 플러그인의 샘플 마네킹 (걷기·대기·달리기가 이미 구워져 있다).
+	// 행인 Manny를 LOD별로 구운 데이터 (crowd.BakeFarCrowd, Docs/CrowdFarLOD.md).
 	FarCrowdAnimData = TSoftObjectPtr<UAnimToTextureDataAsset>(
-		FSoftObjectPath(TEXT("/AnimToTexture/Characters/Mannequin/Data/DA_BoneAnimation.DA_BoneAnimation")));
+		FSoftObjectPath(TEXT("/Game/NPC/SubNpc/FarCrowd/DA_PasserbyFar.DA_PasserbyFar")));
 }
 
 UAnimToTextureDataAsset* ANpcCrowdSpawner::LoadFarCrowdAnimData() const

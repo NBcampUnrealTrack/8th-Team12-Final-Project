@@ -37,6 +37,12 @@ public class Febricula : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
+		// 원경 행인 애니메이션 굽기 명령 crowd.BakeFarCrowd (SubNpcFarCrowdBake.cpp, 에디터 전용)
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.Add("AnimToTextureEditor");
+		}
+
 		PublicIncludePaths.AddRange(new string[] {
 			"Febricula",
 			// BurgerHouse — 손님 NPC 루프 (Import/BURGERHOUSE.md)
