@@ -6,6 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "FixedViewController.generated.h"
 
+class UFixedViewComponent;
+
 UCLASS()
 class FEBRICULA_API AFixedViewController : public AActor
 {
@@ -14,12 +16,21 @@ class FEBRICULA_API AFixedViewController : public AActor
 public:
 	// Sets default values for this actor's properties
 	AFixedViewController();
+	FName AddFixedCamera(UFixedViewComponent* CameraActor);
 
 protected:
+	UFUNCTION()
+	void OnOverlapBegin(FName ComponentTag, bool bState);
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FixedViewController")
+	TMap<FName, TObjectPtr<UFixedViewComponent>> FixedCameraActors;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "FixedViewController")
+	TObjectPtr<UFixedViewComponent> NowFixedCamera;
+	
+	UPROPERTY()
+	USceneComponent* SceneComponent;
 };
+

@@ -5,21 +5,27 @@
 #include "CoreMinimal.h"
 #include "Dialogue/DialogueDataTypes.h"
 #include "GameFramework/WorldSettings.h"
-#include "LevelAutoEventSetting.generated.h"
+#include "LevelSetting.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class FEBRICULA_API ALevelAutoEventSetting : public AWorldSettings
+class FEBRICULA_API ALevelSetting : public AWorldSettings
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Setting | Event")
 	TObjectPtr<UDataTable> AutoEventRow;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Setting | Event")
 	TObjectPtr<UDataTable> AutoDialogueRow;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Setting | Activity")
 	TSoftClassPtr<UUserWidget> ActivityWidget;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level Setting | FixedCamera")
+	bool bUseFixedCamera;
+	
+	
+	
 };

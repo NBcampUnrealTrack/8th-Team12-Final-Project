@@ -402,5 +402,157 @@
       "Target": "",
       "Blend": 0.0
     }
+  },
+  {
+    "Name": "HallwayBlock_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어디로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "학교 밖으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "ReturnClass_Root"
+      },
+      {
+        "Text": "운동장으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "ReturnClass_Root"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "ReturnClass_Root"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "ReturnClass_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "돌아갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "돌아간다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "ReturnClass_Yes"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "ReturnClass_Yes"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "ReturnClass_Yes",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "Classroom",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
   }
 ]

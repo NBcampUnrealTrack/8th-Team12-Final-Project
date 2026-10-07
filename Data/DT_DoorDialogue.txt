@@ -61,6 +61,19 @@
 @label HallwayBlock_Root
 어디로 갈까?
 @menu YesNo
-- 학교 밖으로 @if   
+- 학교 밖으로   
 - 운동장으로 
 - 그만둔다
+
+@label ReturnClass_Root
+돌아갈까?
+@menu YesNo
+- 돌아간다 -> ReturnClass_Yes
+- 그만둔다
+@end
+
+@label ReturnClass_Yes
+@ChangeLevel Classroom true
+@hide
+@wait .1
+@end
