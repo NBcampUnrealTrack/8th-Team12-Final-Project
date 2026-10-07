@@ -74,7 +74,7 @@ bool UCharacterAnimationComponent::PlayAnimOnSlot(FName AnimId, FName SlotName, 
 	{
 		if (USkeletalMeshComponent* MeshComp = Owner->GetMesh())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] AnimMode=%d"), (int32)MeshComp->GetAnimationMode());
+			// UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] AnimMode=%d"), (int32)MeshComp->GetAnimationMode());
 			UAnimInstance* AnimInstance = MeshComp->GetAnimInstance();
 			if (AnimInstance && !bPreferSingleNodeAnim)
 			{
@@ -97,8 +97,8 @@ bool UCharacterAnimationComponent::PlayAnimOnSlot(FName AnimId, FName SlotName, 
 					AnimInstance->OnMontageEnded.RemoveDynamic(this, &UCharacterAnimationComponent::HandleMontageEnded);
 					AnimInstance->OnMontageEnded.AddDynamic(this, &UCharacterAnimationComponent::HandleMontageEnded);
 
-					UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 재생 시작: %s, 길이 %.2f"),
-						*GetNameSafe(Played), Played->GetPlayLength());
+					// UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 재생 시작: %s, 길이 %.2f"),
+					// 	*GetNameSafe(Played), Played->GetPlayLength());
 
 					return true;
 				}
@@ -202,7 +202,7 @@ void UCharacterAnimationComponent::TickComponent(float DeltaTime, enum ELevelTic
 
 void UCharacterAnimationComponent::HandleMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 몽타주 종료: %s, 중단됨=%d"),
-	*GetNameSafe(Montage), bInterrupted);   // ← 여기에 브레이크포인트
+	// UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 몽타주 종료: %s, 중단됨=%d"),
+	// *GetNameSafe(Montage), bInterrupted);   // ← 여기에 브레이크포인트
 
 }
