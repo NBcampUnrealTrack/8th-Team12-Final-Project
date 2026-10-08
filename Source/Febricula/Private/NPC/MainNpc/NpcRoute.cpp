@@ -24,7 +24,8 @@ FRotator ANpcRoute::GetPointRotation(int32 Index) const
 {
 	if (RoutePoints.IsValidIndex(Index) && RoutePoints[Index])
 	{
-		return RoutePoints[Index]->GetActorRotation();
+		FRotator Temp = RoutePoints[Index]->GetActorRotation();
+		return Temp;
 	}
 	return GetActorRotation();
 }

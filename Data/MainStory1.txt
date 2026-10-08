@@ -313,6 +313,7 @@ AI의 끊임없는 발전.
 @hide
 
 @label D1_112 
+@cam Loc 189.0 -276.7 190.6 Rot 0 -10 -90.0 .1 500.0
 서윤: 오늘은 공휴일이니까 시간 좀 떼우다가 밥 먹으러 가면 될 거야.
 천율: 수업 없나 봐?
 서윤: 응. 가끔 특강 같은게 잡히는 경우도 있는데 오늘은 아무것도 없어. 
@@ -320,9 +321,30 @@ AI의 끊임없는 발전.
 천율: 알았어. 이것저것 알려줘서 고마워.
 서윤: 별 말씀을. 
 서윤: 난 아직 할 일이 좀 있어서 학생회실로 가 봐야하니까 필요한 거 있으면 학생회실로 와.
+@cam Loc 189.0 -276.7 190.6 Rot 0 -10 -40.0 1 500.0
+
 @NpcStartPatrol NPC_Suyun FrontDoor
+@hide
 @wait_arrive 100 NPC_Suyun
 
+@label D1_113
+@wait .5
+@hide
+
+@label D1_114
+@Interact FrontDoorActor false
+@hide
+@wait 1
+
+@label D1_115
+@HideActor NPC_Suyun
+@UnInteract FrontDoorActor false
+@wait 1
+@hide
+
+@label D1_116
+@cam reset
+@wait .1 
 @end
 
 @cast 사감 = "기숙사 사감" NPC_Sagam

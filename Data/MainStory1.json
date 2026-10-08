@@ -5426,9 +5426,9 @@
   },
   {
     "Name": "D1_111",
-    "SpeakerName": "한서윤",
+    "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "오늘은 공휴일이니까 시간 좀 떼우다가 밥 먹으러 가면 될 거야.",
+    "Text": "",
     "OnEnterActions": [
       {
         "Type": "SpawnActor",
@@ -5458,7 +5458,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D1_111_001",
+    "NextNodeId": "D1_112",
     "AutoAdvance": "AfterDelay",
     "AutoAdvanceValue": 0.3,
     "AutoAdvanceNpcId": "None",
@@ -5486,7 +5486,43 @@
     }
   },
   {
-    "Name": "D1_111_001",
+    "Name": "D1_112",
+    "SpeakerName": "한서윤",
+    "SpeakerNpcId": "None",
+    "Text": "오늘은 공휴일이니까 시간 좀 떼우다가 밥 먹으러 가면 될 거야.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "D1_112_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": 189.0,
+        "Y": -276.7,
+        "Z": 190.6
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": -10.0,
+        "Yaw": -90.0
+      },
+      "MoveTime": 0.1,
+      "Focus": 500.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D1_112_001",
     "SpeakerName": "강천율",
     "SpeakerNpcId": "PC_GangChunyul",
     "Text": "수업 없나 봐?",
@@ -5494,7 +5530,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D1_111_002",
+    "NextNodeId": "D1_112_002",
     "AutoAdvance": "None",
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
@@ -5522,7 +5558,7 @@
     }
   },
   {
-    "Name": "D1_111_002",
+    "Name": "D1_112_002",
     "SpeakerName": "한서윤",
     "SpeakerNpcId": "None",
     "Text": "응. 가끔 특강 같은게 잡히는 경우도 있는데 오늘은 아무것도 없어.",
@@ -5530,7 +5566,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D1_111_003",
+    "NextNodeId": "D1_112_003",
     "AutoAdvance": "None",
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
@@ -5558,7 +5594,7 @@
     }
   },
   {
-    "Name": "D1_111_003",
+    "Name": "D1_112_003",
     "SpeakerName": "한서윤",
     "SpeakerNpcId": "None",
     "Text": "점심시간 끝나면 그냥 집 돌아가면 돼.",
@@ -5566,7 +5602,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D1_111_004",
+    "NextNodeId": "D1_112_004",
     "AutoAdvance": "None",
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
@@ -5594,7 +5630,7 @@
     }
   },
   {
-    "Name": "D1_111_004",
+    "Name": "D1_112_004",
     "SpeakerName": "강천율",
     "SpeakerNpcId": "PC_GangChunyul",
     "Text": "알았어. 이것저것 알려줘서 고마워.",
@@ -5602,7 +5638,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D1_111_005",
+    "NextNodeId": "D1_112_005",
     "AutoAdvance": "None",
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
@@ -5630,7 +5666,7 @@
     }
   },
   {
-    "Name": "D1_111_005",
+    "Name": "D1_112_005",
     "SpeakerName": "한서윤",
     "SpeakerNpcId": "None",
     "Text": "별 말씀을.",
@@ -5638,7 +5674,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D1_111_006",
+    "NextNodeId": "D1_112_006",
     "AutoAdvance": "None",
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
@@ -5666,7 +5702,7 @@
     }
   },
   {
-    "Name": "D1_111_006",
+    "Name": "D1_112_006",
     "SpeakerName": "한서윤",
     "SpeakerNpcId": "None",
     "Text": "난 아직 할 일이 좀 있어서 학생회실로 가 봐야하니까 필요한 거 있으면 학생회실로 와.",
@@ -5674,7 +5710,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D1_111_007",
+    "NextNodeId": "D1_112_007",
     "AutoAdvance": "None",
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
@@ -5702,7 +5738,7 @@
     }
   },
   {
-    "Name": "D1_111_007",
+    "Name": "D1_112_007",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",
@@ -5717,13 +5753,177 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "None",
+    "NextNodeId": "D1_113",
     "AutoAdvance": "WhenNpcArrived",
     "AutoAdvanceValue": 100.0,
     "AutoAdvanceNpcId": "NPC_Suyun",
-    "bHideBoxWhileWaiting": false,
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": 189.0,
+        "Y": -276.7,
+        "Z": 190.6
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": -10.0,
+        "Yaw": -40.0
+      },
+      "MoveTime": 1.0,
+      "Focus": 500.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D1_113",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "D1_114",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.5,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
     "Camera": {
       "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D1_114",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "Interact",
+        "Key": "FrontDoorActor",
+        "Key2": "false",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "D1_115",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 1.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D1_115",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "HideActor",
+        "Key": "NPC_Suyun",
+        "Key2": "None",
+        "Value": 0
+      },
+      {
+        "Type": "UnInteract",
+        "Key": "FrontDoorActor",
+        "Key2": "false",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "D1_116",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 1.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D1_116",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Player",
       "Location": {
         "X": 0.0,
         "Y": 0.0,
