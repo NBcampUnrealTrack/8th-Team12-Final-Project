@@ -17,7 +17,9 @@
 
 class ANpcCrowdPath;
 class ASubNpcCharacter;
+class UAnimToTextureDataAsset;
 class UDataTable;
+class UStateTree;
 
 /** 시간대별 인구 밀도 배율 */
 USTRUCT(BlueprintType)
@@ -72,15 +74,6 @@ protected:
 	/** 다음 보충까지의 시간을 랜덤으로 굴려 타이머를 다시 건다 */
 	void RearmSpawnTimer();
 
-	/**
-	 * 초기 충원을 끝냈는가.
-	 *
-	 * 시작 직후 한 번만 경로 전체에 흩어 놓고, 그 뒤의 보충은 입구에서만 등장시킨다.
-	 * 목표 인원을 다 채운 시점에 켜진다.
-	 */
-	UPROPERTY(Transient)
-	bool bInitialFillDone = false;
-
 	/** 플레이어 폰 위치 (없으면 false) */
 	bool GetViewerLocation(FVector& OutLocation) const;
 
@@ -134,7 +127,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner")
 	bool bSpreadInitialPopulation = true;
 
-	/** 한 번에 최대 몇 명까지 등장시킬지. 크면 한꺼번에 우르르 나타나 티가 난다 */
+	/**
+	 * 보충 한 주기에 최대 몇 명까지 등장시킬지. 크면 한꺼번에 우르르 나타나 티가 난다.
+	 * 무리는 쪼개지 않는다 - 첫 무리는 이보다 커도 통째로 나오고, 그다음 무리부터 이 한도를 본다.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Spawner", meta = (ClampMin = "1"))
 	int32 MaxSpawnPerTick = 2;
 
@@ -162,12 +158,13 @@ protected:
 
 	// ---- 그룹 ----
 
-	/** 일행 없이 혼자 다닐 확률 (0~1). 나머지는 2~MaxGroupSize명 무리 */
+	/** 일행 없이 혼자 다닐 확률 (0~1). 나머지는 2·3·5명 무리 (MaxGroupSize 이하만) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Group", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float SoloChance = 0.65f;
+	float SoloChance = 0.4f;
 
+	/** 무리 최대 인원. 무리는 2·3·5명 중에서 이 값 이하만 만든다 (5명 무리를 빼려면 3) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Group", meta = (ClampMin = "2"))
-	int32 MaxGroupSize = 3;
+	int32 MaxGroupSize = 5;
 
 	// ---- 시간대 연동 ----
 
@@ -179,4 +176,33 @@ protected:
 	TArray<FCrowdDensityByHour> DensityBySchedule;
 
 	FTimerHandle SpawnTimerHandle;
+
+public:
+	/** 원경 표현에 쓸 애니메이션 데이터를 읽어 온다. 설정이 없거나 못 읽으면 nullptr (원경 표현을 쓰지 않는다) */
+	UAnimToTextureDataAsset* LoadFarCrowdAnimData() const;
+
+	/** 행인 상태 결정에 쓸 Mass StateTree를 읽어 온다. 비어 있으면 nullptr (예전처럼 액터가 스스로 정한다) */
+	UStateTree* LoadCrowdStateTree() const;
+
+protected:
+	/**
+	 * 행인의 상태 결정(걷다가 스팟에 들를지, 반응·스팟이 끝나면 무엇을 할지)을 맡을 Mass StateTree.
+	 * 스키마는 "Mass Behavior"(MassStateTreeSchema)여야 하고, "행인:" 태스크들로 만든다.
+	 * 비워 두면 예전처럼 액터 코드가 스스로 정한다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Behavior")
+	TSoftObjectPtr<UStateTree> CrowdStateTree;
+
+public:
+
+protected:
+	/**
+	 * 멀리 있는 행인을 그릴 인스턴스드 메시 애니메이션 데이터 (AnimToTexture).
+	 *
+	 * 걷기·대기 애니메이션을 텍스처로 구워 둔 데이터다. 스태틱 메시와 머티리얼은 이 데이터에 들어 있는 것을 쓴다.
+	 * 애니메이션 이름에 "Walk"/"Idle"이 들어간 것을 걷기/대기로 쓴다.
+	 * 기본값은 행인 Manny를 LOD별로 구운 DA_PasserbyFar다. 다시 구우려면 crowd.BakeFarCrowd (Docs/CrowdFarLOD.md).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|FarCrowd")
+	TSoftObjectPtr<UAnimToTextureDataAsset> FarCrowdAnimData;
 };
