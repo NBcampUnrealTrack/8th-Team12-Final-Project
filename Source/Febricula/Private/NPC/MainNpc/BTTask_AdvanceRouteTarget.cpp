@@ -13,6 +13,7 @@ UBTTask_AdvanceRouteTarget::UBTTask_AdvanceRouteTarget()
 	RouteKey.AddObjectFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteKey), ANpcRoute::StaticClass());
 	RouteIndexKey.AddIntFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteIndexKey));
 	RouteTargetLocationKey.AddVectorFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteTargetLocationKey));
+	RouteTargetRotatorKey.AddRotatorFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteTargetRotatorKey));
 }
 
 EBTNodeResult::Type UBTTask_AdvanceRouteTarget::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -56,5 +57,6 @@ EBTNodeResult::Type UBTTask_AdvanceRouteTarget::ExecuteTask(UBehaviorTreeCompone
 
 	BBComp->SetValueAsInt(RouteIndexKey.SelectedKeyName, NextIndex);
 	BBComp->SetValueAsVector(RouteTargetLocationKey.SelectedKeyName, Route->GetPointLocation(NextIndex));
+	BBComp->SetValueAsRotator(RouteTargetRotatorKey.SelectedKeyName, Route->GetPointRotation(NextIndex));
 	return EBTNodeResult::Succeeded;
 }

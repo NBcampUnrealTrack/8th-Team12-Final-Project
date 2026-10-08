@@ -4,11 +4,12 @@
 
 #include "EngineUtils.h"
 #include "FebriculaCharacter.h"
+#include "FebriculaPlayerController.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Blueprint/UserWidget.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/FebriculaPlayerStart.h"
-#include "GameMode/LevelAutoEventSetting.h"
+#include "GameMode/LevelSetting.h"
 #include "GameMode/NPCSetting.h"
 #include "Kismet/GameplayStatics.h"
 #include "NPC/BaseNpcCharacter.h"
@@ -75,6 +76,7 @@ void AFebriculaGameMode::BeginPlay()
 		DialogueSubsystem->BlockPlayerInput(false);
 	}
 
+	
 	// ���̺� �ε�� ������ �̵��� �� ���, ��� ���̴� �÷��̾� ��ġ/��ȭ ��α׸� ���⼭ ���� �����Ѵ�.
 	// ��� ���� �ε尡 ������ �ƹ� �ϵ� ���� �����Ƿ� �׻� ȣ���ص� �����ϴ�.
 	if (USaveGameSubsystem* SaveGameSubsystem = GetGameInstance()->GetSubsystem<USaveGameSubsystem>())
@@ -118,7 +120,7 @@ TSoftClassPtr<ABaseNpcCharacter> AFebriculaGameMode::GetNpcViaName(FName NowName
 
 bool AFebriculaGameMode::PlayEvent()
 {
-	if (ALevelAutoEventSetting* AES = Cast<ALevelAutoEventSetting>(GetWorldSettings()))
+	if (ALevelSetting* AES = Cast<ALevelSetting>(GetWorldSettings()))
 	{
 		AutoEventTable = AES->AutoEventRow;
 		AutoDialogueTable = AES->AutoDialogueRow;

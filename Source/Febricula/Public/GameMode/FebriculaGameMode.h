@@ -8,7 +8,7 @@
 #include "FebriculaGameMode.generated.h"
 
 class ABaseNpcCharacter;
-class ALevelAutoEventSetting;
+class ALevelSetting;
 /**
  *  Simple GameMode for a third person game
  */

@@ -20,6 +20,16 @@ FVector ANpcRoute::GetPointLocation(int32 Index) const
 	return GetActorLocation();
 }
 
+FRotator ANpcRoute::GetPointRotation(int32 Index) const
+{
+	if (RoutePoints.IsValidIndex(Index) && RoutePoints[Index])
+	{
+		FRotator Temp = RoutePoints[Index]->GetActorRotation();
+		return Temp;
+	}
+	return GetActorRotation();
+}
+
 int32 ANpcRoute::GetNextIndex(int32 CurrentIndex) const
 {
 	const int32 Num = RoutePoints.Num();

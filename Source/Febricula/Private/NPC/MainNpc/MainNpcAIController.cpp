@@ -13,6 +13,8 @@ const FName AMainNpcAIController::BBKey_AIState(TEXT("AIState"));
 const FName AMainNpcAIController::BBKey_Route(TEXT("Route"));
 const FName AMainNpcAIController::BBKey_RouteIndex(TEXT("RouteIndex"));
 const FName AMainNpcAIController::BBKey_RouteTargetLocation(TEXT("RouteTargetLocation"));
+const FName AMainNpcAIController::BBKey_RouteTargetRotator(TEXT("RouteTargetRotator"));
+
 const FName AMainNpcAIController::BBKey_ChaseTarget(TEXT("ChaseTarget"));
 
 AMainNpcAIController::AMainNpcAIController()
@@ -63,6 +65,7 @@ bool AMainNpcAIController::SetupRoute(ANpcRoute* Route)
 	BBComp->SetValueAsObject(BBKey_Route, Route);
 	BBComp->SetValueAsInt(BBKey_RouteIndex, 0);
 	BBComp->SetValueAsVector(BBKey_RouteTargetLocation, Route->GetPointLocation(0));
+	BBComp->SetValueAsRotator(BBKey_RouteTargetRotator, Route->GetPointRotation(0));
 	return true;
 }
 
