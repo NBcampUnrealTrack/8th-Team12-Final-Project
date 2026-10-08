@@ -35,6 +35,9 @@ public:
 	
 	[[nodiscard]] FName GetDefaultAnimation() const { return DefaultAnimation; }
 
+	/** 스포너가 스폰 직후(BeginPlay 전) 자리별 기본 애니메이션을 넣을 때 쓴다 */
+	void SetDefaultAnimation(FName AnimId) { DefaultAnimation = AnimId; }
+
 	/**
 	 * 상호작용 시 Talk 상태로 들어가고 이벤트 트리 대화를 시작한다.
 	 * 조건을 만족하는 이벤트가 없으면 DefaultIdleNodeId(있다면)를 재생하고, 그것도 없으면 그냥 지나간다.
