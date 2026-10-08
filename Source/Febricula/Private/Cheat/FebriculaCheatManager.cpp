@@ -3,8 +3,6 @@
 
 #include "Cheat/FebriculaCheatManager.h"
 
-#include "SNegativeActionButton.h"
-#include "SWarningOrErrorBox.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Cache/ActorCacheSubsystem.h"
 #include "GameFramework/Character.h"

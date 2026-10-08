@@ -46,6 +46,16 @@ public:
 	FVector GetDirectionAtDistance(float Distance) const;
 
 	/**
+	 * 차선 위를 실제로 1cm 걸을 때 중심선 진행도가 몇 cm 올라야 하는가.
+	 *
+	 * 행인은 중심선 진행도(PathDistance)를 걸음 속도로 올리고 차선만큼 옆으로 민 자리에 선다.
+	 * 직선에서는 1이지만 굽은 곳에서는 안쪽 차선의 실제 이동이 줄고 바깥쪽은 늘어난다.
+	 * 직각에 가까운 모서리에서는 안쪽 차선 사람이 거의 제자리에 서 버려 뒷사람이 줄줄이 막혔다.
+	 * 이 배율을 곱하면 차선과 상관없이 실제 걸음 속도가 일정해진다.
+	 */
+	float GetLaneProgressScale(float Distance, float LaneOffset, float Along) const;
+
+	/**
 	 * 월드 좌표에서 가장 가까운 이 경로 위의 지점을 찾는다.
 	 * 배치 위치 기준으로 스폰할 때, 어느 스플라인의 몇 cm 지점인지 역산하는 용도다.
 	 *
@@ -83,6 +93,22 @@ public:
 	/** 이 경로에서 등장할 때 역방향(끝 -> 시작)으로 걷게 할지 */
 	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
 	bool IsSpawnReversed() const { return bSpawnReversed; }
+
+	/**
+	 * 중심선·걷는 폭·추월 최대 폭·방향·퇴장구를 디버그 선으로 그린다.
+	 * 에디터 뷰포트(배치할 때)와 게임 중 crowd.DrawPaths가 같이 쓴다.
+	 *
+	 * @param SqueezeOverflow  추월할 때 길 가장자리를 넘어갈 수 있는 거리 (cm)
+	 * @param Lifetime         -1이면 이번 프레임만 그린다
+	 */
+	void DrawLaneDebug(float SqueezeOverflow, float Lifetime = -1.f) const;
+
+	virtual void Tick(float DeltaSeconds) override;
+
+#if WITH_EDITOR
+	/** 에디터 뷰포트에서도 틱해서 길 폭을 그린다 (bDrawLanesInEditor) */
+	virtual bool ShouldTickIfViewportsOnly() const override { return bDrawLanesInEditor; }
+#endif
 
 protected:
 	/** 경로 모양. 에디터에서 점을 찍어 곡선을 만든다 */
@@ -157,6 +183,14 @@ protected:
 	/** 방향 화살표를 표시할지 */
 	UPROPERTY(EditAnywhere, Category = "Crowd|Debug")
 	bool bShowDirectionArrows = true;
+
+	/**
+	 * 레벨 편집 중에도 걷는 폭(초록)과 추월 최대 폭(회색)을 그린다.
+	 * 경로를 벽·지형 옆에 놓을 때 폭이 걸리는지 배치하면서 바로 볼 수 있다.
+	 * (에디터 뷰포트가 실시간(Realtime) 모드여야 계속 보인다)
+	 */
+	UPROPERTY(EditAnywhere, Category = "Crowd|Debug")
+	bool bDrawLanesInEditor = true;
 #endif
 
 #if WITH_EDITOR

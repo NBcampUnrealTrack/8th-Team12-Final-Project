@@ -83,6 +83,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "AnimToTexture",
+			"Enabled": true
+		},
+		{
 			"Name": "SMSystem",
 			"Enabled": false,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/9d8db9962594400988f8ddd3fb83cd88"
@@ -102,6 +106,14 @@
 		{
 			"Name": "MetaHumanSDK",
 			"Enabled": false
+		},
+		{
+			"Name": "ModelContextProtocol",
+			"Enabled": true
+		},
+		{
+			"Name": "AllToolsets",
+			"Enabled": true
 		}
 	]
 }

@@ -98,6 +98,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	int32 GetAbsoluteDay() const { return AbsoluteDay; }
 
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
+	void GoBackOneDay();
+
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
+	void SetAbsoluteDay(int32 NewAbsoluteDay);
+
 	/** 주말인가. 누적 일차 기준 1~5일 = 평일, 6~7일 = 주말 */
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	bool IsWeekend() const;
@@ -153,7 +159,7 @@ protected:
 	/** 오늘 적용할 시간표 애셋. 없으면 nullptr */
 	const UDayScheduleAsset* GetTodaySchedule() const;
 
-
+	void RecalcFromAbsoluteDay(int32 InAbsoluteDay);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 NowDay;
@@ -168,6 +174,8 @@ protected:
 	int32 MaxMonth;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 MaxDay;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Day")
+	int32 StartMonth = 1;
 
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Weather")
 	//Weather 제어 어트리뷰트 추가 예정

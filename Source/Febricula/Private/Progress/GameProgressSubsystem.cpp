@@ -3,6 +3,7 @@
 #include "Progress/GameProgressSubsystem.h"
 
 #include "Engine/GameInstance.h"
+#include "SaveGame/FebriculaSaveGame.h"
 #include "GameMode/TimeSubsystem.h"
 #include "GameplayTagContainer.h"
 #include "Activity/ActivitySetting.h"
