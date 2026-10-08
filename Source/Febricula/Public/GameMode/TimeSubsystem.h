@@ -145,16 +145,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Save")
 	void LoadSaveData(const FTimeSaveData& Data);
 
-
-protected:
-
 	const TArray<FScheduleDef>& GetScheduleDefs() const;
 
+
+protected:
+	
 	/** 오늘 적용할 시간표 애셋. 없으면 nullptr */
 	const UDayScheduleAsset* GetTodaySchedule() const;
-
-
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 NowDay;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Day")
@@ -185,6 +183,6 @@ protected:
 	TObjectPtr<UDataTable> ScheduleBlockTable;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Schedule")
 	FScheduleBlock ScheduleBlock;
-
+	
 	int32 NowRepeatCount;
 };

@@ -20,6 +20,7 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	NowMonth = S->StartMonth;
 	MaxDay = GetDayPerMonth();
 
+	
 	WeekDaySchedule = S->WeekDaySchedule.LoadSynchronous();
 	WeekEndSchedule = S->WeekEndSchedule.LoadSynchronous();
 
