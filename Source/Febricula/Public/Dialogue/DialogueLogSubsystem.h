@@ -63,6 +63,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "DialogueLog")
 	void ClearDialogueLog();
 
+	/** 배열로 로그를 통째로 덮어쓴다 (세이브 로드 복원용) */
+	void LoadDialogueLog(const TArray<FDialogueLogEntry>& InLog);
+
 	/** SaveGame 객체에 로그 데이터를 담는다 */
 	void PackIntoSave(UFebriculaSaveGame* SaveData) const;
 

@@ -1,11 +1,16 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Activity/ActivitySubsystem.h"
+
+#include <string>
+
 #include "Activity/ActivitySetting.h"
 #include "Dialogue/DialogueDataTypes.h"
 #include "Dialogue/DialogueSubsystem.h"
+#include "EntitySystem/MovieSceneEntitySystemRunner.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Kismet/GameplayStatics.h"
+
 
 void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -15,15 +20,27 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	FixedEvents = S->FixedEventAsset.LoadSynchronous();
 	FixedDialogues = S->FixedDialogueAsset.LoadSynchronous();
-	
-	TArray<FActivityDefinition*> Rows;
-	FixedEvents->GetAllRows(TEXT("Fixed Event"), Rows);
 
-	for (const FName& RowName : FixedEvents->GetRowNames())
+	// [수정] FixedEventAsset이 프로젝트 세팅에 지정되지 않았거나 로드에 실패하면
+	// FixedEvents가 nullptr인 채로 GetAllRows()를 호출해서 즉시 크래시가 났다.
+	// 애셋이 아직 없는 레벨/프로젝트에서도 최소한 에디터는 열려야 하므로 방어 코드를 추가한다.
+	if (!FixedEvents)
 	{
-		if (const FActivityDefinition* Row = FixedEvents->FindRow<FActivityDefinition>(RowName, TEXT("Make Activity Map"), false))
+		UE_LOG(LogTemp, Error, TEXT("UActivitySubsystem::Initialize: FixedEventAsset이 설정되지 않았거나 로드에 실패했습니다. "
+			"Project Settings > Activity Setting > Event Default > Fixed Event Asset을 확인하세요."));
+	}
+	else
+	{
+		TArray<FActivityDefinition*> Rows;
+		FixedEvents->GetAllRows(TEXT("Fixed Event"), Rows);
+	
+
+		for (const FName& RowName : FixedEvents->GetRowNames())
 		{
-			AllActivities.Add(Row->ActivityNameTag, *Row);
+			if (const FActivityDefinition* Row = FixedEvents->FindRow<FActivityDefinition>(RowName, TEXT("Make Activity Map"), false))
+			{
+				AllActivities.Add(Row->ActivityNameTag, *Row);
+			}
 		}
 	}
 
@@ -36,25 +53,13 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// 레벨 로드 완료 시 활동 목록 재검사
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UActivitySubsystem::OnLevelLoaded);
 	
-	
-	
-	CurrentAP = 6;
-	MaxAP = 6;
+	CurrentAP = 1;
+	MaxAP = 1;
 }
 
-void UActivitySubsystem::HandleDialogueFinished()
-{
-	GetWorld()->GetTimerManager().SetTimerForNextTick(
-	this, &UActivitySubsystem::PrintFixedActivities);
-
-}
 
 void UActivitySubsystem::BindDialogue()
 {
-	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
-	{
-		DialogueSubsystem->OnDialogueFinished.AddDynamic(this, &UActivitySubsystem::HandleDialogueFinished);
-	}
 }
  
 void UActivitySubsystem::FindRunnableActivities()
@@ -86,7 +91,7 @@ void UActivitySubsystem::FindRunnableActivities()
 			}
 		}
 	}
-
+	SortRunnableActivity();
 	if (GEngine)
 	{
 		for (const auto& Pair : RunnableActivities)
@@ -100,35 +105,67 @@ void UActivitySubsystem::FindRunnableActivities()
 void UActivitySubsystem::PrintFixedActivities()
 {
 	TArray<FDialogueChoice> DialogueChoices;
-	TArray<int32> NeedAp;
+	
 	for (TPair<FGameplayTag, FActivityDefinition> Activity : RunnableActivities)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Activity Tag: %s"), *FText::FromName(Activity.Key.GetTagName()).ToString());
 		UE_LOG(LogTemp, Warning, TEXT("Next Node Id: %s"), *Activity.Value.NodeId.ToString());
 
-		if (CurrentAP < Activity.Value.ActionPointCost) break;
-		DialogueChoices.Add(FDialogueChoice(FText::FromName(Activity.Key.GetTagName()), TArray<FGameCondition>(), TArray<FGameAction>(), Activity.Value.NodeId));
-		NeedAp.Add(Activity.Value.ActionPointCost);
-
+		TArray<FGameCondition> Condition;
+		Condition.Add(FGameCondition(EGameConditionType::APAtLeat, NAME_None, Activity.Value.ActionPointCost));
+		DialogueChoices.Add(FDialogueChoice(FText::FromName(Activity.Key.GetTagName()), Condition, TArray<FGameAction>(), Activity.Value.NodeId));
 	}
+	DialogueChoices.Add(FDialogueChoice(INVTEXT("자유행동"), TArray<FGameCondition>(), TArray<FGameAction>(), NAME_None));
+	
 	
 	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
 		//DialogueSubsystem->TryStartEventForNpc(FName(""), nullptr);
 		FDialogueNodeRow Row = FDialogueNodeRow();
-		for (int i = 0; i < DialogueChoices.Num(); i++)
+		for (int i = 0; i < DialogueChoices.Num() - 1; i++)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Choice Name: %s"), *DialogueChoices[i].Text.ToString());
-			DialogueChoices[i].Actions.Add(FGameAction(EGameActionType::ConsumeAP, NAME_None, NAME_None, NeedAp[i]));
 		}
+		DialogueChoices[DialogueChoices.Num() - 1].bFreeActivity = true;
 		if (DialogueChoices.Num() == 0) return;
 		Row.Choices = DialogueChoices;
 		Row.Text = NSLOCTEXT("Dialogue", "Dialogue", "어떻게 할까...");
 
 		DialogueSubsystem->SetDataTables(FixedEvents, FixedDialogues);
 		DialogueSubsystem->ActivityDialoguePrint(Row);
+		bWaitActivityChoice = true;
+		bFreeActivity = false;
 	}
 	
+}
+
+bool UActivitySubsystem::RunActivityByIndex(int32 Index)
+{
+	TArray<FActivityDefinition> RunnableActivityValues;
+	TArray<FGameplayTag> RunnableActivitiesTags;
+	RunnableActivities.GenerateValueArray(RunnableActivityValues);
+	RunnableActivities.GenerateKeyArray(RunnableActivitiesTags);
+	
+	if (Index < 0 || Index >= RunnableActivityValues.Num()) return false;
+	if (!TryConsumeAP(RunnableActivityValues[Index].ActionPointCost)) return false;
+	NowPlayedActivity = RunnableActivitiesTags[Index];
+
+	OnActivityRequested.Broadcast(RunnableActivityValues[Index]);
+	return true;
+	// 	const FActivityDefinition* Definition = RunnableActivities.Find(ActivityTag);
+	// 	if (!Definition)
+	// 	{
+	// 		UE_LOG(LogTemp, Warning, TEXT("RunActivity: Activity not runnable - %s"), *ActivityTag.ToString());
+	// 		return;
+	// 	}
+	//
+	// 	if (!TryConsumeAP(Definition->ActionPointCost))
+	// 	{
+	// 		return;
+	// 	}
+	//
+	// 	OnActivityRequested.Broadcast(ActivityTag, *Definition);
+	// 	GoHome();
 }
 
 FGameplayTag UActivitySubsystem::GetNowScheduleTag() const
@@ -166,6 +203,14 @@ void UActivitySubsystem::OnLevelLoaded(UWorld* LoadedWorld)
 	FindRunnableActivities();
 }
 
+void UActivitySubsystem::SortRunnableActivity()
+{
+	RunnableActivities.KeySort([](const FGameplayTag& A, const FGameplayTag& B)
+	{
+		return A.GetTagName().LexicalLess(B.GetTagName());
+	});
+}
+
 int32 UActivitySubsystem::GetRunnableLength()
 {
 	return RunnableActivities.Num();
@@ -180,7 +225,6 @@ TArray<FGameplayTag> UActivitySubsystem::GetRunnableActivityTag() const
 
 bool UActivitySubsystem::TryConsumeAP(int32 Cost)
 {
-	UE_LOG(LogTemp, Warning, TEXT("TryConsumeAP: Consumed AP (Remaining: %d)"), Cost);
 	if (CurrentAP < Cost)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("TryConsumeAP: Not enough AP (Current: %d, Required: %d)"), CurrentAP, Cost);
@@ -201,21 +245,43 @@ void UActivitySubsystem::GoHome()
 	}
 }
 
-void UActivitySubsystem::RunActivity(FGameplayTag ActivityTag)
+int32 UActivitySubsystem::GetCurrentAP() const
 {
-	const FActivityDefinition* Definition = RunnableActivities.Find(ActivityTag);
-	if (!Definition)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("RunActivity: Activity not runnable - %s"), *ActivityTag.ToString());
-		return;
-	}
+	return CurrentAP;
+}
 
-	if (!TryConsumeAP(Definition->ActionPointCost))
-	{
-		return;
-	}
-
-	OnActivityRequested.Broadcast(ActivityTag, *Definition);
-	GoHome();
+void UActivitySubsystem::ActivityFinished(FName ActivityName)
+{
+	FString LevelName = UGameplayStatics::GetCurrentLevelName(this);
+	ActivityName = FName("Activity." + LevelName + "." + ActivityName.ToString());
+	FGameplayTag ActivityTag = FGameplayTag::RequestGameplayTag(ActivityName);
+	UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished\n%s\n%s"), *ActivityName.ToString(), *ActivityTag.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished: %s"), *NowPlayedActivity.ToString());
+	if (NowPlayedActivity != ActivityTag) return;
+	bFreeActivity = false;
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
+	OnActivityFinished.Broadcast(FName("Fixed"), ActivityName);
 
 }
+
+void UActivitySubsystem::ActivityFinished(FName NpcName, int32 EventNumber)
+{
+	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		if (DialogueSubsystem->CheckNpcCached(NpcName))
+		{
+			FName ActivityName = FName(FString::Printf(TEXT("%s_%d"), *NpcName.ToString(), EventNumber));
+			UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished: %s"), *ActivityName.ToString());
+			
+			OnActivityFinished.Broadcast(NpcName, ActivityName);
+			
+			GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
+			bFreeActivity = false;
+		}	
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ActivityFinished: Spawn되지 않은 NPC %s"), *NpcName.ToString());
+		}
+	}
+}
+

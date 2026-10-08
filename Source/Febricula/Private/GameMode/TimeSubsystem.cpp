@@ -6,7 +6,6 @@
 #include "GameMode/DayScheduleAsset.h"
 #include "GameMode/ScheduleBlockRow.h"
 #include "GameMode/TimeSettings.h"
-#include "SaveGame/FebriculaSaveGame.h"
 
 void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -18,8 +17,8 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	MaxMonth = S->MaxMonth;
 
-	NowMonth = S->StartMonth;
 	StartMonth = S->StartMonth;
+	NowMonth = S->StartMonth;
 	MaxDay = GetDayPerMonth();
 
 	WeekDaySchedule = S->WeekDaySchedule.LoadSynchronous();
@@ -37,7 +36,7 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		UE_LOG(LogTemp, Warning,
 			TEXT("UTimeSubsystem: WeekDaySchedule이 비어 있습니다. "
-				 "프로젝트 세팅 > Calander Default / Schedule Default 에서 DayScheduleAsset을 지정하세요."));
+				"프로젝트 세팅 > Calander Default / Schedule Default 에서 DayScheduleAsset을 지정하세요."));
 	}
 
 	InitScheduleBlock();
@@ -61,7 +60,7 @@ void UTimeSubsystem::InitScheduleBlock()
 
 int32 UTimeSubsystem::GetDayPerMonth()
 {
-	if (NowMonth % 2 == 0 )
+	if (NowMonth % 2 == 0)
 	{
 		return 30;
 	}
@@ -83,49 +82,6 @@ void UTimeSubsystem::SpendDay()
 		MaxDay = GetDayPerMonth();
 	}
 	OnDayChanged.Broadcast(NowDay);
-}
-
-void UTimeSubsystem::GoBackOneDay()
-{
-	if (AbsoluteDay <= 1)
-	{
-		return;
-	}
-
-	--AbsoluteDay;
-	RecalcFromAbsoluteDay(AbsoluteDay);
-	OnDayChanged.Broadcast(NowDay);
-}
-
-void UTimeSubsystem::SetAbsoluteDay(int32 NewAbsoluteDay)
-{
-	AbsoluteDay = FMath::Max(NewAbsoluteDay, 1);
-	RecalcFromAbsoluteDay(AbsoluteDay);
-	OnDayChanged.Broadcast(NowDay);
-}
-
-void UTimeSubsystem::RecalcFromAbsoluteDay(int32 InAbsoluteDay)
-{
-	// AbsoluteDay=1 은 StartMonth 1일. 남은 일수를 0-based로 환산해 월별로 소진한다.
-	int32 Remaining = InAbsoluteDay - 1;
-	int32 Month = StartMonth;
-
-	while (true)
-	{
-		const int32 DaysInMonth = (Month % 2 == 1) ? 31 : 30;
-		if (Remaining < DaysInMonth)
-		{
-			NowDay   = Remaining + 1;
-			NowMonth = Month;
-			MaxDay   = DaysInMonth;
-			return;
-		}
-		Remaining -= DaysInMonth;
-		if (++Month > 12)
-		{
-			Month = 1;
-		}
-	}
 }
 
 void UTimeSubsystem::SpendSchedule()
@@ -247,23 +203,63 @@ FGameplayTag UTimeSubsystem::GetNowDayTypeTag() const
 	return Asset ? Asset->DayTypeTag : FGameplayTag();
 }
 
-void UTimeSubsystem::PackIntoSave(UFebriculaSaveGame* SaveData) const
+FTimeSaveData UTimeSubsystem::GetSaveData() const
 {
-	if (!SaveData)
-	{
-		return;
-	}
-	SaveData->AbsoluteDay = AbsoluteDay;
-	SaveData->NowDay      = NowDay;
-	SaveData->NowMonth    = NowMonth;
+	FTimeSaveData Data;
+	Data.NowDay = NowDay;
+	Data.NowMonth = NowMonth;
+	Data.AbsoluteDay = AbsoluteDay;
+	Data.NowScheduleIndex = NowScheduleIndex;
+	Data.NowSchedule = NowSchedule;
+	Data.NowRepeatCount = NowRepeatCount;
+	return Data;
 }
 
-void UTimeSubsystem::RestoreFromSave(const UFebriculaSaveGame* SaveData)
+void UTimeSubsystem::GoBackOneDay()
 {
-	if (!SaveData)
+	if (AbsoluteDay <= 1) return;
+	--AbsoluteDay;
+	RecalcFromAbsoluteDay(AbsoluteDay);
+	OnDayChanged.Broadcast(NowDay);
+}
+
+void UTimeSubsystem::SetAbsoluteDay(int32 NewAbsoluteDay)
+{
+	AbsoluteDay = FMath::Max(NewAbsoluteDay, 1);
+	RecalcFromAbsoluteDay(AbsoluteDay);
+	OnDayChanged.Broadcast(NowDay);
+}
+
+void UTimeSubsystem::RecalcFromAbsoluteDay(int32 InAbsoluteDay)
+{
+	int32 Remaining = InAbsoluteDay - 1;
+	int32 Month = StartMonth;
+	while (true)
 	{
-		return;
+		const int32 DaysInMonth = (Month % 2 == 1) ? 31 : 30;
+		if (Remaining < DaysInMonth)
+		{
+			NowDay = Remaining + 1;
+			NowMonth = Month;
+			MaxDay = DaysInMonth;
+			return;
+		}
+		Remaining -= DaysInMonth;
+		if (++Month > 12) Month = 1;
 	}
-	// SetAbsoluteDay가 AbsoluteDay 세팅 + NowDay/NowMonth/MaxDay 재계산 + 델리게이트 브로드캐스트를 한 번에 처리한다.
-	SetAbsoluteDay(SaveData->AbsoluteDay);
+}
+
+void UTimeSubsystem::LoadSaveData(const FTimeSaveData& Data)
+{
+	NowDay = Data.NowDay;
+	NowMonth = Data.NowMonth;
+	AbsoluteDay = Data.AbsoluteDay;
+	NowScheduleIndex = Data.NowScheduleIndex;
+	NowSchedule = Data.NowSchedule;
+	NowRepeatCount = Data.NowRepeatCount;
+	MaxDay = GetDayPerMonth();
+
+	// ActivitySubsystem 등 현재 시간대를 구독하는 쪽에 로드된 값을 알려준다.
+	OnScheduleChanged.Broadcast(NowSchedule.ScheduleName);
+	OnDayChanged.Broadcast(NowDay);
 }

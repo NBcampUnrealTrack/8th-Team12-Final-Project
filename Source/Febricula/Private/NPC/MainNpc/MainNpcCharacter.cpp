@@ -10,7 +10,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "NPC/MainNpc/MainNpcAIController.h"
-#include "NPC/MainNpc/NpcRelationshipSubsystem.h"
+#include "NPC/MainNpc/NpcAffinitySubsystem.h"
 #include "NPC/MainNpc/NpcRoute.h"
 
 AMainNpcCharacter::AMainNpcCharacter()
@@ -172,11 +172,11 @@ void AMainNpcCharacter::StartTalk(AActor* Talker)
 
 void AMainNpcCharacter::EndTalk()
 {
-	CurrentTalker = nullptr;
-	SetMovementState(ENpcMovementState::Idle);
-	SetBehaviorTreePaused(false);
-	OnNpcTalkStateChanged.Broadcast(false);
-	OnTalkEnded();
+	// CurrentTalker = nullptr;
+	// SetMovementState(ENpcMovementState::Idle);
+	// //SetBehaviorTreePaused(false);
+	// OnNpcTalkStateChanged.Broadcast(false);
+	// OnTalkEnded();
 }
 
 ANpcRoute* AMainNpcCharacter::GetRoute(FName RouteId) const
@@ -248,7 +248,7 @@ void AMainNpcCharacter::PauseAIDuringTalk()
 
 bool AMainNpcCharacter::IsRelationshipAtLeast(ENpcRelationshipLevel MinimumLevel) const
 {
-	if (const UNpcRelationshipSubsystem* Subsystem = GetRelationshipSubsystem())
+	if (const UNpcAffinitySubsystem* Subsystem = GetRelationshipSubsystem())
 	{
 		return Subsystem->IsRelationshipAtLeast(GetNpcId(), MinimumLevel);
 	}
@@ -257,7 +257,7 @@ bool AMainNpcCharacter::IsRelationshipAtLeast(ENpcRelationshipLevel MinimumLevel
 
 ENpcRelationshipLevel AMainNpcCharacter::GetRelationshipLevel() const
 {
-	if (const UNpcRelationshipSubsystem* Subsystem = GetRelationshipSubsystem())
+	if (const UNpcAffinitySubsystem* Subsystem = GetRelationshipSubsystem())
 	{
 		return Subsystem->GetRelationshipLevel(GetNpcId());
 	}
@@ -266,20 +266,20 @@ ENpcRelationshipLevel AMainNpcCharacter::GetRelationshipLevel() const
 
 float AMainNpcCharacter::GetAffinityValue() const
 {
-	if (const UNpcRelationshipSubsystem* Subsystem = GetRelationshipSubsystem())
+	if (const UNpcAffinitySubsystem* Subsystem = GetRelationshipSubsystem())
 	{
 		return Subsystem->GetAffinityValue(GetNpcId());
 	}
 	return 0.f;
 }
 
-UNpcRelationshipSubsystem* AMainNpcCharacter::GetRelationshipSubsystem() const
+UNpcAffinitySubsystem* AMainNpcCharacter::GetRelationshipSubsystem() const
 {
 	if (const UWorld* World = GetWorld())
 	{
 		if (UGameInstance* GameInstance = World->GetGameInstance())
 		{
-			return GameInstance->GetSubsystem<UNpcRelationshipSubsystem>();
+			return GameInstance->GetSubsystem<UNpcAffinitySubsystem>();
 		}
 	}
 	return nullptr;

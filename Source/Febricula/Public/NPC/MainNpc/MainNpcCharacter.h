@@ -7,7 +7,7 @@
 #include "MainNpcCharacter.generated.h"
 
 class ANpcRoute;
-class UNpcRelationshipSubsystem;
+class UNpcAffinitySubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNpcTalkStateChanged, bool, bIsTalking);
 
@@ -32,6 +32,8 @@ public:
 	virtual bool IsMainNpc() const override { return true; }
 
 	virtual FText GetInteractionPrompt_Implementation(AActor* Interactor) const override;
+	
+	[[nodiscard]] FName GetDefaultAnimation() const { return DefaultAnimation; }
 
 	/**
 	 * 상호작용 시 Talk 상태로 들어가고 이벤트 트리 대화를 시작한다.
@@ -125,7 +127,7 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "NPC|Main")
 	void OnTalkEnded();
 
-	UNpcRelationshipSubsystem* GetRelationshipSubsystem() const;
+	UNpcAffinitySubsystem* GetRelationshipSubsystem() const;
 
 	/**
 	 * Talk/Follow처럼 게임플레이가 직접 이동을 지시하는 스크립트 구간 동안
@@ -141,6 +143,13 @@ protected:
 	TObjectPtr<UDataTable> ConnectedEventTable;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Event")
 	TSoftObjectPtr<UDataTable> DefaultDialogueTable;
+
+	/**
+	 * 캐릭터 스폰 시 해당 키에 해당하는 애니메이션 재생 상태로 시작
+	 * Empty면 재생 x
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Anim")
+	FName DefaultAnimation;
 
 	/**
 	 * 레벨에 배치한 이동 경로. 순찰(Patrol)과 안내(Guide)가 같은 경로를 공유한다.

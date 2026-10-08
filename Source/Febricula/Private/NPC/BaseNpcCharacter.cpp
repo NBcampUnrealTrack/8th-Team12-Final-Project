@@ -250,7 +250,7 @@ bool ABaseNpcCharacter::PlayNpcAnim(FName AnimId, bool bLoop)
 	// return true;
 }
 
-void ABaseNpcCharacter::StopNpcAnim(float BlendOutTime)
+void ABaseNpcCharacter::StopNpcAnim(float BlendOutTime, bool bFromLogic)
 {
 	// USkeletalMeshComponent* MeshComp = GetMesh();
 	// if (!MeshComp)
@@ -266,7 +266,7 @@ void ABaseNpcCharacter::StopNpcAnim(float BlendOutTime)
 	//
 	// // 단일 노드 모드로 재생 중이던 경우 (애님 BP가 없는 NPC)
 	// MeshComp->Stop();
-	CharacterAnimationComponent->StopAnim(BlendOutTime);
+	CharacterAnimationComponent->StopAnim(BlendOutTime, bFromLogic);
 }
 
 // ---------------------------------------------------------------------------

@@ -19,10 +19,34 @@
 #include "TimeSubsystem.generated.h"
 
 class UDayScheduleAsset;
-class UFebriculaSaveGame;
 enum class EDaySchedule : uint8;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDayChangedDelegate, int32, ChangedDay);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FScheduleChangedDelegate, FGameplayTag, ChangedScheduleName);
+
+/** UTimeSubsystem의 상태를 세이브 파일에 담기 위한 스냅샷 */
+USTRUCT(BlueprintType)
+struct FTimeSaveData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowDay = 1;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowMonth = 1;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 AbsoluteDay = 1;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowScheduleIndex = 0;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	FScheduleDef NowSchedule;
+
+	UPROPERTY(VisibleAnywhere, Category = "Save")
+	int32 NowRepeatCount = 0;
+};
 
 /**
  *
@@ -51,18 +75,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
 	void SpendDay();
-
-	/** AbsoluteDay를 1 감소시키고 NowDay/NowMonth를 역방향으로 재계산한다. AbsoluteDay가 1이면 아무것도 하지 않는다 */
-	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
-	void GoBackOneDay();
-
-	/** AbsoluteDay를 NewAbsoluteDay로 강제 세팅하고 NowDay/NowMonth를 재계산한다. 1 미만은 1로 클램프 */
-	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
-	void SetAbsoluteDay(int32 NewAbsoluteDay);
-
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule")
 	void SpendSchedule();
-	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule") 
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule")
 	void ResetSchedule();
 
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
@@ -82,6 +97,12 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	int32 GetAbsoluteDay() const { return AbsoluteDay; }
+
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
+	void GoBackOneDay();
+
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Day")
+	void SetAbsoluteDay(int32 NewAbsoluteDay);
 
 	/** 주말인가. 누적 일차 기준 1~5일 = 평일, 6~7일 = 주말 */
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
@@ -117,11 +138,18 @@ public:
 	const FScheduleDef* GetScheduleByIndex(int32 Index) const;
 	const FScheduleDef* GetScheduleByTag(FGameplayTag Tag) const;
 
-	/** SaveGame 객체에 날짜 데이터를 담는다 */
-	void PackIntoSave(UFebriculaSaveGame* SaveData) const;
+	// ---- 세이브/로드 ----
 
-	/** SaveGame 객체에서 날짜 데이터를 복원한다 */
-	void RestoreFromSave(const UFebriculaSaveGame* SaveData);
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Save")
+	FTimeSaveData GetSaveData() const;
+
+	/**
+	 * 세이브 파일의 값으로 시간 상태를 통째로 되돌린다.
+	 * 다른 시스템(ActivitySubsystem 등)이 현재 시간대를 구독하고 있으므로,
+	 * 값을 바꾼 뒤 OnScheduleChanged를 다시 브로드캐스트해서 동기화한다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Save")
+	void LoadSaveData(const FTimeSaveData& Data);
 
 
 protected:
@@ -131,10 +159,7 @@ protected:
 	/** 오늘 적용할 시간표 애셋. 없으면 nullptr */
 	const UDayScheduleAsset* GetTodaySchedule() const;
 
-	/** InAbsoluteDay 값을 기준으로 NowDay/NowMonth/MaxDay를 재계산한다 */
 	void RecalcFromAbsoluteDay(int32 InAbsoluteDay);
-
-
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 NowDay;
@@ -149,8 +174,6 @@ protected:
 	int32 MaxMonth;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 MaxDay;
-
-	/** Initialize() 시점의 StartMonth. AbsoluteDay → NowDay/NowMonth 역산에 기준점으로 쓴다 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 StartMonth = 1;
 

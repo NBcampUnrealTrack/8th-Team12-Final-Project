@@ -37,6 +37,12 @@ void UDialogueLogSubsystem::ClearDialogueLog()
 	OnLogUpdated.Broadcast();
 }
 
+void UDialogueLogSubsystem::LoadDialogueLog(const TArray<FDialogueLogEntry>& InLog)
+{
+	DialogueLog = InLog;
+	OnLogUpdated.Broadcast();
+}
+
 void UDialogueLogSubsystem::PackIntoSave(UFebriculaSaveGame* SaveData) const
 {
 	if (!SaveData)

@@ -22,11 +22,12 @@ public:
 	virtual void StartMoveWrapper(AActor* Interactor, EMoveState MoveState = EMoveState::OPENING, bool bInstant = false);
 	virtual void Interact_Implementation(AActor* Interactor) override;
 
-
 protected:
 	virtual void OpenActor(AActor* Interactor, bool bInstant = false);
 	virtual void CloseActor(AActor* Interactor, bool bInstant = false);
-	
+
+	UFUNCTION()
+	void FinishDialogue();
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	

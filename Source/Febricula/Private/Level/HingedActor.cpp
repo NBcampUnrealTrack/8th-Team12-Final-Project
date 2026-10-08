@@ -50,6 +50,8 @@ void AHingedActor::OpenActor(AActor* Interactor, bool bInstant)
 		GetWorldTimerManager().ClearTimer(MoveTimer);
 		ExecuteActionsWrapper();
 
+		
+		
 		//Super::Interact_Implementation(Interactor);
 	}
 }
