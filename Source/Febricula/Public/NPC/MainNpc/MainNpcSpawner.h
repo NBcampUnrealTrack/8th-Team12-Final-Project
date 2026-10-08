@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 메인 NPC 스포너 + 스케줄 행(FMainNpcSpawnRow) - 그 시간·레벨·자리에 한 명만 세운다
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 메인 NPC를 "그 시간에, 그 레벨의, 그 자리에" 한 명만 세워 두는 스포너.

@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-06)
+// 요약: 행인이 따라 걷는 스플라인 경로 구간 - 이어 붙여 경로망을 만든다
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 행인이 따라 걷는 경로 한 구간.

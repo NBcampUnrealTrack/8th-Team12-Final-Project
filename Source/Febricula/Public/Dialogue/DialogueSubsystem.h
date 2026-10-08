@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-21)
+// 요약: 대화 그래프 실행 + 이벤트 선택 + 액션 실행 런타임 코어
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 대화 그래프 실행 + 이벤트 선택 + 액션 실행을 담당하는 런타임 코어.

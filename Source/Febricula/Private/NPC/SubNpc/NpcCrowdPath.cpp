@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인 경로 구간 구현 - 차선 위치 계산, 갈림길 가중치 선택, 경로 디버그 표시
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/NpcCrowdPath.h"

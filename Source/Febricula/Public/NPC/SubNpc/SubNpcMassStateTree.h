@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-07 작성
+// 요약: 행인 상태 결정 Mass StateTree (Mass 3단계) - 프래그먼트와 태스크 정의
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 행인 상태 결정 — Mass StateTree (Mass 3단계).

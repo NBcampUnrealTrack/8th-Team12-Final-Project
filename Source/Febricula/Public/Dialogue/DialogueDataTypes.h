@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-26)
+// 요약: 대화/이벤트 트리 공용 타입 - 조건(FGameCondition)과 액션(FGameAction)을 데이터로 표현
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 대화 / 이벤트 트리 데이터의 공용 타입 모음.

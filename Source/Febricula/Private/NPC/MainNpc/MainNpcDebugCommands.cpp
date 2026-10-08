@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 메인 NPC 테스트용 콘솔 명령(mainnpc.*) - 날짜/시간대 넘기기, 레벨 이동, 호감도·능력치 조작
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 메인 NPC 스케줄 테스트용 콘솔 명령 (mainnpc.*). PIE 중에 ` 키 콘솔에서 친다.

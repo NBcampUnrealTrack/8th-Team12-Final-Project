@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-07 작성 (최종 수정 2026-10-08)
+// 요약: 행인 상태 결정 Mass StateTree 태스크 구현 - 걷기/스팟/반응 전이
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/SubNpcMassStateTree.h"

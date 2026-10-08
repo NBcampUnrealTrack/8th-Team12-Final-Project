@@ -8,6 +8,7 @@
 #include "Engine/DataAsset.h"
 #include "DayScheduleAsset.generated.h"
 
+// [skydodo] 2026-08-26 수정: 날 종류 태그(DayTypeTag) 추가 (+ GameplayTagContainer include)
 /**
  * 하루치 시간표.
  *

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-18)
+// 요약: 플레이어 HUD 구현 - 상호작용 프롬프트, 대화창, 선택지
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "UI/PlayerHUDWidget.h"

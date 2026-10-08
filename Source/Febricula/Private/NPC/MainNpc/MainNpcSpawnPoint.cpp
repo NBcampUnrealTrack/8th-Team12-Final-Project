@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 메인 NPC 자리 액터 구현 - 에디터 미리보기 캡슐/화살표
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/MainNpcSpawnPoint.h"

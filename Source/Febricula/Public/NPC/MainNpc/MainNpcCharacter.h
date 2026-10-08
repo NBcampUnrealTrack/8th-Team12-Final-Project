@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성 (최종 수정 2026-10-08)
+// 요약: 메인 NPC 베이스 - 추적/동행, 대화, 호감도 조회, 경로
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once

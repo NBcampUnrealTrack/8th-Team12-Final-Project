@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성
+// 요약: 메인 NPC 호감도 구현 - 수치 증감, 단계 변환, 세이브/로드
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"

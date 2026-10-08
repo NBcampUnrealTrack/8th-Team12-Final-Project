@@ -44,6 +44,7 @@ void UCharacterAnimationComponent::BeginPlay()
 
 }
 
+// [skydodo] 2026-10-06 수정: PlayAnim을 PlayAnimOnSlot으로 위임, StopAnimOnSlot/PlayAnimOnSlot 추가 (슬롯 지정 재생)
 bool UCharacterAnimationComponent::PlayAnim(FName AnimId, bool bLoop)
 {
 	return PlayAnimOnSlot(AnimId, AnimSlotName, bLoop);
@@ -74,6 +75,7 @@ bool UCharacterAnimationComponent::PlayAnimOnSlot(FName AnimId, FName SlotName, 
 	{
 		if (USkeletalMeshComponent* MeshComp = Owner->GetMesh())
 		{
+			// [skydodo] 2026-10-08 로그 주석 처리
 			// UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] AnimMode=%d"), (int32)MeshComp->GetAnimationMode());
 			UAnimInstance* AnimInstance = MeshComp->GetAnimInstance();
 			if (AnimInstance && !bPreferSingleNodeAnim)
@@ -97,6 +99,7 @@ bool UCharacterAnimationComponent::PlayAnimOnSlot(FName AnimId, FName SlotName, 
 					AnimInstance->OnMontageEnded.RemoveDynamic(this, &UCharacterAnimationComponent::HandleMontageEnded);
 					AnimInstance->OnMontageEnded.AddDynamic(this, &UCharacterAnimationComponent::HandleMontageEnded);
 
+					// [skydodo] 2026-10-08 로그 주석 처리
 					// UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 재생 시작: %s, 길이 %.2f"),
 					// 	*GetNameSafe(Played), Played->GetPlayLength());
 
@@ -108,6 +111,7 @@ bool UCharacterAnimationComponent::PlayAnimOnSlot(FName AnimId, FName SlotName, 
 					*GetNameSafe(this), *SlotName.ToString());
 			}
 
+			// [skydodo] 2026-10-06 추가: 기본 슬롯이 아니면 전신 폴백을 하지 않는다
 			// 상체 슬롯처럼 기본 슬롯이 아닌 곳에 실패했으면 대체 재생하지 않는다.
 			// 아래 폴백은 전신을 덮어써서 걷기 애니메이션이 사라진다.
 			if (SlotName != AnimSlotName)
@@ -202,6 +206,7 @@ void UCharacterAnimationComponent::TickComponent(float DeltaTime, enum ELevelTic
 
 void UCharacterAnimationComponent::HandleMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
+	// [skydodo] 2026-10-08 로그 주석 처리
 	// UE_LOG(LogTemp, Warning, TEXT("[PlayAnim] 몽타주 종료: %s, 중단됨=%d"),
 	// *GetNameSafe(Montage), bInterrupted);   // ← 여기에 브레이크포인트
 

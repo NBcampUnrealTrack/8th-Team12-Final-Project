@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-18 작성
+// 요약: 경로 다음 지점으로 넘기는 BT 태스크 구현
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/BTTask_AdvanceRouteTarget.h"

@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인(서브 NPC) 구현 - 스플라인 경로 추종, 그룹 이동, 스팟 행동, 부딪힘 반응, 지면 스냅
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/SubNpcCharacter.h"

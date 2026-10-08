@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인 군중 감독 서브시스템 구현 - 풀링/스폰·회수, 거리 LOD 분할 갱신, 원경 표현, crowd.* 콘솔 명령
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"

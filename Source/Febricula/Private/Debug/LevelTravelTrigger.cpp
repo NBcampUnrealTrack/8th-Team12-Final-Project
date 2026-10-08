@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 테스트용 레벨 이동 트리거 구현
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Debug/LevelTravelTrigger.h"

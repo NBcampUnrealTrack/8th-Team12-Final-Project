@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-07 작성
+// 요약: 행인 이동 Mass 1단계 - 경로 이동 병렬 계산 프로세서
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 행인 이동의 Mass 1단계.

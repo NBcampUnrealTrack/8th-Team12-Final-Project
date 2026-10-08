@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성 (최종 수정 2026-08-21)
+// 요약: 모든 NPC(메인/서브)의 베이스 캐릭터 - 식별, AI 연동, 이동 상태, 상호작용
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once

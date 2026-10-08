@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 행인 로그 카테고리(LogSubNpc)와 crowd.Log 스위치 매크로
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 행인(군중) 로그 — 카테고리 LogSubNpc, 스위치는 콘솔 변수 crowd.Log.

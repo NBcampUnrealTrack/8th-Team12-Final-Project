@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 메인 NPC가 서 있을 자리 (스케줄 테이블이 SpawnPointId로 가리킨다)
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 메인 NPC가 서 있을 자리. 레벨에 배치하고 SpawnPointId만 붙여 두면 된다.

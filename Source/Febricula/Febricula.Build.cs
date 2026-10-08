@@ -25,6 +25,7 @@ public class Febricula : ModuleRules
 			// (ACustomerCharacter::TeleportToPoint). 안 하면 벽 안에서 시작해
 			// 이후 MoveTo 가 전부 실패한다.
 			"NavigationSystem",
+			// [skydodo] 2026-10-07 추가: 행인 Mass / AnimToTexture 모듈
 			// 행인 이동 계산을 Mass 프로세서에서 병렬로 돌린다 (SubNpcMassProcessors).
 			"MassEntity",
 			"MassCore",
@@ -37,6 +38,7 @@ public class Febricula : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
+		// [skydodo] 2026-10-07 추가
 		// 원경 행인 애니메이션 굽기 명령 crowd.BakeFarCrowd (SubNpcFarCrowdBake.cpp, 에디터 전용)
 		if (Target.bBuildEditor)
 		{
@@ -45,6 +47,7 @@ public class Febricula : ModuleRules
 
 		PublicIncludePaths.AddRange(new string[] {
 			"Febricula",
+			// [skydodo] 2026-09-10 추가: BurgerHouse include 경로
 			// BurgerHouse — 손님 NPC 루프 (Import/BURGERHOUSE.md)
 			"Febricula/BurgerHouse"
 		});

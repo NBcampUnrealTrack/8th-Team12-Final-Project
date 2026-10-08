@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인 스포너 구현 - 풀 예열, 시작 인원 분산 배치, 시간대별 인원 보충
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/NpcCrowdSpawner.h"

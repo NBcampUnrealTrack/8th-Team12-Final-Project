@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-18 작성
+// 요약: 레벨에 배치하는 NPC 이동 경로 (순찰/안내 공용)
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 레벨에 배치해서 쓰는 NPC 이동 경로.

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성
+// 요약: 플레이어에게 붙이는 상호작용 컴포넌트
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 플레이어에게 붙이는 상호작용 컴포넌트.

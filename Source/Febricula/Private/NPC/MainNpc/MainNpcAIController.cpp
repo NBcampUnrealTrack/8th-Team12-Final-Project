@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-12 작성 (최종 수정 2026-08-21)
+// 요약: 메인 NPC AI 컨트롤러 구현 - Blackboard AIState, 순찰/안내/추적 전환
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/MainNpcAIController.h"

@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 메인 NPC 스포너 구현 - 일차/시간대/조건으로 자리 선택, 시간 변경 시 재배치, 테이블 검사
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/MainNpcSpawner.h"

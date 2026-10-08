@@ -7,6 +7,7 @@
 #include "NPC/BaseNpcCharacter.h"
 #include "NPCSetting.generated.h"
 
+// [skydodo] 2026-09-30 추가
 class UDataTable;
 
 /**
@@ -20,6 +21,7 @@ public:
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category = "NPC Character Map")
 	TMap<FName, TSoftClassPtr<ABaseNpcCharacter>> NPCCharacterMap;
 
+	// [skydodo] 2026-09-30 추가: 행인 기본 아키타입 테이블 설정
 	/**
 	 * 행인(서브 NPC) 기본 아키타입 테이블 (FSubNpcArchetypeRow).
 	 *

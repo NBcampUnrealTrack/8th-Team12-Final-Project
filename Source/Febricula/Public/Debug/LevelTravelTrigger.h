@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-08 작성
+// 요약: 플레이어가 들어오면 다른 레벨로 넘어가는 테스트용 트리거
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 플레이어가 들어오면 다른 레벨로 넘어가는 테스트용 트리거.
