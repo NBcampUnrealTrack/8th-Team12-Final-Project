@@ -7,6 +7,9 @@
 #include "NPC/BaseNpcCharacter.h"
 #include "NPCSetting.generated.h"
 
+// [skydodo] 2026-09-30 추가
+class UDataTable;
+
 /**
  * 
  */
@@ -17,4 +20,16 @@ class FEBRICULA_API UNPCSetting : public UDeveloperSettings
 public:
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category = "NPC Character Map")
 	TMap<FName, TSoftClassPtr<ABaseNpcCharacter>> NPCCharacterMap;
+
+	// [skydodo] 2026-09-30 추가: 행인 기본 아키타입 테이블 설정
+	/**
+	 * 행인(서브 NPC) 기본 아키타입 테이블 (FSubNpcArchetypeRow).
+	 *
+	 * 스포너에 ArchetypeTable을 따로 지정하지 않은 레벨은 이 테이블을 쓴다.
+	 * 행인 대사(IdleBarks / BumpedBarks), 반응 애니메이션 키, 속도·체격 범위를
+	 * 여기 한 곳에서 관리한다. 레벨마다 다르게 하고 싶을 때만 스포너에서 덮어쓴다.
+	 */
+	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category = "Sub NPC",
+		meta = (RequiredAssetDataTags = "RowStructure=/Script/Febricula.SubNpcArchetypeRow"))
+	TSoftObjectPtr<UDataTable> DefaultSubNpcArchetypeTable;
 };

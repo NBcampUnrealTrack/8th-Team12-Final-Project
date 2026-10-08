@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-26)
+// 요약: 게임 진행 상태(일차, 태그, 카운터, 능력치, 완료 이벤트)의 단일 소유자 + 조건 판정
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 게임 진행 상태(일차, 태그, 카운터, 능력치, 완료 이벤트)의 단일 소유자.

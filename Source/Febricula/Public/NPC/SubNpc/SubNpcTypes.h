@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-06)
+// 요약: 행인 군중 시스템 공용 타입 - 아키타입, 부딪힘 단계, 스팟 행동 정의
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 서브 NPC(행인) 군중 시스템의 공용 타입.
@@ -72,6 +74,41 @@ enum class ESubNpcReaction : uint8
 
 	/** 놀라서 뒷걸음 */
 	Surprised	UMETA(DisplayName = "놀라기"),
+
+	/** 천천히 부딪혀서 잠깐 멈칫한다 (걷다가 사람과 어깨가 닿은 정도) */
+	LightBump	UMETA(DisplayName = "살짝 부딪힘"),
+
+	/** 플레이어와 대화 중. 대화창이 닫힐 때까지 멈춰 서 있는다 */
+	Talking		UMETA(DisplayName = "대화 중"),
+
+	/** 일행끼리 길에서 멈춰 서로 마주 보고 이야기한다 */
+	GroupChat	UMETA(DisplayName = "일행과 대화"),
+};
+
+/**
+ * 부딪힘 속도 구간 하나. 플레이어 속도가 MinSpeed 이상이면 이 반응이 후보가 된다.
+ * 후보 중 MinSpeed가 가장 큰 구간 하나만 쓰인다.
+ */
+USTRUCT(BlueprintType)
+struct FSubNpcBumpTier
+{
+	GENERATED_BODY()
+
+	/** 이 속도(cm/s) 이상으로 부딪히면 이 구간. 플레이어 걷기 500, 달리기 1000 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bump", meta = (ClampMin = "0.0", Units = "CentimetersPerSecond"))
+	float MinSpeed = 0.f;
+
+	/** 반응 종류. 피하기는 옆으로 비키며 걷고, 나머지는 멈춰서 플레이어를 쳐다본다 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bump")
+	ESubNpcReaction Reaction = ESubNpcReaction::LightBump;
+
+	/** 재생할 애니메이션 (NPC 블루프린트 AnimLibrary 키). 비우면 애니메이션 없이 반응만 한다 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bump")
+	FName AnimId;
+
+	FSubNpcBumpTier() = default;
+	FSubNpcBumpTier(float InMinSpeed, ESubNpcReaction InReaction, FName InAnimId)
+		: MinSpeed(InMinSpeed), Reaction(InReaction), AnimId(InAnimId) {}
 };
 
 /**
@@ -140,9 +177,28 @@ struct FNpcActivityOption
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity")
 	FName AnimId;
 
-	/** 선택 가중치 */
+	/** 선택 가중치. Chance가 0인 행동끼리만 비교한다 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity", meta = (ClampMin = "0.0"))
 	float Weight = 1.f;
+
+	/**
+	 * 고정 확률 (0~1). 0보다 크면 가중치 대신 **정확히 이 확률**로 이 행동이 뽑힌다.
+	 * 예) 0.1 = 이 스팟에 들른 행인의 10%가 이 행동을 한다.
+	 *
+	 * 고정 확률 행동이 하나도 안 뽑히면 나머지(Chance 0) 행동을 가중치로 고른다.
+	 * 나머지가 없으면 그 행인은 스팟에 들르지 않고 지나간다.
+	 * 한 스팟의 Chance 합이 1을 넘으면 뒤쪽 행동은 그만큼 덜 뽑힌다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float Chance = 0.f;
+
+	/**
+	 * 이 스팟에서 한 번에 한 명만 할 수 있는 행동인가.
+	 * 누군가 이미 이 행동(또는 같은 AnimId의 행동)을 하는 중이면 다른 행인은 고르지 못한다.
+	 * 벤치에 둘이 같은 포즈로 나란히 앉는 식의 "복제" 그림을 막는다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity")
+	bool bExclusive = false;
 
 	/** 이 행동을 지속할 시간 (초). Min~Max 사이 랜덤 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Activity", meta = (ClampMin = "0.0"))
@@ -213,27 +269,38 @@ struct FSubNpcArchetypeRow : public FTableRowBase
 
 	// ---- 플레이어와 부딪혔을 때 ----
 
-	/** 피하기 가중치 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction", meta = (ClampMin = "0.0"))
-	float DodgeWeight = 3.f;
+	/**
+	 * 부딪힌 속도 구간별 반응. **플레이어 속도(cm/s)만으로** 고른다 (랜덤·무게 없음).
+	 *
+	 * 부딪힌 순간 플레이어 수평 속도 이하에서 MinSpeed가 가장 큰 구간이 뽑힌다.
+	 * 예) 0 → 살짝 부딪힘, 700 → 놀라기  이면
+	 *     걷기(500)로 닿으면 살짝 부딪힘, 달리기(1000)로 닿으면 놀라기.
+	 * 순서는 상관없다 (코드가 MinSpeed로 고른다). 구간을 늘리려면 행만 추가하면 된다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction", meta = (TitleProperty = "{MinSpeed} → {Reaction} ({AnimId})"))
+	TArray<FSubNpcBumpTier> BumpTiers;
 
-	/** 화내기 가중치 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction", meta = (ClampMin = "0.0"))
-	float AngryWeight = 1.f;
+	/** 속도에 맞는 구간을 찾는다. 해당 구간이 없으면 nullptr */
+	const FSubNpcBumpTier* FindBumpTier(float Speed) const
+	{
+		const FSubNpcBumpTier* Best = nullptr;
+		for (const FSubNpcBumpTier& Tier : BumpTiers)
+		{
+			if (Speed >= Tier.MinSpeed && (!Best || Tier.MinSpeed > Best->MinSpeed))
+			{
+				Best = &Tier;
+			}
+		}
+		return Best;
+	}
 
-	/** 놀라기 가중치 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction", meta = (ClampMin = "0.0"))
-	float SurprisedWeight = 2.f;
-
-	/** 반응별 애니메이션 (AnimLibrary 키). 비우면 애니메이션 없이 대사만 나온다 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
-	FName DodgeAnimId;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
-	FName AngryAnimId;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")
-	FName SurprisedAnimId;
+	FSubNpcArchetypeRow()
+	{
+		// 테이블에 새 행을 만들었을 때 바로 동작하도록 기본 구간을 깔아둔다.
+		// 700은 플레이어 걷기(500)와 달리기(1000) 사이다.
+		BumpTiers.Add(FSubNpcBumpTier(0.f, ESubNpcReaction::LightBump, TEXT("LightBump")));
+		BumpTiers.Add(FSubNpcBumpTier(700.f, ESubNpcReaction::Surprised, TEXT("HardBump")));
+	}
 
 	// ---- 대사 ----
 
@@ -260,7 +327,8 @@ struct FSubNpcArchetypeRow : public FTableRowBase
 	//
 	// 오른쪽에서 부딪히면 왼쪽으로 밀리고, 왼쪽에서 부딪히면 오른쪽으로 밀린다.
 	// 걷는 중이면 "비켜서는" 동작이, 서 있었으면 "밀리는" 동작이 자연스럽다.
-	// 비워두면 위의 DodgeAnimId로 대체된다 (하나만 만들어도 동작한다).
+	// 속도 구간(BumpTiers)의 반응이 "피하기"일 때만 쓰인다.
+	// 비워두면 그 구간의 AnimId로 대체된다 (하나만 만들어도 동작한다).
 
 	/** 걷는 중 왼쪽으로 비킬 때 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Archetype|Reaction")

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성 (최종 수정 2026-08-21)
+// 요약: 메인 NPC 구현 - 자동 순찰/안내 시작, 대화 진입, 추적·동행, 호감도 조회
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/MainNpcCharacter.h"

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-12 작성 (최종 수정 2026-08-19)
+// 요약: 안내(Guide) 전용 BT 태스크 - 플레이어가 근처에 올 때까지 대기
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 안내(Guide) 브랜치 전용 노드.

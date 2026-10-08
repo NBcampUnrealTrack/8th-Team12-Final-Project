@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인 군중 감독 - 비용을 한 곳에 모아 분할 갱신, 풀 관리
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 군중 전체를 한 곳에서 관리하는 감독.
@@ -69,17 +71,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
 	TArray<ASubNpcCharacter*> SpawnGroupOnPath(ANpcCrowdPath* Path, float StartDistance, bool bReversed, int32 GroupSize);
 
-	/**
-	 * 월드 좌표를 주면 가장 가까운 경로를 찾아 그 지점에 등장시킨다.
-	 *
-	 * "여기에 한 명 세워줘" 식으로 배치 위치 기준으로 스폰하는 쪽을 위한 입구다.
-	 * 스포너를 만드는 사람이 어느 스플라인의 몇 cm 지점인지 계산할 필요가 없다.
-	 *
-	 * @param SearchRadius  이 반경 안에 경로가 없으면 nullptr (0 이하면 거리 제한 없음)
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
-	ASubNpcCharacter* SpawnAtNearestPath(const FVector& WorldLocation, float SearchRadius = 2000.f);
-
 	/** 풀로 회수 */
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Director")
 	void ReturnToPool(ASubNpcCharacter* Npc);
@@ -90,6 +81,15 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Crowd|Director")
 	int32 GetActiveCount() const { return ActiveNpcs.Num(); }
+
+	/** 활성 행인 목록 (일행 찾기 등 읽기 전용) */
+	const TArray<TObjectPtr<ASubNpcCharacter>>& GetActiveNpcs() const { return ActiveNpcs; }
+
+	/**
+	 * 무리에 일행 동작을 건다 (무리 크기별: 2명 말하기↔듣기, 3명 설명↔듣기, 5명 + 휴대폰).
+	 * Members[0]이 리더. 걷는 중이 아니어도 일행 대기 중이면 건다 (일행 스팟 들르기).
+	 */
+	void StartGroupChatFor(ASubNpcCharacter* Leader, TConstArrayView<ASubNpcCharacter*> Members, int32 GroupSize, float Duration);
 
 	UFUNCTION(BlueprintPure, Category = "Crowd|Director")
 	int32 GetPooledCount() const { return PooledNpcs.Num(); }
@@ -113,6 +113,24 @@ protected:
 	 * Near/Mid 대역만 대상으로 한다 - 멀리서 겹치는 건 어차피 화면에 안 보인다.
 	 */
 	void UpdateAvoidance();
+
+	/**
+	 * 같은 그룹으로 생성된 일행이 가끔 길에서 같이 멈춰 서로 마주 보고 이야기하게 한다.
+	 * 리더마다 일정 간격으로 확률을 굴리고, 당첨되면 근처의 일행 전원이 같은 시간 동안 멈춘다.
+	 */
+	void UpdateGroupChats();
+
+	/**
+	 * 일행이 너무 벌어지면 리더가 멈춰서 기다리게 한다.
+	 * 추월하다 막히거나 부딪혀 멈춘 일행을 두고 리더만 멀리 가버리지 않게 한다.
+	 */
+	void UpdateGroupCohesion();
+
+	/**
+	 * 길 밖에서 움직이는 사람(스팟으로 가는/줄 자리로 옮기는/길로 돌아오는)끼리 겹치지 않게
+	 * 앞을 막는 사람이 있으면 잠깐 양보시킨다. 이들은 길 위 속도 회피를 쓰지 않는다.
+	 */
+	void UpdateOffLaneYield();
 
 #if !UE_BUILD_SHIPPING
 	/**

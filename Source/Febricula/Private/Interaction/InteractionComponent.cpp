@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-18)
+// 요약: 플레이어 상호작용 컴포넌트 구현 - 주변 대상 검사, HUD 프롬프트, E 키 상호작용
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Interaction/InteractionComponent.h"

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성 (최종 수정 2026-08-17)
+// 요약: 상호작용 가능한 모든 액터가 구현하는 인터페이스
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // NPC뿐 아니라 상호작용 가능한 모든 액터(사물함, 옥상 문, 서가 등)가 함께 쓸 수 있도록

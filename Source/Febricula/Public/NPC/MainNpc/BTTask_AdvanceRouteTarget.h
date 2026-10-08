@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-18 작성
+// 요약: 경로 다음 지점으로 넘기는 즉시완료 BT 태스크 (순찰/안내 공용)
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 경로의 "다음 지점으로 넘어가기"만 담당하는 즉시완료(instant) Task.

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-18 작성
+// 요약: NPC 이동 경로 구현 - 지점 위치, 다음 인덱스 계산
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/NpcRoute.h"

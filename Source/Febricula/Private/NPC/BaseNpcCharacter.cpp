@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성 (최종 수정 2026-08-21)
+// 요약: NPC 공통 베이스 구현 - AI 컨트롤러·BT 기동, 이동 상태, 상호작용, 애니메이션 재생
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/BaseNpcCharacter.h"

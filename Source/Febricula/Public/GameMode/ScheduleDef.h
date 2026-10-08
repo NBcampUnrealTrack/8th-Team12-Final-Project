@@ -2,6 +2,7 @@
 #include "GameplayTagContainer.h"
 #include "ScheduleDef.generated.h"
 
+// [skydodo] 2026-08-26 수정: ConnectLevel 제거, ScheduleName 태그 규칙 정리, ActionPoint 기본값
 /**
  * 하루 시간표의 한 칸 = "시간대".
  *

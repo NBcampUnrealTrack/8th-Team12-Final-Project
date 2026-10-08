@@ -1,7 +1,11 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인 스포너 구현 - 풀 예열, 시작 인원 분산 배치, 시간대별 인원 보충
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/NpcCrowdSpawner.h"
 
+#include "AnimToTextureDataAsset.h"
+#include "StateTree.h"
 #include "Engine/GameInstance.h"
 #include "Misc/ScopeExit.h"
 #include "Engine/World.h"
@@ -10,6 +14,7 @@
 #include "NPC/SubNpc/NpcCrowdPath.h"
 #include "NPC/SubNpc/SubNpcCharacter.h"
 #include "NPC/SubNpc/SubNpcDirectorSubsystem.h"
+#include "NPC/SubNpc/SubNpcLog.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 
@@ -20,6 +25,20 @@ ANpcCrowdSpawner::ANpcCrowdSpawner()
 
 	USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
+
+	// 행인 Manny를 LOD별로 구운 데이터 (crowd.BakeFarCrowd, Docs/CrowdFarLOD.md).
+	FarCrowdAnimData = TSoftObjectPtr<UAnimToTextureDataAsset>(
+		FSoftObjectPath(TEXT("/Game/NPC/SubNpc/FarCrowd/DA_PasserbyFar.DA_PasserbyFar")));
+}
+
+UAnimToTextureDataAsset* ANpcCrowdSpawner::LoadFarCrowdAnimData() const
+{
+	return FarCrowdAnimData.IsNull() ? nullptr : FarCrowdAnimData.LoadSynchronous();
+}
+
+UStateTree* ANpcCrowdSpawner::LoadCrowdStateTree() const
+{
+	return CrowdStateTree.IsNull() ? nullptr : CrowdStateTree.LoadSynchronous();
 }
 
 void ANpcCrowdSpawner::BeginPlay()
@@ -35,13 +54,13 @@ void ANpcCrowdSpawner::BeginPlay()
 	USubNpcDirectorSubsystem* Director = World->GetSubsystem<USubNpcDirectorSubsystem>();
 	if (!Director)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Crowd] Director 서브시스템을 찾지 못했습니다."));
+		SUBNPC_LOG(Warning, TEXT("[Crowd] Director 서브시스템을 찾지 못했습니다."));
 		return;
 	}
 
 	if (!NpcClass)
 	{
-		UE_LOG(LogTemp, Warning,
+		SUBNPC_LOG(Warning,
 			TEXT("[Crowd] %s: Npc Class가 지정되지 않아 군중이 생성되지 않습니다."), *GetNameSafe(this));
 		return;
 	}
@@ -65,7 +84,7 @@ void ANpcCrowdSpawner::BeginPlay()
 
 		if (EntryPaths.Num() == 0)
 		{
-			UE_LOG(LogTemp, Warning,
+			SUBNPC_LOG(Warning,
 				TEXT("[Crowd] 입구 경로가 없습니다. NpcCrowdPath 액터 중 하나 이상에서 'Spawn Entry'를 켜세요."));
 		}
 	}
@@ -75,7 +94,6 @@ void ANpcCrowdSpawner::BeginPlay()
 	{
 		SpreadInitialPopulation();
 	}
-	bInitialFillDone = true;
 
 	// 반복 타이머가 아니라 매번 다시 건다. 간격을 흔들려면 이 방법뿐이다.
 	RearmSpawnTimer();
@@ -94,8 +112,16 @@ void ANpcCrowdSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+/** crowd.Bench가 측정 중에 정한 목표 인원. -1이면 쓰지 않는다 (SubNpcDirectorSubsystem.cpp) */
+extern int32 GSubNpcBenchTargetOverride;
+
 int32 ANpcCrowdSpawner::GetCurrentTargetCount() const
 {
+	if (GSubNpcBenchTargetOverride >= 0)
+	{
+		return GSubNpcBenchTargetOverride;
+	}
+
 	float Multiplier = 1.f;
 
 	// 시간대 배율. 시간 시스템이 없으면 그냥 기본값을 쓴다.
@@ -150,7 +176,29 @@ int32 ANpcCrowdSpawner::RollGroupSize() const
 	{
 		return 1;
 	}
-	return FMath::RandRange(2, FMath::Max(2, MaxGroupSize));
+	// [그룹 동작] 무리는 2·3·5명만 만든다. 크기마다 동작이 달라서(SubNpcDirectorSubsystem의 GroupTalk/Point/Phone)
+	// 멀리서도 무리가 구별된다. MaxGroupSize보다 큰 크기는 빼고 고른다.
+	static constexpr int32 Sizes[] = { 2, 3, 5 };
+	static constexpr float Weights[] = { 0.5f, 0.3f, 0.2f };
+	float Total = 0.f;
+	for (int32 i = 0; i < UE_ARRAY_COUNT(Sizes); ++i)
+	{
+		Total += (Sizes[i] <= MaxGroupSize) ? Weights[i] : 0.f;
+	}
+	float Roll = FMath::FRand() * Total;
+	for (int32 i = 0; i < UE_ARRAY_COUNT(Sizes); ++i)
+	{
+		if (Sizes[i] > MaxGroupSize)
+		{
+			continue;
+		}
+		Roll -= Weights[i];
+		if (Roll <= 0.f)
+		{
+			return Sizes[i];
+		}
+	}
+	return 2;
 }
 
 bool ANpcCrowdSpawner::GetViewerLocation(FVector& OutLocation) const
@@ -221,8 +269,10 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 	float TotalLength = 0.f;
 	for (TActorIterator<ANpcCrowdPath> It(World); It; ++It)
 	{
-		const float Len = It->GetPathLength(); 
-		if (Len >= 200.f && It->IsSpawnEntry()) //2026-09-23 이지민 수정 (시나리오 연출용 Crowd 구분) 
+		// 입구 경로만이 아니라 모든 경로에 흩뿌린다. 연출 전용 맵(일반 행인이 없어야 하는 맵)은
+		// 그 맵 스포너의 bSpreadInitialPopulation을 끈다.
+		const float Len = It->GetPathLength();
+		if (Len >= 200.f)
 		{
 			Paths.Add(*It);
 			TotalLength += Len;
@@ -231,7 +281,7 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 
 	if (Paths.Num() == 0 || TotalLength <= 0.f)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Crowd] 초기 배치: 쓸 만한 경로가 없습니다."));
+		SUBNPC_LOG(Warning, TEXT("[Crowd] 초기 배치: 쓸 만한 경로가 없습니다."));
 		return;
 	}
 
@@ -242,13 +292,13 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 	// 사람을 아무리 고르게 뿌려도 1미터에 한 명씩이면 그건 인파다.
 	// 편하게 걷는 거리의 밀도는 대략 3미터에 한 명(0.3명/m) 수준이다.
 	const float Density = Target / (TotalLength / 100.f);   // 명/m
-	UE_LOG(LogTemp, Log,
+	SUBNPC_LOG(Log,
 		TEXT("[Crowd] 경로 총 길이 %.0fm / 목표 %d명 → 밀도 %.2f명/m"),
 		TotalLength / 100.f, Target, Density);
 
 	if (Density > 0.5f)
 	{
-		UE_LOG(LogTemp, Warning,
+		SUBNPC_LOG(Warning,
 			TEXT("[Crowd] 밀도가 높습니다(%.2f명/m). 이 인원이 겹쳐 보이는 건 정상입니다. ")
 			TEXT("경로를 더 길게 그리거나(권장 총 %.0fm 이상) 목표 인원을 %d명 이하로 줄이세요."),
 			Density, Target / 0.3f / 1.f, FMath::RoundToInt(TotalLength / 100.f * 0.3f));
@@ -323,7 +373,7 @@ void ANpcCrowdSpawner::SpreadInitialPopulation()
 		Remaining -= Placed;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[Crowd] 초기 배치 완료: 경로 %d개에 %d명"),
+	SUBNPC_LOG(Log, TEXT("[Crowd] 초기 배치 완료: 경로 %d개에 %d명"),
 		Paths.Num(), Target - FMath::Max(0, Remaining));
 }
 
@@ -358,12 +408,16 @@ void ANpcCrowdSpawner::TickSpawn()
 		? FMath::Max(1, MaxGroupsPerTick)
 		: 1;
 
-	for (int32 g = 0; g < GroupBudget && Deficit > 0; ++g)
+	// 한 주기에 등장시킬 수 있는 인원 (MaxSpawnPerTick). 무리는 쪼개지 않으므로 첫 무리는 크기와 상관없이
+	// 내보내고, 그 뒤 무리는 남은 인원 안에 들어갈 때만 내보낸다.
+	int32 PersonBudget = FMath::Max(1, MaxSpawnPerTick);
+
+	for (int32 g = 0; g < GroupBudget && Deficit > 0 && PersonBudget > 0; ++g)
 	{
 		ANpcCrowdPath* Entry = PickEntryPath();
 		if (!Entry)
 		{
-			UE_LOG(LogTemp, Warning,
+			SUBNPC_LOG(Warning,
 				TEXT("[Crowd] 보충 불가: 입구 경로가 없습니다. ")
 				TEXT("NpcCrowdPath 중 하나 이상에서 'Spawn Entry'를 켜거나 ")
 				TEXT("스포너의 Entry Paths에 직접 넣으세요. (목표 %d / 활성 %d)"),
@@ -416,6 +470,10 @@ void ANpcCrowdSpawner::TickSpawn()
 		}
 
 		const int32 GroupSize = FMath::Min(RollGroupSize(), Deficit);
+		if (g > 0 && GroupSize > PersonBudget)
+		{
+			return;   // 이번 주기 몫을 다 썼다. 다음 주기에 나온다
+		}
 		const TArray<ASubNpcCharacter*> Spawned =
 			(GroupSize <= 1)
 			? TArray<ASubNpcCharacter*>{ Director->SpawnOnPath(Entry, StartDistance, bReversed) }
@@ -437,6 +495,7 @@ void ANpcCrowdSpawner::TickSpawn()
 		}
 
 		Deficit -= Actual;
+		PersonBudget -= Actual;
 	}
 }
 
