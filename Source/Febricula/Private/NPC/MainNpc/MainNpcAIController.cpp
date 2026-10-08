@@ -7,6 +7,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "NPC/MainNpc/MainNpcCharacter.h"
 #include "NPC/MainNpc/NpcRoute.h"
@@ -35,6 +36,34 @@ void AMainNpcAIController::OnPossess(APawn* InPawn)
 	{
 		CurrentAIState = static_cast<ENpcAIState>(BBComp->GetValueAsEnum(BBKey_AIState));
 	}
+}
+
+// [skydodo] 2026-10-08 추가: BT Patrol 분기에 다음 지점 넘기기가 없어서 코드에서 처리
+void AMainNpcAIController::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
+{
+	Super::OnMoveCompleted(RequestID, Result);
+
+	// 도착했을 때만 넘긴다. 막혀서 실패한 경우까지 넘기면 갈 수 없는 지점을 건너뛰고 엉뚱하게 돈다.
+	if (bAdvancePatrolInCode && CurrentAIState == ENpcAIState::Patrol && Result.IsSuccess())
+	{
+		AdvancePatrolTarget();
+	}
+}
+
+// [skydodo] 2026-10-08 추가
+void AMainNpcAIController::AdvancePatrolTarget()
+{
+	UBlackboardComponent* BBComp = GetBlackboardComponent();
+	const ANpcRoute* Route = BBComp ? Cast<ANpcRoute>(BBComp->GetValueAsObject(BBKey_Route)) : nullptr;
+	if (!Route || Route->GetNumPoints() <= 0)
+	{
+		return;
+	}
+
+	// 순찰은 끝에 닿으면 처음으로 순환한다 (GetNextIndex가 감아준다).
+	const int32 NextIndex = Route->GetNextIndex(BBComp->GetValueAsInt(BBKey_RouteIndex));
+	BBComp->SetValueAsInt(BBKey_RouteIndex, NextIndex);
+	BBComp->SetValueAsVector(BBKey_RouteTargetLocation, Route->GetPointLocation(NextIndex));
 }
 
 void AMainNpcAIController::SetAIState(ENpcAIState NewState)
