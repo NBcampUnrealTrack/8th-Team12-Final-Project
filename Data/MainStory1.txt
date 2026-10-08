@@ -323,7 +323,7 @@ AI의 끊임없는 발전.
 서윤: 난 아직 할 일이 좀 있어서 학생회실로 가 봐야하니까 필요한 거 있으면 학생회실로 와.
 @cam Loc 189.0 -276.7 190.6 Rot 0 -10 -40.0 1 500.0
 
-@NpcStartPatrol NPC_Suyun FrontDoor
+@NpcStartPatrol NPC_Suyun FrontDoor 1
 @hide
 @wait_arrive 100 NPC_Suyun
 

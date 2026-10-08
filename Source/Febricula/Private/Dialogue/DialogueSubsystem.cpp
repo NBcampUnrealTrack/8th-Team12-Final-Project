@@ -1030,7 +1030,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(MainNpc->GetController()))
 			{
 				// Key2 = RouteId. 비워두면 NPC의 기본 경로를 쓴다.
-				AI->StartPatrol(MainNpc->GetRoute(Action.Key2));
+				AI->StartPatrol(MainNpc->GetRoute(Action.Key2), static_cast<bool>(Action.Value));
 			}
 		}
 		break;

@@ -5747,7 +5747,7 @@
         "Type": "NpcStartPatrol",
         "Key": "NPC_Suyun",
         "Key2": "FrontDoor",
-        "Value": 0
+        "Value": 1
       }
     ],
     "Choices": [],

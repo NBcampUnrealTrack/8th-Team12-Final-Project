@@ -14,6 +14,7 @@ const FName AMainNpcAIController::BBKey_Route(TEXT("Route"));
 const FName AMainNpcAIController::BBKey_RouteIndex(TEXT("RouteIndex"));
 const FName AMainNpcAIController::BBKey_RouteTargetLocation(TEXT("RouteTargetLocation"));
 const FName AMainNpcAIController::BBKey_RouteTargetRotator(TEXT("RouteTargetRotator"));
+const FName AMainNpcAIController::BBKey_bAutoRotate(TEXT("bAutoRotate"));
 
 const FName AMainNpcAIController::BBKey_ChaseTarget(TEXT("ChaseTarget"));
 
@@ -69,7 +70,7 @@ bool AMainNpcAIController::SetupRoute(ANpcRoute* Route)
 	return true;
 }
 
-void AMainNpcAIController::StartPatrol(ANpcRoute* Route)
+void AMainNpcAIController::StartPatrol(ANpcRoute* Route, bool bAutoRotate)
 {
 	if (SetupRoute(Route))
 	{
@@ -80,7 +81,10 @@ void AMainNpcAIController::StartPatrol(ANpcRoute* Route)
 				Movement->bOrientRotationToMovement = true;
 			}
 		}
-
+		if (UBlackboardComponent* BBComp = GetBlackboardComponent())
+		{
+			BBComp->SetValueAsBool(BBKey_bAutoRotate, bAutoRotate);
+		}
 		SetAIState(ENpcAIState::Patrol);
 	}
 }
