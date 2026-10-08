@@ -41,6 +41,7 @@ TStatId UDialogueSubsystem::GetStatId() const
 void UDialogueSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	UE_LOG(LogTemp, Warning, TEXT("Dialogue Subsystem: Initialize"));
 
 	UWorld* World = GetWorld();
 	if (!World || !World->IsGameWorld())
@@ -58,6 +59,12 @@ void UDialogueSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		ActivitySubsystem->BindDialogue();
 	}
+}
+
+void UDialogueSubsystem::Deinitialize()
+{
+	Super::Deinitialize();
+	UE_LOG(LogTemp, Warning, TEXT("Dialogue Subsystem: Deinitialize"));
 }
 
 void UDialogueSubsystem::Tick(float DeltaTime)
@@ -193,7 +200,7 @@ void UDialogueSubsystem::SetDataTables(UDataTable* InEventTable, UDataTable* InD
 
 
 
-bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator)
+bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, FName DialogueNodeId)
 {
 	if (bDialogueActive || !EventTable)
 	{
@@ -235,15 +242,22 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator)
 		if (!Progress->EvaluateConditions(Row->Preconditions))
 		{
 			continue;
+		}			
+		
+		if (DialogueNodeId != NAME_None)
+		{
+			if (Row->RootNodeId == DialogueNodeId)
+			{
+				BestRow = Row;
+				break;
+			}
 		}
-
 		if (!BestRow || Row->Priority > BestRow->Priority)
 		{
 			BestRow = Row;
 			BestRowName = Pair.Key;
 		}
 	}
-
 	if (!BestRow)
 	{
 		return false;

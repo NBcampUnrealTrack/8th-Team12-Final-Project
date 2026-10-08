@@ -67,7 +67,7 @@ class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
 
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-	
+	virtual void Deinitialize() override;	
 	//~ Begin FTickableGameObject
 	// 자동 진행(AutoAdvance) 조건을 매 틱 검사해야 해서 Tickable 서브시스템으로 둔다.
 	virtual void Tick(float DeltaTime) override;
@@ -91,7 +91,7 @@ public:
 	 * 조건을 만족하는 이벤트가 하나도 없으면 false를 반환한다 (이때는 기본 잡담을 띄우면 된다).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	bool TryStartEventForNpc(FName NpcId, AActor* InInstigator);
+	bool TryStartEventForNpc(FName NpcId, AActor* InInstigator, FName DialogueNodeId = NAME_None);
 
 	/** 특정 노드부터 직접 대화를 시작한다 (이벤트 테이블을 거치지 않는 경우) */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")

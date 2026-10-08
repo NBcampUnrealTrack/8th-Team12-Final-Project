@@ -35,6 +35,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "NPC|Blackboard")
 	FBlackboardKeySelector RouteTargetLocationKey;
 	
+	UPROPERTY(EditAnywhere, Category = "NPC|Blackboard")
+	FBlackboardKeySelector RouteTargetRotatorKey;
+	
 	UPROPERTY(EditAnywhere, Category = "Route")
 	bool bLoopRoute = true;   // 순찰이면 true, 안내면 false
 };

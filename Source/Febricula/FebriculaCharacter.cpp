@@ -19,6 +19,8 @@
 #include "Interaction/InteractionComponent.h"
 #include "Public/Level/HingedActor.h"
 #include "Dialogue/DialogueSubsystem.h"
+#include "Direction/FixedViewComponent.h"
+#include "GameMode/LevelSetting.h"
 
 void AFebriculaCharacter::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                                   UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -164,8 +166,44 @@ void AFebriculaCharacter::Move(const FInputActionValue& Value)
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	// route the input
-	DoMove(MovementVector.X, MovementVector.Y);
+	if (ALevelSetting* LevelSetting = Cast<ALevelSetting>(GetWorldSettings()))
+	{
+		if (LevelSetting->bUseFixedCamera)
+		{
+			FixedMove(Value);
+		}
+		else
+		{
+			// route the input
+			DoMove(MovementVector.X, MovementVector.Y);
+		}
+	}
+}
+
+void AFebriculaCharacter::FixedMove(const FInputActionValue& Value)
+{
+	const FVector2D Input = Value.Get<FVector2D>();
+	const APlayerController* PC = Cast<APlayerController>(Controller);
+	if (!PC || Input.IsNearlyZero()) return;
+	float BasisYaw = PC->PlayerCameraManager->GetCameraRotation().Yaw;
+
+	if (const AActor* ViewTarget = PC->GetViewTarget())
+	{
+		if (UFixedViewComponent* View = ViewTarget->FindComponentByClass<UFixedViewComponent>())
+		{
+			BasisYaw = View->GetYaw();
+		}
+	}
+
+	const FRotator Basis(0.f, BasisYaw, 0.f);
+	AddMovementInput(FRotationMatrix(Basis).GetUnitAxis(EAxis::X), Input.Y);
+	AddMovementInput(FRotationMatrix(Basis).GetUnitAxis(EAxis::Y), Input.X);
+	// const FRotator YawRotation(0.f, PC->PlayerCameraManager->GetCameraRotation().Yaw, 0.f);
+	// const FVector Forward = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	// const FVector Right   = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+	//
+	// AddMovementInput(Forward, Input.Y);   // 전진 = 화면 안쪽
+	// AddMovementInput(Right,   Input.X);   // 오른쪽 = 화면 오른쪽
 }
 
 void AFebriculaCharacter::Look(const FInputActionValue& Value)

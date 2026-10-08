@@ -117,7 +117,20 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	case EGameConditionType::ScheduleAfter:
 	{
 		const UTimeSubsystem* TimeSubsystem = GetTime();
-			
+		TArray<FScheduleDef> ScheduleDef = TimeSubsystem->GetScheduleDefs();
+		if (ScheduleDef.IsEmpty())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GameProcess Subsystem: ScheduleDef가 비어있음"));
+			return false;
+		}
+		for (FScheduleDef Def : ScheduleDef)
+		{
+			if (Def.ScheduleName == FGameplayTag::RequestGameplayTag(Condition.Key))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	case EGameConditionType::ScheduleIsChildOf:

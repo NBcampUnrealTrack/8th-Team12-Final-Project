@@ -31,6 +31,9 @@ public:
 	/** Index가 배열 범위를 벗어나면 이 액터 자신의 위치를 반환 (안전한 폴백) */
 	UFUNCTION(BlueprintPure, Category = "NPC|Route")
 	FVector GetPointLocation(int32 Index) const;
+	
+	UFUNCTION(BlueprintPure, Category = "NPC|Route")
+	FRotator GetPointRotation(int32 Index) const;
 
 	/** 항상 마지막 지점 다음엔 0번으로 순환한다 (왕복이 필요해지면 나중에 확장) */
 	UFUNCTION(BlueprintPure, Category = "NPC|Route")
