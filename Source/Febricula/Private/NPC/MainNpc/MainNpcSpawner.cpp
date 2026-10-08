@@ -19,6 +19,25 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogMainNpcSpawner, Log, All);
 
+namespace MainNpcSpawnerPrivate
+{
+	/**
+	 * 두 행이 "서 있는 모습"이 같은가. 같으면 NPC를 다시 만들 필요가 없다.
+	 * 예) 1일차 행과 2일차 행이 같은 자리·같은 설정이면 날이 바뀌어도 그대로 둔다.
+	 */
+	bool IsSamePlacement(const FMainNpcSpawnRow& A, const FMainNpcSpawnRow& B)
+	{
+		return A.NpcClass == B.NpcClass
+			&& A.Level == B.Level
+			&& A.SpawnPointId == B.SpawnPointId
+			&& A.StartAnimId == B.StartAnimId
+			&& A.StartAIState == B.StartAIState
+			&& A.RouteId == B.RouteId
+			&& A.EventTable == B.EventTable
+			&& A.DialogueTable == B.DialogueTable;
+	}
+}
+
 AMainNpcSpawner::AMainNpcSpawner()
 {
 	// 레벨 진입과 시간 변경 때만 일한다.
@@ -134,6 +153,10 @@ void AMainNpcSpawner::RefreshNpcs()
 		NpcIds.Add(Pair.Key);
 	}
 
+	// [skydodo] 2026-10-08 수정: 내리기를 전부 끝낸 뒤에 세운다.
+	// 한 번에 처리하면 A가 비우기 전에 B가 같은 자리에 먼저 생겨서 겹치고, 스폰 겹침 보정 때문에 옆으로 밀려난다.
+	TArray<const FMainNpcSpawnRow*> RowsToSpawn;
+
 	for (const FName& NpcId : NpcIds)
 	{
 		const FMainNpcSpawnRow* const* FoundRow = CurrentRows.Find(NpcId);
@@ -141,9 +164,12 @@ void AMainNpcSpawner::RefreshNpcs()
 
 		if (AMainNpcCharacter* Current = FindSpawnedNpc(NpcId))
 		{
-			if (WantedRow && SpawnedRows.FindRef(NpcId) == WantedRow)
+			// [skydodo] 2026-10-08 수정: 행이 달라도 서 있는 모습이 같으면 그대로 둔다 (날이 바뀔 때 깜빡이지 않게)
+			const FMainNpcSpawnRow* CurrentRow = SpawnedRows.FindRef(NpcId);
+			if (WantedRow && CurrentRow && MainNpcSpawnerPrivate::IsSamePlacement(*CurrentRow, *WantedRow))
 			{
-				continue;	// 이미 같은 행(자리/애니메이션/AIState)으로 서 있다
+				SpawnedRows.Add(NpcId, WantedRow);
+				continue;	// 이미 같은 자리/애니메이션/AIState/대화로 서 있다
 			}
 
 			// 대화/동행/안내/추적 중에 사라지면 이벤트가 깨진다. 끝나면 다시 돈다 (HandleNpcMovementStateChanged, DeferredRetryHandle).
@@ -164,8 +190,13 @@ void AMainNpcSpawner::RefreshNpcs()
 
 		if (WantedRow)
 		{
-			SpawnFromRow(*WantedRow);
+			RowsToSpawn.Add(WantedRow);
 		}
+	}
+
+	for (const FMainNpcSpawnRow* Row : RowsToSpawn)
+	{
+		SpawnFromRow(*Row);
 	}
 
 	// 안내/추적이 끝나는 건 이동 상태 이벤트로 오지 않을 수 있어서, 미뤘으면 잠시 뒤에 다시 본다.
