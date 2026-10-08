@@ -88,18 +88,11 @@ void AFebriculaGameMode::BeginPlay()
 
 	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
 	const bool bSpecialEvent = PlayEvent();
-	
+
 	if (!bSpecialEvent)
 	{
-		// if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-		// {
-		// 	ActivityWidgetObject = CreateWidget<UUserWidget>(PC, ActivityWidget.LoadSynchronous());
-		// 	ActivityWidgetObject->AddToViewport();
-		// }
-	
 		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 		{
-			
 			TArray<FGameplayTag> RunnableActivityTags = ActivitySubsystem->GetRunnableActivityTag();
 			if (RunnableActivityTags.Num() > 0)
 			{

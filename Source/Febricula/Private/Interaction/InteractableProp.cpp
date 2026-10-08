@@ -4,6 +4,7 @@
 
 #include "Interaction/InteractableProp.h"
 
+#include "Blueprint/UserWidget.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Dialogue/DialogueSubsystem.h"
@@ -101,6 +102,17 @@ void AInteractableProp::Interact_Implementation(AActor* Interactor)
 	if (!bWaitForSequence)
 	{
 		ExecuteActionsWrapper();
+	}
+
+	if (InspectWidgetClass)
+	{
+		if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+		{
+			if (UUserWidget* Widget = CreateWidget<UUserWidget>(PC, InspectWidgetClass))
+			{
+				Widget->AddToViewport();
+			}
+		}
 	}
 }
 
