@@ -152,10 +152,11 @@ public:
 	void LoadSaveData(const FTimeSaveData& Data);
 
 
-protected:
-
 	const TArray<FScheduleDef>& GetScheduleDefs() const;
 
+
+protected:
+	
 	/** 오늘 적용할 시간표 애셋. 없으면 nullptr */
 	const UDayScheduleAsset* GetTodaySchedule() const;
 
@@ -193,6 +194,6 @@ protected:
 	TObjectPtr<UDataTable> ScheduleBlockTable;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Schedule")
 	FScheduleBlock ScheduleBlock;
-
+	
 	int32 NowRepeatCount;
 };

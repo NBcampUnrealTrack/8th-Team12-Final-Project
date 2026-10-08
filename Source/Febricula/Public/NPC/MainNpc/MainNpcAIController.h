@@ -89,6 +89,7 @@ public:
 	static const FName BBKey_Route;
 	static const FName BBKey_RouteIndex;
 	static const FName BBKey_RouteTargetLocation;
+	static const FName BBKey_RouteTargetRotator;
 	static const FName BBKey_ChaseTarget;
 
 protected:
