@@ -1,5 +1,6 @@
 // [skydodo] 2026-10-08 작성
 // 요약: 테스트용 레벨 이동 트리거 구현
+// [테스트용] 테스트 맵 전용 트리거. 실제 게임의 레벨 이동은 이벤트 액션 ChangeLevel 등으로 한다
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Debug/LevelTravelTrigger.h"

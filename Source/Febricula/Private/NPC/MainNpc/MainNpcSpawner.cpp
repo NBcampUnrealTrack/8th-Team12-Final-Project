@@ -317,6 +317,9 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 		Npc->SetDefaultAnimation(Row.StartAnimId);
 	}
 
+	// [skydodo] 2026-10-08 추가: 자리(상황)별 대화. 비어 있으면 블루프린트 설정을 그대로 둔다.
+	Npc->SetDialogueTables(Row.EventTable.LoadSynchronous(), Row.DialogueTable);
+
 	Npc->FinishSpawning(SpawnTransform);
 
 	// FinishSpawning 안에서 AIController 빙의와 BehaviorTree 기동까지 끝나 있다.

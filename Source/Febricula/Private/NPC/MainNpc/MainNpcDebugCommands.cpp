@@ -1,5 +1,6 @@
 // [skydodo] 2026-10-08 작성
 // 요약: 메인 NPC 테스트용 콘솔 명령(mainnpc.*) - 날짜/시간대 넘기기, 레벨 이동, 호감도·능력치 조작
+// [테스트용] 개발 중 테스트 전용 콘솔 명령. 실제 게임 흐름(이벤트/UI)에서 호출하지 말 것
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 메인 NPC 스케줄 테스트용 콘솔 명령 (mainnpc.*). PIE 중에 ` 키 콘솔에서 친다.
@@ -20,6 +21,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/PlayerStat.h"
+#include "Debug/DayAdvanceProp.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -175,17 +177,8 @@ namespace MainNpcDebug
 		const int32 Count = FMath::Max(1, ArgAsInt(Args, 0, 1));
 		for (int32 i = 0; i < Count; ++i)
 		{
-			// 시간대를 끝까지 넘겨야 실제 게임처럼 "다음 날 아침"이 된다 (UTimeSubsystem::ResetSchedule과 같은 흐름).
-			// ResetSchedule은 시간표가 비어 있으면 끝나지 않으므로, 횟수를 제한해서 직접 돌리고 안 되면 날만 넘긴다.
-			const int32 Before = Time->GetAbsoluteDay();
-			for (int32 Guard = 0; Guard < 64 && Time->GetAbsoluteDay() == Before; ++Guard)
-			{
-				Time->SpendSchedule();
-			}
-			if (Time->GetAbsoluteDay() == Before)
-			{
-				Time->SpendDay();
-			}
+			// 실제 게임처럼 시간대를 끝까지 넘겨 다음 날 아침으로 (날짜 오브젝트와 같은 처리)
+			ADayAdvanceProp::AdvanceToNextMorning(Time);
 		}
 
 		RefreshSpawners(World);

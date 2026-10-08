@@ -40,6 +40,20 @@ public:
 	/** 스포너가 스폰 직후(BeginPlay 전) 자리별 기본 애니메이션을 넣을 때 쓴다 */
 	void SetDefaultAnimation(FName AnimId) { DefaultAnimation = AnimId; }
 
+	// [skydodo] 2026-10-08 추가
+	/** 스포너가 자리(상황)별 대화 테이블을 넣을 때 쓴다. null/빈 값은 무시하고 블루프린트 설정을 유지한다 */
+	void SetDialogueTables(UDataTable* InEventTable, const TSoftObjectPtr<UDataTable>& InDialogueTable)
+	{
+		if (InEventTable)
+		{
+			ConnectedEventTable = InEventTable;
+		}
+		if (!InDialogueTable.IsNull())
+		{
+			DefaultDialogueTable = InDialogueTable;
+		}
+	}
+
 	/**
 	 * 상호작용 시 Talk 상태로 들어가고 이벤트 트리 대화를 시작한다.
 	 * 조건을 만족하는 이벤트가 없으면 DefaultIdleNodeId(있다면)를 재생하고, 그것도 없으면 그냥 지나간다.

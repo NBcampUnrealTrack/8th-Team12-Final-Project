@@ -99,6 +99,20 @@ struct FMainNpcSpawnRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Behavior",
 		meta = (EditCondition = "StartAIState == ENpcAIState::Patrol || StartAIState == ENpcAIState::Guide"))
 	FName RouteId;
+
+	// [skydodo] 2026-10-08 추가: 자리(상황)별 대화
+	/**
+	 * 이 자리에 서 있을 때 말을 걸면 고를 이벤트 테이블 (FNpcEventRow).
+	 * 이벤트의 전제조건(일차/호감도/시간대 등)으로 대사가 갈린다. 비우면 블루프린트에 설정된 테이블을 쓴다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Dialogue",
+		meta = (RequiredAssetDataTags = "RowStructure=/Script/Febricula.NpcEventRow"))
+	TSoftObjectPtr<UDataTable> EventTable;
+
+	/** 기본 대화 테이블 (FDialogueNodeRow). 이벤트 행이 대화 테이블을 따로 지정하지 않을 때 쓴다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Dialogue",
+		meta = (RequiredAssetDataTags = "RowStructure=/Script/Febricula.DialogueNodeRow"))
+	TSoftObjectPtr<UDataTable> DialogueTable;
 };
 
 UCLASS()
