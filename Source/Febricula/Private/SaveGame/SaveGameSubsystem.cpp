@@ -9,6 +9,7 @@
 #include "GameMode/TimeSubsystem.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Dialogue/DialogueLogSubsystem.h"
+#include "Dialogue/DialogueSubsystem.h"
 
 // ---------------------------------------------------------------------------
 // 내부 헬퍼
