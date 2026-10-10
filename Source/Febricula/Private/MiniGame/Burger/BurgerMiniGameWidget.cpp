@@ -583,7 +583,7 @@ void UBurgerMiniGameWidget::UpdatePractice(float Dt)
 	// 이번 단계의 재료를 하나만 떨어뜨린다 (놓쳐서 사라지면 다시)
 	if (Items.Num() == 0 && Serving <= 0.f && PracticeStepTime > 0.4f)
 	{
-		static const int32 WrongIds[] = { 2, 3, 4 }; // 클래식 버거에 없는 치즈 · 양상추 · 토마토
+		const int32 WrongIds[] = { 2, 3, 4 }; // 클래식 버거에 없는 치즈 · 양상추 · 토마토
 		int32 Id = INDEX_NONE;
 		float X = 0.f;
 		switch (PracticeStep)
@@ -1442,8 +1442,8 @@ void UBurgerMiniGameWidget::PaintTutorialPage(FBurgerPainter& P) const
 	using namespace BurgerGame;
 
 	// 설명 카드 문구. 기획 확정 전 초안 - 문구만 바꾸면 된다.
-	static const TCHAR* Titles[] = { TEXT("재료 받기"), TEXT("조심할 재료"), TEXT("주문 제출") };
-	static const TCHAR* Lines[3][3] =
+	const TCHAR* const Titles[] = { TEXT("재료 받기"), TEXT("조심할 재료"), TEXT("주문 제출") };
+	const TCHAR* const Lines[3][3] =
 	{
 		{
 			TEXT("주문판에 나온 재료를 트레이로 받아요."),
@@ -1469,7 +1469,7 @@ void UBurgerMiniGameWidget::PaintTutorialPage(FBurgerPainter& P) const
 	// 그림
 	if (Page == 0)
 	{
-		static const TCHAR* Row[] = { TEXT("bun-set"), TEXT("patty"), TEXT("cheese"), TEXT("lettuce"), TEXT("tomato") };
+		const TCHAR* const Row[] = { TEXT("bun-set"), TEXT("patty"), TEXT("cheese"), TEXT("lettuce"), TEXT("tomato") };
 		for (int32 i = 0; i < UE_ARRAY_COUNT(Row); ++i)
 		{
 			P.ArtCentered(FindBrush(Row[i]), 420.f + (i - 2) * 140.f, 540.f, 110.f);
@@ -1504,7 +1504,7 @@ void UBurgerMiniGameWidget::PaintPractice(FBurgerPainter& P) const
 	using namespace BurgerGame;
 
 	// 단계마다 한 줄 안내 + 한 줄 보충. 글을 길게 읽게 하지 않고 직접 해 보면서 익히게 한다.
-	static const TCHAR* Prompts[PracticeSteps][2] =
+	const TCHAR* const Prompts[PracticeSteps][2] =
 	{
 		{ TEXT("방향키(A · D)로 움직여 빵 세트를 받아요"), TEXT("떨어지는 재료를 트레이로 받으면 돼요") },
 		{ TEXT("패티도 받아요"), TEXT("주문판의 재료를 다 모으면 버거가 완성돼요") },
