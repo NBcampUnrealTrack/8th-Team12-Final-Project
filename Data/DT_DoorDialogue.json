@@ -1,5 +1,63 @@
 [
   {
+    "Name": "SchoolOutside_ClassRoomSide",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어디로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "복도로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoSchoolHallway"
+      },
+      {
+        "Text": "교실로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoClassroom"
+      },
+      {
+        "Text": "아니요",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
     "Name": "Room_Root",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
@@ -18,7 +76,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "Room_Cancle"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -143,46 +201,10 @@
     }
   },
   {
-    "Name": "Room_Cancle",
-    "SpeakerName": "",
-    "SpeakerNpcId": "None",
-    "Text": "",
-    "OnEnterActions": [],
-    "Choices": [],
-    "bYesNo": false,
-    "Branches": [],
-    "NextNodeId": "None",
-    "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.1,
-    "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": true,
-    "Camera": {
-      "CameraType": "None",
-      "Location": {
-        "X": 0.0,
-        "Y": 0.0,
-        "Z": 0.0
-      },
-      "Rotation": {
-        "Roll": 0.0,
-        "Pitch": 0.0,
-        "Yaw": 0.0
-      },
-      "MoveTime": 0.0,
-      "Focus": 100000.0
-    },
-    "SoundLocation": {
-      "SoundChannel": "",
-      "SoundName": "",
-      "Target": "",
-      "Blend": 0.0
-    }
-  },
-  {
     "Name": "Classroom_Root",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "어디로 갈까",
+    "Text": "어디로 갈까?",
     "OnEnterActions": [],
     "Choices": [
       {
@@ -204,7 +226,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "Hallway1_Root"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -255,7 +277,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "Hallway1_Cancle"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -331,42 +353,6 @@
     }
   },
   {
-    "Name": "Hallway1_Cancle",
-    "SpeakerName": "",
-    "SpeakerNpcId": "None",
-    "Text": "",
-    "OnEnterActions": [],
-    "Choices": [],
-    "bYesNo": false,
-    "Branches": [],
-    "NextNodeId": "None",
-    "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.1,
-    "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": true,
-    "Camera": {
-      "CameraType": "None",
-      "Location": {
-        "X": 0.0,
-        "Y": 0.0,
-        "Z": 0.0
-      },
-      "Rotation": {
-        "Roll": 0.0,
-        "Pitch": 0.0,
-        "Yaw": 0.0
-      },
-      "MoveTime": 0.0,
-      "Focus": 100000.0
-    },
-    "SoundLocation": {
-      "SoundChannel": "",
-      "SoundName": "",
-      "Target": "",
-      "Blend": 0.0
-    }
-  },
-  {
     "Name": "HallwayBlock_Root",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
@@ -405,7 +391,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "ReturnClass_Root"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -456,7 +442,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "ReturnRoom_Root"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -507,7 +493,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "ReturnRoom_FirstRoot"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -558,7 +544,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoClassroom"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -652,7 +638,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoRoom"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -1090,6 +1076,42 @@
         "Value": 0
       }
     ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Cancle_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [],
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
