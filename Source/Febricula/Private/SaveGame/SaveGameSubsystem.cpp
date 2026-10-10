@@ -9,6 +9,7 @@
 #include "GameMode/TimeSubsystem.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Dialogue/DialogueSubsystem.h"
+#include "NPC/MainNpc/MainNpcSpawner.h"
 
 FString USaveGameSubsystem::GetSlotName(int32 SlotIndex)
 {
@@ -73,6 +74,11 @@ bool USaveGameSubsystem::SaveToSlot(int32 SlotIndex)
 	{
 		Save->DialogueLog = Dialogue->GetDialogueLog();
 	}
+	
+	if (UGameProgressSubsystem* GameProgressSubsystem = World->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		Save->LevelSeed =  GameProgressSubsystem->GetSpawnerSeed();
+	}
 
 	const bool bSaved = UGameplayStatics::SaveGameToSlot(Save, GetSlotName(SlotIndex), 0);
 	if (!bSaved)
@@ -122,6 +128,22 @@ bool USaveGameSubsystem::LoadFromSlot(int32 SlotIndex)
 	{
 		// 이미 같은 레벨이면 레벨 전환이 없으니 여기서 바로 마저 적용한다.
 		ApplyPendingLoadIfAny();
+	}
+	
+	if (UGameProgressSubsystem* GameProgress = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		GameProgress->SetSpawnerSeed(Save->LevelSeed);
+	}
+
+	TArray<AActor*> Spawners;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AMainNpcSpawner::StaticClass(), Spawners);
+	if (Spawners.Num() > 0)
+	{
+		if (AMainNpcSpawner* Spawner = Cast<AMainNpcSpawner>(Spawners[0]))
+		{
+				
+			Spawner->RequestRefresh();
+		}
 	}
 
 	return true;

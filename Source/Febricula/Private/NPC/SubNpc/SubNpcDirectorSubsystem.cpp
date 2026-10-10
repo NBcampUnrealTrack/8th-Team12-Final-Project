@@ -2216,7 +2216,7 @@ bool USubNpcDirectorSubsystem::PickArchetype(FSubNpcArchetypeRow& OutRow) const
 
 ASubNpcCharacter* USubNpcDirectorSubsystem::SpawnOnPath(ANpcCrowdPath* Path, float StartDistance, bool bReversed)
 {
-	if (!Path)
+	if (!Path || !Path->IsOpen())
 	{
 		return nullptr;
 	}

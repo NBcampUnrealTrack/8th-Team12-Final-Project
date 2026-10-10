@@ -11,6 +11,36 @@
 #include "Activity/ActivitySubsystem.h"
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"
 
+FRandomStream UGameProgressSubsystem::MakeRandomStream(const FMainNpcSpawnRow& NowRow, uint32 Salt) const
+{
+	uint32 Hash = GetTypeHash(SpawnerSeed);
+	Hash = HashCombine(Hash, GetTypeHash(GetCurrentDay()));
+	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.NpcId.ToString()));
+	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.Level.ToSoftObjectPath().ToString()));
+	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.SpawnPointId.ToString()));
+	if (const UTimeSubsystem* Time = GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		Hash = HashCombine(Hash, FCrc::StrCrc32(*Time->GetNowScheduleName().ToString()));
+	}
+	
+	return FRandomStream(static_cast<int32>(Hash));
+}
+
+bool UGameProgressSubsystem::CheckNpcCanSpawn(const FMainNpcSpawnRow& NowRow) const
+{
+	if (NowRow.SpawnRate >= 100) return true;
+	if (NowRow.SpawnRate <= 0) return false;
+	
+
+	return MakeRandomStream(NowRow, /*Salt=*/0).FRand() < NowRow.SpawnRate / 100.f;
+}
+
+void UGameProgressSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	SpawnerSeed = FMath::Rand();	
+}
+
 const UTimeSubsystem* UGameProgressSubsystem::GetTime() const
 {
 	const UGameInstance* GI = GetGameInstance();

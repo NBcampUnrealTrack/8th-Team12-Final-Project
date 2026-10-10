@@ -33,6 +33,7 @@
 #include "Engine/DataTable.h"
 #include "GameFramework/Actor.h"
 #include "GameplayTagContainer.h"
+#include "SpawnPointType.h"
 #include "NPC/NpcTypes.h"
 #include "MainNpcSpawner.generated.h"
 
@@ -55,21 +56,35 @@ struct FMainNpcSpawnRow : public FTableRowBase
 	TSoftClassPtr<AMainNpcCharacter> NpcClass;
 
 	/** 누적 일차 (UTimeSubsystem::GetAbsoluteDay 기준, 1일차부터) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Time", meta = (ClampMin = "1"))
-	int32 Day = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Time", meta = (ClampMin = "0"))
+	int32 Day = 0;
 
 	/** 시간대 태그 (예: Schedule.MorningClass). 비우면 그 날 하루 종일 */
+		
+	/** 이지민 수정(2026. 10. 10)
+	 * FGameplayTagContainer를 이용해 여러 개 스케쥴을 한꺼번에 필터링
+	*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Time")
-	FGameplayTag ScheduleTag;
+	FGameplayTagContainer ScheduleTag;
+
+
 
 	/** 스폰할 레벨 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Location")
 	TSoftObjectPtr<UWorld> Level;
 
-	/** 그 레벨에 배치한 AMainNpcSpawnPoint의 SpawnPointId */
+		
+	/** 이지민 수정(2026. 10. 10)
+	 * 여러 후보 Point 중 아무데나 한 곳 랜덤으로 골라서 스폰하게 만들기 위해 추가
+	 */
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Location")
+	ESpawnPointType	SpawnPointType;
+	
+	/** 그 레벨에 배치한 AMainNpcSpawnPoint의 SpawnPointId */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Location", meta = (EditCondition = "SpawnPointType == ESpawnPointType::OneByOne"))
 	FName SpawnPointId;
-
+	
 	/** 이 행이 쓰이기 위한 조건 (전부 AND). 호감도는 "관계 O 이상"(Key=NpcId)으로 건다. 비우면 항상 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Condition")
 	TArray<FGameCondition> Conditions;
@@ -99,6 +114,14 @@ struct FMainNpcSpawnRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Behavior",
 		meta = (EditCondition = "StartAIState == ENpcAIState::Patrol || StartAIState == ENpcAIState::Guide"))
 	FName RouteId;
+	
+	//[이지민] 2026-10-10 추가: 확률적 스폰
+	/**
+	 * 해당 변수는 캐릭터가 스폰될 확률을 의미한다.
+	 */
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Spawn Rate", meta = (ClampMin = "0", ClampMax = "100") )
+	float SpawnRate = 100.f;
 
 	// [skydodo] 2026-10-08 추가: 자리(상황)별 대화
 	/**
@@ -114,6 +137,7 @@ struct FMainNpcSpawnRow : public FTableRowBase
 		meta = (RequiredAssetDataTags = "RowStructure=/Script/Febricula.DialogueNodeRow"))
 	TSoftObjectPtr<UDataTable> DialogueTable;
 };
+
 
 UCLASS()
 class FEBRICULA_API AMainNpcSpawner : public AActor
@@ -140,7 +164,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MainNpc|Spawner")
 	bool ValidateSchedule() const;
-
+	
+	
 	UDataTable* GetScheduleTable() const { return ScheduleTable; }
 
 	/** 디버그 출력용: 지금 이 레벨에 세운 NPC와 자리/애니메이션/AIState를 한 줄씩 */
@@ -150,6 +175,9 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	/** 확률 기반 스폰용 Seed */
+	FRandomStream RandomStream;
+	
 	/** NPC마다 지금 쓸 행을 고르고, 이 레벨 몫을 스폰/이동/제거한다 */
 	void RefreshNpcs();
 
@@ -171,7 +199,7 @@ protected:
 	/** 레벨에 이미 같은 NpcId의 메인 NPC가 있는지 (직접 배치한 것 포함) */
 	AMainNpcCharacter* FindNpcInWorld(FName NpcId) const;
 
-	AMainNpcSpawnPoint* FindSpawnPoint(FName SpawnPointId) const;
+	TArray<AMainNpcSpawnPoint*> FindSpawnPoint(FName SpawnPointId, ESpawnPointType PointType) const;
 
 	/** 이 행이 지금 레벨에 해당하는지 */
 	bool IsRowForThisLevel(const FMainNpcSpawnRow& Row) const;
@@ -204,6 +232,12 @@ protected:
 
 	/** 스폰한 NPC가 따르고 있는 행 (NpcId -> 행). 테이블 행은 플레이 중 바뀌지 않으므로 포인터로 들고 있는다 */
 	TMap<FName, const FMainNpcSpawnRow*> SpawnedRows;
+	
+	/** 이지민 수정(2026. 10. 10)
+	 * 레벨에 같은 Type을 가진 여러 개의 Point 중 랜덤하게 하나 골라 스폰하기 위해 추가
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MainNpc|Spawner|Debug")
+	TMap<FName, TObjectPtr<AMainNpcSpawnPoint>> SpawnedPoints;
 
 	FTimerHandle RefreshTimerHandle;
 

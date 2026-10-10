@@ -215,6 +215,7 @@ enum class EGameActionType : uint8
 	 * 시간표 끝에 닿으면 내부에서 알아서 하루가 넘어간다.
 	 */
 	TimeAdvanceSchedule		UMETA(DisplayName = "다음 시간대로"),
+	TimeSetSchedule			UMETA(DisplayName = "시간대 변경"),
 	
 	TimeResetSchedule		UMETA(DisplayName = "시간대 리셋"),
 	

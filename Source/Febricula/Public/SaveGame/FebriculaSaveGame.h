@@ -13,10 +13,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
-#include "Progress/GameProgressSubsystem.h"
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"
 #include "GameMode/TimeSubsystem.h"
 #include "Dialogue/DialogueSubsystem.h"
+#include "Progress/GameProgressSaveData.h"
 #include "FebriculaSaveGame.generated.h"
 
 UCLASS()
@@ -59,4 +59,8 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Save | Dialogue")
 	TArray<FDialogueLogEntry> DialogueLog;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Save | MainCharacter Spawner")
+	int32 LevelSeed = 0;
 };
+

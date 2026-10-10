@@ -11,7 +11,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoSchool"
+        "NextNodeId": "GoSchoolFromHome1"
       },
       {
         "Text": "아니요",
@@ -51,7 +51,50 @@
     }
   },
   {
-    "Name": "GoSchool",
+    "Name": "GoSchoolFromHome1",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "GoSchoolFromHome2",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.5,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoSchoolFromHome2",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",
@@ -464,6 +507,57 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
+        "NextNodeId": "ReturnRoom_FirstRoot"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "ReturnRoom_FirstRoot",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "돌아갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "돌아간다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoRoomFirst"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
         "NextNodeId": "GoClassroom"
       }
     ],
@@ -596,6 +690,55 @@
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "Room",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoRoomFirst",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "TimeSetSchedule",
+        "Key": "Schedule.Night",
+        "Key2": "None",
+        "Value": 0
+      },
       {
         "Type": "ChangeLevel",
         "Key": "Room",

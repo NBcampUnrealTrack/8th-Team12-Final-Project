@@ -11,6 +11,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "SpawnPointType.h"
 #include "GameFramework/Actor.h"
 #include "MainNpcSpawnPoint.generated.h"
 
@@ -27,11 +28,20 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "MainNpc|SpawnPoint")
 	FName GetSpawnPointId() const { return SpawnPointId; }
+	
+	UFUNCTION(BlueprintPure, Category = "MainNpc|SpawnPoint")
+	ESpawnPointType GetSpawnPointType() const { return SpawnPointType; }
 
 protected:
 	/** 스케줄 테이블의 SpawnPointId와 맞출 이름 (예: Library_Desk). 한 레벨 안에서 겹치면 안 된다 */
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "MainNpc|SpawnPoint")
 	FName SpawnPointId;
+
+	/** 이지민 수정(2026, 10. 10)
+	 * 여러 후보 중 아무데나 랜덤하게 스폰하게 만들기 위해 추가
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|SpawnPoint")
+	ESpawnPointType SpawnPointType;
 
 #if WITH_EDITORONLY_DATA
 	/** 에디터에서 NPC가 설 자리와 크기를 보여주는 용도. 게임에서는 없다 */

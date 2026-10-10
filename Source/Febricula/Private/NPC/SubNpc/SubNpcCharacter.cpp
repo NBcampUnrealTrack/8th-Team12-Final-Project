@@ -1795,7 +1795,7 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	// 들어설 때 미리 정해 둔 다음 경로를 쓴다 (갈아탈 지점이 그 경로 기준으로 계산돼 있다).
 	bool bNextReversed = bPlannedNextReversed;
 	ANpcCrowdPath* Next = PlannedNextPath.Get();
-	if (!Next)
+	if (!Next || !Next->IsOpen())
 	{
 		Next = CurrentPath->PickNextPath(bNextReversed);
 	}
@@ -1971,7 +1971,7 @@ void ASubNpcCharacter::PlanNextPath()
 	ANpcCrowdPath* Next = nullptr;
 	if (const ASubNpcCharacter* Leader = GroupLeader.Get())
 	{
-		if (Leader->CurrentPath == CurrentPath && Leader->PlannedNextPath.IsValid())
+		if (Leader->CurrentPath == CurrentPath && Leader->PlannedNextPath.IsValid() && Leader->PlannedNextPath->IsOpen())
 		{
 			Next = Leader->PlannedNextPath.Get();
 			bNextReversed = Leader->bPlannedNextReversed;

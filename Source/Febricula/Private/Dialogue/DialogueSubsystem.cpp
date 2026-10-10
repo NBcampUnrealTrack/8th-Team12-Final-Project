@@ -64,6 +64,7 @@ void UDialogueSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UDialogueSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
+	FinishDialogue();
 	UE_LOG(LogTemp, Warning, TEXT("Dialogue Subsystem: Deinitialize"));
 }
 
@@ -989,6 +990,22 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		}
 	}
 	break;
+		
+	case EGameActionType::TimeSetSchedule:
+		if (UTimeSubsystem* Time = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+		{
+			FName Now = Time->GetNowScheduleName();
+			int32 TargetIndex = Time->GetTargetScheduleIndex(Action.Key);
+			if (TargetIndex > -1)
+			{
+				while (Now != Action.Key)
+				{
+					Time->SpendSchedule();
+					Now = Time->GetNowScheduleName();
+				}
+			}
+		}
+		break;
 
 	case EGameActionType::TimeResetSchedule:
 		if (UTimeSubsystem* Time = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())

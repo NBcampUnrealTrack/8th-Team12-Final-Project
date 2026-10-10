@@ -6147,7 +6147,7 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "D2_02",
+    "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
     "AutoAdvanceValue": 0.3,
     "AutoAdvanceNpcId": "None",
@@ -6179,7 +6179,14 @@
     "SpeakerName": "기숙사 사감",
     "SpeakerNpcId": "NPC_Sagam",
     "Text": "이걸로 아침 조회는 끝. 다들 밥 먹으러 가.",
-    "OnEnterActions": [],
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": ".1",
+        "Value": 0
+      }
+    ],
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
@@ -6215,7 +6222,14 @@
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "조회 자체는 별 것 없었다.",
-    "OnEnterActions": [],
+    "OnEnterActions": [
+      {
+        "Type": "TimeAdvanceSchedule",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 0
+      }
+    ],
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
@@ -6324,12 +6338,6 @@
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
-      {
-        "Type": "TimeAdvanceSchedule",
-        "Key": "None",
-        "Key2": "None",
-        "Value": 1
-      },
       {
         "Type": "SpawnActor",
         "Key": "NPC_Doyun",
@@ -7083,12 +7091,6 @@
     "Text": "",
     "OnEnterActions": [
       {
-        "Type": "TimeAdvanceSchedule",
-        "Key": "None",
-        "Key2": "None",
-        "Value": 1
-      },
-      {
         "Type": "FadeOut",
         "Key": "Black",
         "Key2": "None",
@@ -7098,12 +7100,6 @@
         "Type": "ChangeLevel",
         "Key": "Food",
         "Key2": "None",
-        "Value": 0
-      },
-      {
-        "Type": "PlaySE",
-        "Key": "Looping",
-        "Key2": "crowd_buzz",
         "Value": 0
       }
     ],
@@ -7143,6 +7139,18 @@
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
+      {
+        "Type": "TimeAdvanceSchedule",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 1
+      },
+      {
+        "Type": "PlaySE",
+        "Key": "Looping",
+        "Key2": "crowd_buzz",
+        "Value": 0
+      },
       {
         "Type": "Teleport",
         "Key": "Player",
@@ -7824,13 +7832,127 @@
   },
   {
     "Name": "D2_06_017",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "다 먹었어?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "D2_06_018",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D2_06_018",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "응.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "D2_06_019",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D2_06_019",
+    "SpeakerName": "김도윤",
+    "SpeakerNpcId": "NPC_Doyun",
+    "Text": "그럼 일어나자.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "D2_06_020",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "D2_06_020",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
       {
         "Type": "FadeOut",
-        "Key": ".3",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      },
+      {
+        "Type": "ChangeLevel",
+        "Key": "SchoolOutside",
         "Key2": "None",
         "Value": 0
       }
@@ -7840,7 +7962,7 @@
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 3.0,
+    "AutoAdvanceValue": 0.4,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": false,
     "Camera": {

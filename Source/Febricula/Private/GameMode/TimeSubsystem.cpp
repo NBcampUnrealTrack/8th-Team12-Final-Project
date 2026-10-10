@@ -145,6 +145,7 @@ void UTimeSubsystem::SpendSchedule()
 	OnScheduleChanged.Broadcast(NowSchedule.ScheduleName);
 }
 
+
 int32 UTimeSubsystem::GetNowScheduleAp()
 {
 	return NowSchedule.ActionPoint;
@@ -211,6 +212,25 @@ FGameplayTag UTimeSubsystem::GetNowDayTypeTag() const
 	// 날이 생겼을 때 이 함수를 고칠 필요가 없어야 하기 때문이다.
 	const UDayScheduleAsset* Asset = GetTodaySchedule();
 	return Asset ? Asset->DayTypeTag : FGameplayTag();
+}
+
+int32 UTimeSubsystem::GetTargetScheduleIndex(FName Target)
+{
+	const UDayScheduleAsset* Asset = GetTodaySchedule();
+	FGameplayTag TargetTag = FGameplayTag::RequestGameplayTag(Target);
+	if (!TargetTag.IsValid())
+	{
+		UE_LOG(LogTemp, Log, TEXT("TimeSubsystem: 존재하지 않는 태그 %s"), *Target.ToString());
+		return -1;
+	}
+	for (int i = 0; i < Asset->ScheduleDefs.Num(); i++)
+	{
+		if (Asset->ScheduleDefs[i].ScheduleName == TargetTag)
+		{
+			return i;
+		}	
+	}
+	return -1;
 }
 
 FTimeSaveData UTimeSubsystem::GetSaveData() const

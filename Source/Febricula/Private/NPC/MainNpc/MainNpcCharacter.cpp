@@ -97,7 +97,7 @@ void AMainNpcCharacter::Interact_Implementation(AActor* Interactor)
 	bool bStarted = Dialogue->TryStartEventForNpc(GetNpcId(), this);
 	if (!bStarted && !DefaultIdleNodeId.IsNone())
 	{
-		bStarted = Dialogue->StartDialogueAtNode(DefaultIdleNodeId, this);
+			bStarted = Dialogue->StartDialogueAtNode(DefaultIdleNodeId, this);
 	}
 
 	if (!bStarted)

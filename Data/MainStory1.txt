@@ -360,13 +360,15 @@ AI의 끊임없는 발전.
 @FadeIn 3
 @wait .3
 천율: 하지만... 해야겠지.
+@end
 
 @label D2_02
+@FadeOut Black .1
 사감: 이걸로 아침 조회는 끝. 다들 밥 먹으러 가.
+@TimeAdvanceSchedule
 조회 자체는 별 것 없었다.
 인원 점검, 체조, 간단한 운동, 일정 전달.
 모여 서 있던 학생들은 삼삼오오 무리를 지은 채 저마다 흩어져 갔다.
-@TimeAdvanceSchedule 1
 @SpawnActor NPC_Doyun FirstAssembleDoyun
 @NpcFacePlayer NPC_Doyun
 @StartCrowdSpawn CrowdManager EndAssemble
@@ -396,14 +398,14 @@ AI의 끊임없는 발전.
 도윤: 쯧. 안될 것 같긴 해… 별 쓰잘데기 없는 절차며 규칙에 목 메는 학교 특성 생각해 보면…
 도윤: 아침 먹을거지? 나머지는 먹으면서 이야기하자. 대부분 아침 안 먹고 자러 올라가니까 지금 가면 바로 먹을 수 있을 거야.
 천율: 그래.
-@TimeAdvanceSchedule 1
 @FadeOut Black 3
 @wait .3
 @ChangeLevel Food
-@PlaySE Looping crowd_buzz
 @end
 
 @label D2_05
+@TimeAdvanceSchedule 1
+@PlaySE Looping crowd_buzz
 @Teleport Player FoodCheon
 @SpawnActor NPC_Doyun WithFood
 @Teleport NPC_Doyun WithFood
@@ -431,7 +433,14 @@ AI의 끊임없는 발전.
 도윤: 부장 선생님이나 서윤이가 안 알려줬어?
 천율: 못 들었는데... 깜빡했나 봐.
 도윤: 하긴. 우리한테는 너무 당연한거다 보니 깜빡할 수 있긴 하지.
-@FadeOut .3
-@wait 3
+도윤: 다 먹었어?
+천율: 응.
+도윤: 그럼 일어나자.
+@FadeOut Black 3
+@wait .4
+@ChangeLevel SchoolOutside
 @end
+
+@label D2_07
+천율: (조례까진 자유시간이라고 했었지...)
 

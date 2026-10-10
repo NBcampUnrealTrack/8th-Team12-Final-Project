@@ -15,6 +15,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "NPC/SubNpc/SubNpcTypes.h"
 #include "NpcCrowdPath.generated.h"
@@ -96,6 +97,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
 	bool IsSpawnReversed() const { return bSpawnReversed; }
 
+	/** 이지민 수정(2026. 10. 10)
+	 * 특정 시간대에만 활성화 되는 경로 구현을 위해 추가
+	 */
+	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
+	bool IsOpen();
+	
 	/**
 	 * 중심선·걷는 폭·추월 최대 폭·방향·퇴장구를 디버그 선으로 그린다.
 	 * 에디터 뷰포트(배치할 때)와 게임 중 crowd.DrawPaths가 같이 쓴다.
@@ -116,7 +123,13 @@ protected:
 	/** 경로 모양. 에디터에서 점을 찍어 곡선을 만든다 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
 	TObjectPtr<USplineComponent> Spline;
-
+	
+	/** 이지민 수정(2026. 10. 10)
+	 * 특정 시간대에만 활성화 되는 경로 구현을 위해 추가
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Path")
+	FGameplayTagContainer ClosedSchedules;
+	
 	/**
 	 * 이 경로가 끝난 뒤 갈 수 있는 길들. 2개 이상이면 갈림길이 된다.
 	 * 비워두면 막다른 길 - NPC는 여기서 풀로 회수된다.

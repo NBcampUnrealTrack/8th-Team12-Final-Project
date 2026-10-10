@@ -118,11 +118,13 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	FGameplayTag GetNowDayTypeTag() const;
+	int32 GetTargetScheduleIndex(FName Target);
 
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Schedule")
 	int32 GetNowScheduleIndex() const { return NowScheduleIndex; }
 
 	const FScheduleDef& GetNowSchedule() const { return NowSchedule; }
+	FName GetNowScheduleName() const { return FName(NowSchedule.ScheduleName.ToString()); }
 
 	/**
 	 * 범위를 벗어나면 nullptr.
@@ -146,11 +148,11 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Save")
 	void LoadSaveData(const FTimeSaveData& Data);
+	const TArray<FScheduleDef>& GetScheduleDefs() const;
 
 
 protected:
 
-	const TArray<FScheduleDef>& GetScheduleDefs() const;
 
 	// [skydodo] 2026-08-26 추가
 	/** 오늘 적용할 시간표 애셋. 없으면 nullptr */

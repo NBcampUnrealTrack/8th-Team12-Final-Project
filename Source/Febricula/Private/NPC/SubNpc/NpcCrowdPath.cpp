@@ -8,6 +8,7 @@
 #include "Components/ArrowComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
+#include "GameMode/TimeSubsystem.h"
 
 int32 NpcWeightedPick::PickIndex(const TArray<float>& Weights)
 {
@@ -83,6 +84,20 @@ void ANpcCrowdPath::Tick(float DeltaSeconds)
 		DrawLaneDebug(/*SqueezeOverflow=*/45.f);
 	}
 #endif
+}
+
+bool ANpcCrowdPath::IsOpen()
+{
+	if (ClosedSchedules.IsEmpty())
+	{
+		return true;
+	}
+	if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		FGameplayTag NowSchedule = TimeSubsystem->GetNowScheduleTag();
+		return !ClosedSchedules.HasTagExact(NowSchedule);
+	}
+	return false;
 }
 
 void ANpcCrowdPath::DrawLaneDebug(float SqueezeOverflow, float Lifetime) const
@@ -257,7 +272,7 @@ ANpcCrowdPath* ANpcCrowdPath::PickNextPath(bool& bOutReversed) const
 
 	for (int32 i = 0; i < Exits.Num(); ++i)
 	{
-		if (Exits[i].NextPath && Exits[i].Weight > 0.f)
+		if (Exits[i].NextPath && Exits[i].Weight > 0.f && Exits[i].NextPath->IsOpen())
 		{
 			Weights.Add(Exits[i].Weight);
 			ValidIndices.Add(i);
