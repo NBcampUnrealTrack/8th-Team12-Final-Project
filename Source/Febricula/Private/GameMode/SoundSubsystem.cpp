@@ -23,7 +23,7 @@ void USoundSubsystem::PlayBGM(USoundBase* NewBGM, float FadeTime)
 		BGMChannel = nullptr;
 	}
 	BGMChannel = UGameplayStatics::SpawnSound2D(this, NewBGM);
-	BGMChannel->FadeIn(FadeTime, 1.f);
+	BGMChannel->FadeIn(FadeTime, MasterBGMVolume);
 	
 }
 
@@ -51,7 +51,7 @@ void USoundSubsystem::PlaySE(FName ChannelName, USoundBase* NewSE, float FadeTim
 		Old->FadeOut(FadeTime, .0f);
 	}
 	SEChannels.Remove(ChannelName);
-	NewComp->FadeIn(FadeTime, 1.f);
+	NewComp->FadeIn(FadeTime, MasterSEVolume);
 	SEChannels.Add(ChannelName, NewComp);
 }
 
@@ -68,7 +68,7 @@ void USoundSubsystem::PlaySE3d(FName ChannelName, USoundBase* NewSE, FVector Loc
 		Old->FadeOut(FadeTime, .0f);
 	}
 	SEChannels.Remove(ChannelName);
-	NewComp->FadeIn(FadeTime, 1.f);
+	NewComp->FadeIn(FadeTime, MasterSEVolume);
 	SEChannels.Add(ChannelName, NewComp);
 }
 
@@ -87,6 +87,11 @@ void USoundSubsystem::StopSE(FName ChannelName, float FadeTime)
 
 void USoundSubsystem::SetBGMVolume(float Volume)
 {
+	MasterBGMVolume = FMath::Clamp(Volume, 0.f, 1.f);
+	if (BGMChannel)
+	{
+		BGMChannel->SetVolumeMultiplier(MasterBGMVolume);
+	}
 }
 
 void USoundSubsystem::SetSEVolume(FName ChannelTag, float Volume)
@@ -94,6 +99,18 @@ void USoundSubsystem::SetSEVolume(FName ChannelTag, float Volume)
 	if (UAudioComponent* NowChannel = *SEChannels.Find(ChannelTag))
 	{
 		NowChannel->SetVolumeMultiplier(Volume);
+	}
+}
+
+void USoundSubsystem::SetMasterSEVolume(float Volume)
+{
+	MasterSEVolume = FMath::Clamp(Volume, 0.f, 1.f);
+	for (auto& Pair : SEChannels)
+	{
+		if (Pair.Value)
+		{
+			Pair.Value->SetVolumeMultiplier(MasterSEVolume);
+		}
 	}
 }
 
