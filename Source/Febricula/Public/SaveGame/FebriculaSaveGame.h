@@ -62,5 +62,8 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Save | MainCharacter Spawner")
 	int32 LevelSeed = 0;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Save | Move History")
+	TArray<FName> MoveHistory;
 };
 

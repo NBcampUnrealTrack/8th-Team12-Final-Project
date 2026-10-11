@@ -144,11 +144,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progress|Spawner Seed")
 	bool CheckNpcCanSpawn(const FMainNpcSpawnRow& NowRow) const;
 	
+	UFUNCTION(BlueprintCallable, Category = "Progress|MoveHistory")
+	void AddMoveHistory(FName LevelName)
+	{
+		this->MoveHistory.Add(LevelName);
+	}
+	
+	UFUNCTION(BlueprintCallable, Category = "Progress|MoveHistory")
+	const TArray<FName>& GetMoveHistory() const { return MoveHistory; };
+
+	
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	void SetSpawnerSeed(int32 NewSeed) { SpawnerSeed = NewSeed; }
 
 protected:
 	
+	/** 하루치 이동 경로 */
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FName> MoveHistory;
+
+protected:
 	/** 시간 조건 판정에 쓰는 UTimeSubsystem 접근자. 없으면 nullptr */
 	const UTimeSubsystem* GetTime() const;
 public:

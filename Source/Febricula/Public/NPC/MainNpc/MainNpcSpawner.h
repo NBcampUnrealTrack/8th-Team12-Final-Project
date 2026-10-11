@@ -82,7 +82,7 @@ struct FMainNpcSpawnRow : public FTableRowBase
 	ESpawnPointType	SpawnPointType;
 	
 	/** 그 레벨에 배치한 AMainNpcSpawnPoint의 SpawnPointId */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Location", meta = (EditCondition = "SpawnPointType == ESpawnPointType::OneByOne"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Location", meta = (EditCondition = "SpawnPointType != ESpawnPointType::MultiByRandom"))
 	FName SpawnPointId;
 	
 	/** 이 행이 쓰이기 위한 조건 (전부 AND). 호감도는 "관계 O 이상"(Key=NpcId)으로 건다. 비우면 항상 */

@@ -1,5 +1,215 @@
 [
   {
+    "Name": "Suah_Default",
+    "SpeakerName": "이서아",
+    "SpeakerNpcId": "NPC_Suah",
+    "Text": "아.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [
+      {
+        "Conditions": [
+          {
+            "Type": "EventCompleted",
+            "Key": "Event_Suah1",
+            "Value": 0
+          }
+        ],
+        "NextNodeId": "Suah_Default_Level1"
+      }
+    ],
+    "NextNodeId": "Suah_Default_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Suah_Default_001",
+    "SpeakerName": "이서아",
+    "SpeakerNpcId": "NPC_Suah",
+    "Text": "아, 안녕하세요... 뭐... 찾으...시는 거라도... 있으... 신가요...",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "잡담한다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Suah_Default_Level1"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Suah_Default_Level1"
+      }
+    ],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Suah_Default_Level1",
+    "SpeakerName": "이서아",
+    "SpeakerNpcId": "NPC_Suah",
+    "Text": "아... 안녕... 하세요... 선배님...",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "잡담한다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Suah_SmallTalk"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Suah_SmallTalk"
+      }
+    ],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Suah_SmallTalk",
+    "SpeakerName": "이서아",
+    "SpeakerNpcId": "NPC_Suah",
+    "Text": "그... 그럼... 안녕히 가세요...",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      },
+      {
+        "Type": "FinishActivity",
+        "Key": "NPC_Suah",
+        "Key2": "None",
+        "Value": 0
+      },
+      {
+        "Type": "ConsumeAP",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 1
+      },
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 1.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
     "Name": "Suah_002",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
@@ -13,6 +223,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_003",
     "AutoAdvance": "AfterDelay",
@@ -61,6 +272,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_004",
     "AutoAdvance": "AfterDelay",
@@ -96,6 +308,7 @@
     "Text": "저기...",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_004_001",
     "AutoAdvance": "None",
@@ -131,6 +344,7 @@
     "Text": "힉...!",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_004_002",
     "AutoAdvance": "None",
@@ -185,6 +399,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_004_003",
     "AutoAdvance": "None",
@@ -224,15 +439,18 @@
         "Text": "괜찮아?",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "FirstPassive_01"
       },
       {
         "Text": "조심해야지!",
         "Conditions": [],
         "Actions": [],
+        "YesNo": false,
         "NextNodeId": "FirstActive_01"
       }
     ],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "None",
@@ -275,6 +493,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "FirstPassive_01_001",
     "AutoAdvance": "None",
@@ -317,6 +536,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005",
     "AutoAdvance": "None",
@@ -365,6 +585,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005",
     "AutoAdvance": "None",
@@ -400,6 +621,7 @@
     "Text": "넌... 혹시 도서부원이니?",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_001",
     "AutoAdvance": "None",
@@ -435,6 +657,7 @@
     "Text": "네? 아.... 아니, 네... 그... 네...",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_002",
     "AutoAdvance": "None",
@@ -470,6 +693,7 @@
     "Text": "횡설수설하며 어쩔 줄 몰라하는 그 모습은 퍽 애처로워 보였다.",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_003",
     "AutoAdvance": "None",
@@ -505,6 +729,7 @@
     "Text": "책을 좀 찾고 있는데 혹시 어디 있는지 아니?",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_004",
     "AutoAdvance": "None",
@@ -540,6 +765,7 @@
     "Text": "어, 어떤 책인...가요...",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_005",
     "AutoAdvance": "None",
@@ -575,6 +801,7 @@
     "Text": "소프트웨어공학 과목 참고서.",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_006",
     "AutoAdvance": "None",
@@ -610,6 +837,7 @@
     "Text": "그 책이면... 제... 제일 안 쪽에서... 두 번 째 서가에 있을... 거에요...",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_007",
     "AutoAdvance": "None",
@@ -645,6 +873,7 @@
     "Text": "조금의 망설임도 없는 즉답이었다.",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_008",
     "AutoAdvance": "None",
@@ -680,6 +909,7 @@
     "Text": "고마워. 어... 그러니까...",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_009",
     "AutoAdvance": "None",
@@ -715,6 +945,7 @@
     "Text": "이, 이서아.",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_010",
     "AutoAdvance": "None",
@@ -750,6 +981,7 @@
     "Text": "이서아라고... 합니다...",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_011",
     "AutoAdvance": "None",
@@ -792,6 +1024,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "Suah_005_012",
     "AutoAdvance": "None",
@@ -858,6 +1091,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",

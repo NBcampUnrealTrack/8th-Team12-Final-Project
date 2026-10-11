@@ -260,7 +260,7 @@ AI의 끊임없는 발전.
 
 @cast 도윤 = "김도윤" NPC_Doyun
 @label D1_109
-@StopAnim NPC_Doyun
+@NpcStopRouteMove NPC_Doyun
 @NpcFaceNpc NPC_Doyun NPC_Suyun
 @NpcFaceNpc NPC_Suyun NPC_Doyun
 도윤: 어… 안녕?
@@ -442,5 +442,18 @@ AI의 끊임없는 발전.
 @end
 
 @label D2_07
+@TimeAdvanceSchedule
 천율: (조례까진 자유시간이라고 했었지...)
+@end
 
+
+
+
+@label Lesson_Default
+@FadeOut Black .3
+@wait .4
+자리에 앉아 수업을 들었다.
+@TimeScheduleAdvance
+@FadeIn .3
+@wait .4
+@end

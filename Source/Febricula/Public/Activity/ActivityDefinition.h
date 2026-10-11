@@ -8,7 +8,7 @@ struct FActivityLocation
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
-	FGameplayTag ConnectedScheduleTag;
+	FGameplayTagContainer ConnectedScheduleTag;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
 	TArray<TSoftObjectPtr<UWorld>> ConnectedLevel;
 };

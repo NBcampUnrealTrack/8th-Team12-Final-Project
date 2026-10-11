@@ -32,3 +32,34 @@
 @AddStat Int 3
 @FinishActivity Study
 @end
+
+
+@label RunningMachineGym1
+@FadeOut Black 3
+@Teleport Player RunningMachine
+@hide
+@wait .3
+
+@label RunningMachineGym2
+@cam Loc -388.7 1659.0 67.4 Rot 0 6.4 -210.0
+@FadeIn 3
+@hide
+@wait .3
+
+@cast 천율 = "강천율" PC_GangChunyul
+@label RunningMachineGym3
+천율: (속도 설정은 됐고...)
+천율: (좋아. 이 정도면 되겠지.)
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label RunningMachineGym4
+@cam reset
+@AddStat Hp 1
+@FinishActivity RunningMachine
+@Teleport Player PlayerStart
+@FadeIn 3
+@hide
+@wait .3
+@end

@@ -107,7 +107,9 @@ enum class EGameConditionType : uint8
 	IsWeekday				UMETA(DisplayName = "평일"),
 	
 	/** 현재 레벨이 N인가 */
-	NowLevel				UMETA(DisplayName = "현재 레벨이 N")
+	NowLevel				UMETA(DisplayName = "현재 레벨이 N"),
+	
+	PreviousLevelIs			UMETA(DisplayName = "이전 레벨이 N")
 
 };
 

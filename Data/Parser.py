@@ -851,8 +851,8 @@ def process(path, action_types, condition_types, outdir, check_only):
  
     for line_no, message in sorted(parser.errors):
         print(f"{parser.filename}({line_no}): [ERROR] {message}")
-    for line_no, message in sorted(parser.warnings):
-        print(f"{parser.filename}({line_no}): [WARN ] {message}")
+    #for line_no, message in sorted(parser.warnings):
+        #print(f"{parser.filename}({line_no}): [WARN ] {message}")
  
     if parser.errors:
         print(f"{parser.filename}: 실패 - 에러 {len(parser.errors)}건")
@@ -873,7 +873,7 @@ def process(path, action_types, condition_types, outdir, check_only):
  
 def main():
     ap = argparse.ArgumentParser(description="Febricula dialogue script parser")
-    ap.add_argument("inputs", nargs="*", default=["Mainstory1.txt", "DT_DoorDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
+    ap.add_argument("inputs", nargs="*", default=["Mainstory1.txt", "DT_DoorDialogue.txt", "FixedDialogue.txt", "DT_SuahDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
     ap.add_argument("--outdir", help="JSON 출력 폴더 (기본: 입력 파일과 같은 위치)")
     ap.add_argument("--enum-header", nargs="*", default=["D:\\febricula\\Febricula\\Source\\Febricula\\Public\\Dialogue\\DialogueDataTypes.h"],
                     help="EGameActionType / EGameConditionType이 정의된 .h 경로 (여러 개 가능)")

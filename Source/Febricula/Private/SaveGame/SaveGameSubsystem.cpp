@@ -59,6 +59,8 @@ bool USaveGameSubsystem::SaveToSlot(int32 SlotIndex)
 	if (const UGameProgressSubsystem* Progress = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
 	{
 		Save->ProgressData = Progress->GetSaveData();
+		Save->MoveHistory = Progress->GetMoveHistory();
+		
 	}
 	if (const UNpcAffinitySubsystem* Relationship = GetGameInstance()->GetSubsystem<UNpcAffinitySubsystem>())
 	{
@@ -68,6 +70,7 @@ bool USaveGameSubsystem::SaveToSlot(int32 SlotIndex)
 	{
 		Save->CurrentAP = Activity->GetCurrentAP();
 	}
+	
 
 	// 대화 백로그 (월드 서브시스템이라 지금 레벨에 있을 때만 가져올 수 있다)
 	if (const UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>())
@@ -133,6 +136,10 @@ bool USaveGameSubsystem::LoadFromSlot(int32 SlotIndex)
 	if (UGameProgressSubsystem* GameProgress = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
 	{
 		GameProgress->SetSpawnerSeed(Save->LevelSeed);
+		for (FName History : Save->MoveHistory)
+		{
+			GameProgress->AddMoveHistory(History);
+		}
 	}
 
 	TArray<AActor*> Spawners;

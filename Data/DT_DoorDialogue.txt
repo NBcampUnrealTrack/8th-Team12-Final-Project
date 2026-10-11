@@ -3,12 +3,25 @@
 @menu YesNo
 - 복도로 -> GoSchoolHallway
 - 교실로 -> GoClassroom
-- 아니요 -> Cancle_Root
+- 그만둔다 -> Cancle_Root
 
 @end
 
+@label SchoolOutside_LibrarySide
+어디로 갈까?
+@menu YesNo
+- 도서관으로 -> GoLibrary
+- 그만둔다 -> Cancle_Root
 
+@end
 
+@label SchoolOutside_GymSide
+어디로 갈까?
+@menu YesNo
+- 체육관으로 -> GoGym
+- 그만둔다 -> Cancle_Root
+
+@end
 
 @label Room_Root
 학교로 갈까?
@@ -20,13 +33,8 @@
 @end
 
 @label GoSchoolFromHome1
-@FadeOut Black 3
-@wait .5
-@hide
-
-@label GoSchoolFromHome2
-@ChangeLevel SchoolOutside true
 @TimeAdvanceSchedule
+@ChangeLevel SchoolOutside true
 @hide
 @wait .1
 @end
@@ -62,6 +70,24 @@
 - 학교 밖으로 -> GoMiddleBusDirect
 @if ScheduleIs Schedule.AfterSchool   
 - 도서관으로 -> GoLibraryDirect
+- 그만둔다 -> Cancle_Root
+@end
+
+@label Library_Root
+어디로 갈까?
+@menu YesNo
+- 운동장으로 -> GoPlayground
+- 교실 복도로 -> GoSchoolHallway
+- 교실로 -> GoClassroom
+- 그만둔다 -> Cancle_Root
+@end
+
+@label Gym_Root
+어디로 갈까?
+@menu YesNo
+- 운동장으로 -> GoPlayground
+- 교실 복도로 -> GoSchoolHallway
+- 교실로 -> GoClassroom
 - 그만둔다 -> Cancle_Root
 @end
 
@@ -176,6 +202,13 @@
 @wait .1
 @end 
 
+@label GoGym
+@ChangeLevel Gym true
+
+
+@hide
+@wait .1
+@end 
 
 
 @label Cancle_Root

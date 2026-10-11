@@ -3,8 +3,6 @@
 
 #include "Cheat/FebriculaCheatManager.h"
 
-#include "SNegativeActionButton.h"
-#include "SWarningOrErrorBox.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Cache/ActorCacheSubsystem.h"
 #include "GameFramework/Character.h"
@@ -135,6 +133,19 @@ void UFebriculaCheatManager::GetNowStat(FName StatName)
 	if (UGameProgressSubsystem* ProgressSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s 현재 값: %d"), *StatName.ToString(), ProgressSubsystem->GetStat(StatName));
+	}
+}
+
+void UFebriculaCheatManager::GetMoveHistory()
+{
+	if (UGameProgressSubsystem* Progress = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		const TArray<FName> MoveHistory= Progress->GetMoveHistory();
+		UE_LOG(LogTemp, Warning, TEXT("현재까지의 이동 경로"));
+		for (FName History : MoveHistory)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *History.ToString());
+		}
 	}
 }
 

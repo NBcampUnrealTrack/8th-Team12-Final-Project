@@ -2,6 +2,36 @@
 @cast 천율 = "강천율" PC_GangChunyul
 @cast ??? = "???"
 
+@label Suah_Default
+서아: 아.
+@if EventCompleted Event_Suah1
+@branch Suah_Default_Level1
+서아: 아, 안녕하세요... 뭐... 찾으...시는 거라도... 있으... 신가요...
+@menu 
+- 잡담한다 
+- 그만둔다 
+@end
+
+@label Suah_Default_Level1
+서아: 아... 안녕... 하세요... 선배님...
+@menu 
+- 잡담한다 
+- 그만둔다 
+@end
+
+@label Suah_SmallTalk
+@FadeOut Black 3
+@wait 1.0
+@FinishActivity NPC_Suah 0
+@ConsumeAP 1
+@FadeIn 3
+서아: 그... 그럼... 안녕히 가세요...
+@end
+
+
+
+
+
 @label Suah_002
 @FadeOut Black 3
 @hide

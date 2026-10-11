@@ -10,7 +10,6 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "FebriculaCharacter.h"
-#include "IPropertyTable.h"
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Animation/CharacterAnimationComponent.h"
@@ -203,7 +202,7 @@ void UDialogueSubsystem::SetDataTables(UDataTable* InEventTable, UDataTable* InD
 
 bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, FName DialogueNodeId)
 {
-	if (bDialogueActive || !EventTable)
+ 	if (bDialogueActive || !EventTable)
 	{
 		return false;
 	}
@@ -303,7 +302,7 @@ void UDialogueSubsystem::EnterTalkForParticipants(const TArray<FName>& NpcIds, A
 		{
 			UE_LOG(LogTemp, Warning, TEXT("UDialogueSubsystem: 참가자 NPC '%s'를 월드에서 찾지 못했습니다."),
 				*ParticipantId.ToString());
-			continue;
+			continue;	
 		}
 
 		ActiveParticipants.AddUnique(Npc);
@@ -574,7 +573,7 @@ TMap<FName, FCharacterCache> UDialogueSubsystem::GetCachedCharacter() const
 	return CachedCharacter;
 }
 
-FTransform UDialogueSubsystem::GetDefaultTransform(FName NpcId)
+FTransform UDialogueSubsystem::GetDefaultTransform(FName NpcId)		
 {
 	if (FCharacterCache* Cache = CachedCharacter.Find(NpcId))
 	{
@@ -1235,6 +1234,14 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 				if (!Action.Key2.ToString().ToBool())
 				{
 					UGameplayStatics::OpenLevelBySoftObjectPtr(this, *Level);
+					if (Progress)
+					{
+						Progress->AddMoveHistory(FName(UGameplayStatics::GetCurrentLevelName(GetWorld(), true)));
+					}
+					if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+					{
+						ActivitySubsystem->bFreeActivity = false;
+					}
 				}
 				else
 				{
@@ -1469,11 +1476,11 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 	case EGameActionType::FinishActivity:
 		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 		{
-			if (Action.Value == 0)
-			{
-				ActivitySubsystem->ActivityFinished(Action.Key);
-				break;
-			}
+			// if (Action.Value == 0)
+			// {
+			// 	ActivitySubsystem->ActivityFinished(Action.Key, 1);
+			// 	break;
+			// }
 			ActivitySubsystem->ActivityFinished(Action.Key, Action.Value);
 		}
 		break;

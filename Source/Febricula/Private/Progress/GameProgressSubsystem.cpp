@@ -292,6 +292,26 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		}
 		return false;
 	}
+		
+	case EGameConditionType::PreviousLevelIs:
+	{
+		if (MoveHistory.IsEmpty()) return false;
+		FName LastHistory = MoveHistory.Last();
+		UE_LOG(LogTemp, Warning, TEXT("마지막 방문 레벨: %s"), *LastHistory.ToString());
+		if (Condition.Key == "Library")
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Last History == Condition.key: %d"), LastHistory == Condition.Key);
+			if (LastHistory == Condition.Key)
+			{
+				return true;
+			}			
+		}
+		if (LastHistory == Condition.Key)
+		{
+			return true;
+		}
+		return false;
+	}
 
 	/**
 	 * 이지민 수정(2026. 08. 26)

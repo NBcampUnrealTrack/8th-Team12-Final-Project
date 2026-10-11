@@ -43,4 +43,7 @@ public:
 	
 	UFUNCTION(Exec)
 	void GetNowStat(FName StatName);
+	
+	UFUNCTION(Exec)
+	void GetMoveHistory();
 };

@@ -76,7 +76,7 @@ void UActivitySubsystem::FindRunnableActivities()
 		for (const FActivityLocation& Loc : Pair.Value.ActivityLocations)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Tag=%s Valid=%d Now=%s"), *Loc.ConnectedScheduleTag.ToString(), Loc.ConnectedScheduleTag.IsValid(), *NowSchedule.ToString());
-			if (Loc.ConnectedScheduleTag.IsValid() && Loc.ConnectedScheduleTag != NowSchedule)
+			if (Loc.ConnectedScheduleTag.IsValid() && !Loc.ConnectedScheduleTag.HasTagExact(NowSchedule))
 			{
 				continue;
 			}

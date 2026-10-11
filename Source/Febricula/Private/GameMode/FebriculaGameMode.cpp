@@ -35,24 +35,34 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 
 	AFebriculaPlayerStart* Matched = nullptr;
 	AFebriculaPlayerStart* Fallback = nullptr;
-
-	for (TActorIterator<AFebriculaPlayerStart> It(GetWorld()); It; ++It)
+	if (UGameProgressSubsystem* ProgressSubsystem = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
 	{
-		AFebriculaPlayerStart* Now = *It;
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *Now->SpawnPointTag.GetTagName().ToString());
-		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %s"), *NowSchedule.ToString());
-		UE_LOG(LogTemp, Warning, TEXT("%d"), NowSchedule.MatchesTag(Now->SpawnPointTag));
-		if (!Now->SpawnPointTag.IsValid())
+
+		for (TActorIterator<AFebriculaPlayerStart> It(GetWorld()); It; ++It)
 		{
-			if (!Fallback)
+			AFebriculaPlayerStart* Now = *It;
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *Now->SpawnPointTag.GetTagName().ToString());
+			UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %s"), *NowSchedule.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("%d"), NowSchedule.MatchesTag(Now->SpawnPointTag));
+			if (!Now->SpawnPointTag.IsValid())
 			{
-				Fallback = Now;
+				if (!Fallback)
+				{
+					if (Now->Conditions.IsEmpty())
+					{
+						Fallback = Now;
+					}
+					else
+					{
+						if (ProgressSubsystem->EvaluateConditions(Now->Conditions))
+						{
+							Matched = Now;
+						}
+					}
+				}
+				continue;
 			}
-			continue;
-		}
-		if (NowSchedule.IsValid() && NowSchedule.MatchesTag(Now->SpawnPointTag))
-		{
-			if (UGameProgressSubsystem* ProgressSubsystem = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+			if (NowSchedule.IsValid() && NowSchedule.MatchesTag(Now->SpawnPointTag))
 			{
 				if (ProgressSubsystem->EvaluateConditions(Now->Conditions))
 				{
