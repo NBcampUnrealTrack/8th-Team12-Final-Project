@@ -117,6 +117,16 @@ private:
 		float Age = 0.f;
 		/** 생길 때 살짝 부풀었다 돌아오는 연출 */
 		float Pop = 0.f;
+		/** 그림 회전 (라디안). 공중에서는 Spin으로 돌고, 바닥에 닿으면 굴러간 만큼 돈다 */
+		float Angle = 0.f;
+		float Spin = 0.f;
+		/** 처음 어딘가에 닿았는지 - 착지 효과는 한 번만 */
+		bool bLanded = false;
+		/** 착지 찌그러짐 · 새싹 흔들림 남은 시간 */
+		float Squash = 0.f;
+		float Wobble = 0.f;
+		/** 떨어지는 동안 꽃잎 꼬리를 뿌리는 간격 */
+		float TrailTimer = 0.f;
 	};
 
 	struct FPopText
@@ -127,12 +137,40 @@ private:
 		float Life = 1.f;
 	};
 
+	/** 조각 모양: 네모(흙 · 종이), 꽃잎(길쭉하게 돌며 흩날림), 동그라미(반짝이 · 물방울) */
+	enum class EParticleShape : uint8
+	{
+		Square,
+		Petal,
+		Dot,
+	};
+
 	struct FParticle
 	{
 		FVector2f Pos;
 		FVector2f Vel;
 		FLinearColor Color;
 		float Life = 0.7f;
+		float MaxLife = 0.7f;
+		float Size = 7.f;
+		float Gravity = 180.f;
+		float Angle = 0.f;
+		float Spin = 0.f;
+		/** 좌우로 살랑이는 세기 (잎 · 꽃잎) */
+		float Sway = 0.f;
+		EParticleShape Shape = EParticleShape::Square;
+	};
+
+	/** 퍼져 나가는 점선 고리 (착지 · 합성 충격파) */
+	struct FRing
+	{
+		FVector2f Center;
+		float Radius = 0.f;
+		float Speed = 0.f;
+		float Life = 0.5f;
+		float MaxLife = 0.5f;
+		float DotSize = 8.f;
+		FLinearColor Color;
 	};
 
 	// ---- 규칙 (HTML의 reset / action / merge / fulfill / physics / danger) ----
@@ -159,7 +197,22 @@ private:
 	void Fulfill();
 	void NextOrder();
 	void Physics(float Dt);
-	static void Bounds(FFlowerBall& Ball);
+	/** 벽 · 바닥 처리. 바닥에 부딪혔으면 그때 떨어지던 속도를 돌려준다 (아니면 0) */
+	static float Bounds(FFlowerBall& Ball);
+
+	// ---- 단계별 효과 ----
+	/** 처음 바닥이나 다른 꽃에 닿았을 때 (씨앗은 톡 튀고, 새싹은 흔들리고, 데이지는 꽃잎이 퍼진다…) */
+	void OnLanded(FFlowerBall& Ball, float Impact);
+	/** 합성으로 새 꽃이 피어날 때. 해바라기부터는 주변 꽃을 밀어내고 화면이 흔들린다 */
+	void OnBorn(const FFlowerBall& Ball);
+	/** 떨어지는 동안 단계별 꼬리 (흙 알갱이 · 잎 · 꽃잎) */
+	void EmitTrail(FFlowerBall& Ball, float Dt);
+	/** 단계별 조각 한 무리. Upward > 0이면 위로 솟구치는 분수 모양 */
+	void Spray(int32 Tier, float InX, float InY, int32 Count, float Speed, float Upward);
+	void AddRing(float InX, float InY, float StartRadius, float Speed, float Life, float DotSize, const FLinearColor& Color);
+	/** (X, Y) 주변 꽃을 바깥으로 밀어낸다. 큰 꽃이 피어날 때의 "쿵" */
+	void PushAround(float InX, float InY, float Radius, float Strength, int32 ExcludeId);
+	void AddShake(float Amount);
 	void UpdateDanger(float Dt);
 	void AddPop(float InX, float InY, const FString& Text, const FLinearColor& Color);
 	void PlaySfx(FName Key);
@@ -180,7 +233,9 @@ private:
 	void PaintSidePanels(FFlowerPainter& P) const;
 	void PaintGame(FFlowerPainter& P) const;
 	/** HTML의 ball(): 받침 원 + 꽃 그림 */
-	void PaintBall(FFlowerPainter& P, float InX, float InY, int32 Tier, float Bounce, float Alpha = 1.f) const;
+	/** Squash > 0이면 납작하게(착지), < 0이면 길쭉하게(빠르게 떨어지는 중). 바닥 기준으로 찌그러진다 */
+	void PaintBall(FFlowerPainter& P, float InX, float InY, int32 Tier, float Bounce, float Alpha = 1.f, float Angle = 0.f, float Squash = 0.f) const;
+	void PaintEffects(FFlowerPainter& P) const;
 	void PaintOverlay(FFlowerPainter& P) const;
 	void PaintTutorialPage(FFlowerPainter& P) const;
 	void PaintPractice(FFlowerPainter& P) const;
@@ -217,6 +272,11 @@ private:
 	TArray<FFlowerBall> Balls;
 	TArray<FPopText> Pops;
 	TArray<FParticle> Particles;
+	TArray<FRing> Rings;
+	/** 화면 흔들림 세기 (px). 점점 줄어든다 */
+	float Shake = 0.f;
+	/** 이번 프레임 흔들림 오프셋 (Tick에서 정하고 Paint에서 쓴다) */
+	FVector2f ShakeOffset = FVector2f::ZeroVector;
 	int32 NextTier = 0;
 	int32 QueueTier = 0;
 	float Cooldown = 0.f;
