@@ -75,9 +75,10 @@ namespace FlowerGame
 	 * 꽃 그림이 충돌 원보다 15% 크게 그려져서, HTML처럼 원이 딱 닿아야만 합치면 "겹쳐 보이는데 안 합쳐진다".
 	 * 그림 크기만큼 넉넉하게 잡고, 그보다 조금 먼 같은 꽃끼리는 서로 끌어당긴다.
 	 */
-	constexpr float MergeReach = 1.12f;
-	constexpr float MagnetReach = 1.45f;
-	constexpr float MagnetAccel = 900.f;
+	// 너무 넉넉하면 아무렇게나 놓아도 저절로 합쳐져 쉬워진다 (난이도 시뮬레이션으로 맞춘 값)
+	constexpr float MergeReach = 1.06f;
+	constexpr float MagnetReach = 1.2f;
+	constexpr float MagnetAccel = 400.f;
 	/** 꽃 그림 크기 (충돌 반지름의 배수) */
 	constexpr float ArtScale = 2.25f;
 	constexpr float DangerGrace = 1.3f;
@@ -86,9 +87,25 @@ namespace FlowerGame
 	constexpr float WarningSeconds = 10.f;
 	/** 같은 효과음 중복 재생 간격 */
 	constexpr double SfxRepeatGuard = 0.08;
-	/** 첫 주문 튤립. 3건부터 두 꽃 주문 */
+	/** 첫 주문 (연습 판도 이 꽃) */
 	constexpr int32 OrderBaseTier = 3;
-	constexpr int32 DoubleOrderFrom = 3;
+
+	/**
+	 * 주문 순서. 건수가 늘수록 큰 꽃을 요구한다 (마지막 줄 반복). Second가 INDEX_NONE이면 한 송이 주문.
+	 * HTML은 튤립 · 장미만 나와서 아무 데나 놓아도 우연한 합성만으로 주문이 채워졌다
+	 * (시뮬레이션: 무작위로 놓아도 90초에 26건). 단계를 올려 넓게 · 쉬지 않고 놓아야 6~7건이 되게 했다.
+	 */
+	struct FOrderStep { int32 First; int32 Second; };
+	const FOrderStep OrderSteps[] =
+	{
+		{ 3, INDEX_NONE },  // 튤립
+		{ 4, INDEX_NONE },  // 장미
+		{ 5, INDEX_NONE },  // 해바라기
+		{ 4, 5 },           // 장미 + 해바라기
+		{ 6, INDEX_NONE },  // 수국
+		{ 5, 6 },           // 해바라기 + 수국
+		{ 7, INDEX_NONE },  // 꽃다발 (이후 반복)
+	};
 
 	/**
 	 * 연습 판 단계
@@ -765,14 +782,11 @@ void UFlowerMiniGameWidget::NextOrder()
 	{
 		return; // 연습 판 주문은 튤립 한 번뿐
 	}
-	// 첫 두 건은 튤립, 다음은 장미, 3건부터는 튤립 + (튤립 또는 장미)
-	if (Orders >= DoubleOrderFrom)
+	const FOrderStep& Step = OrderSteps[FMath::Min(Orders, static_cast<int32>(UE_ARRAY_COUNT(OrderSteps)) - 1)];
+	Want.Add(Step.First);
+	if (Step.Second != INDEX_NONE)
 	{
-		Want = { OrderBaseTier, OrderBaseTier + FMath::RandRange(0, 1) };
-	}
-	else
-	{
-		Want = { OrderBaseTier + FMath::Min(1, Orders / 2) };
+		Want.Add(Step.Second);
 	}
 }
 
@@ -1723,7 +1737,7 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 		}
 		else
 		{
-			OrderName += Slots.Num() > 1 ? TEXT(" 꽃다발") : TEXT(" 한 송이");
+			OrderName += Slots.Num() > 1 ? TEXT(" 꽃다발") : Slots[0] == MaxTier ? TEXT(" 주문") : TEXT(" 한 송이");
 		}
 		P.Text(OrderName, L, 535.f, 34.f, Ink(), EAlign::Left, true);
 
