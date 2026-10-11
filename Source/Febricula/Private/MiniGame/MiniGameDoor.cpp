@@ -7,7 +7,11 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Engine/GameInstance.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "MiniGame/MiniGameSubsystem.h"
 
 AMiniGameDoor::AMiniGameDoor()
 {
@@ -59,6 +63,21 @@ void AMiniGameDoor::Interact_Implementation(AActor* Interactor)
 		return;
 	}
 	bTraveling = true;
+
+	// 돌아오면 PlayerStart가 아니라 지금 서 있는 자리로 (UMiniGameSubsystem이 되돌린다)
+	const APawn* Pawn = Cast<APawn>(Interactor);
+	if (!Pawn)
+	{
+		const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+		Pawn = PC ? PC->GetPawn() : nullptr;
+	}
+	UGameInstance* GI = GetGameInstance();
+	UMiniGameTravelSubsystem* Travel = GI ? GI->GetSubsystem<UMiniGameTravelSubsystem>() : nullptr;
+	if (Pawn && Travel && GetWorld())
+	{
+		Travel->SetReturnPoint(*GetWorld(), Pawn->GetActorTransform());
+	}
+
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
 }
 

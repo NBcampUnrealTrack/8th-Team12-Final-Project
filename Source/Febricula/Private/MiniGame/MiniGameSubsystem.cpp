@@ -10,6 +10,7 @@
 #include "Components/AudioComponent.h"
 #include "Sound/SoundBase.h"
 #include "Engine/GameInstance.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -41,6 +42,29 @@ void UMiniGameTravelSubsystem::NotifyLevelStarted(const UWorld& World)
 		PreviousLevel = CurrentLevel;
 		CurrentLevel = Path;
 	}
+}
+
+FString UMiniGameTravelSubsystem::GetLevelPath(const UWorld& World)
+{
+	return UWorld::RemovePIEPrefix(World.GetOutermost()->GetName());
+}
+
+void UMiniGameTravelSubsystem::SetReturnPoint(const UWorld& World, const FTransform& Transform)
+{
+	ReturnPointLevel = GetLevelPath(World);
+	ReturnPoint = Transform;
+	bHasReturnPoint = true;
+}
+
+bool UMiniGameTravelSubsystem::ConsumeReturnPoint(const UWorld& World, FTransform& OutTransform)
+{
+	if (!bHasReturnPoint || ReturnPointLevel != GetLevelPath(World))
+	{
+		return false;
+	}
+	OutTransform = ReturnPoint;
+	bHasReturnPoint = false;
+	return true;
 }
 
 bool UMiniGameTravelSubsystem::ReturnToPreviousLevel(const TSoftObjectPtr<UWorld>& Fallback)
@@ -84,6 +108,13 @@ void UMiniGameSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		if (UMiniGameTravelSubsystem* Travel = GI->GetSubsystem<UMiniGameTravelSubsystem>())
 		{
 			Travel->NotifyLevelStarted(InWorld);
+
+			// 미니게임에서 돌아온 레벨이면 들어간 자리로 (폰이 생길 때까지 잠깐 기다린다)
+			if (Travel->ConsumeReturnPoint(InWorld, PendingReturnPoint))
+			{
+				ReturnAttempts = 0;
+				InWorld.GetTimerManager().SetTimer(ReturnTimer, this, &UMiniGameSubsystem::TryRestoreReturnPoint, MiniGameStart::RetryInterval, true, 0.f);
+			}
 		}
 	}
 
@@ -108,6 +139,7 @@ void UMiniGameSubsystem::Deinitialize()
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(StartTimer);
+		World->GetTimerManager().ClearTimer(ReturnTimer);
 	}
 	ActiveWidget = nullptr;
 	FixedCamera = nullptr;
@@ -138,6 +170,39 @@ void UMiniGameSubsystem::TryStart()
 		return;
 	}
 	StartMiniGame(PC);
+}
+
+void UMiniGameSubsystem::TryRestoreReturnPoint()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	APlayerController* PC = World->GetFirstPlayerController();
+	APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+	if (!Pawn && ++ReturnAttempts < MiniGameStart::MaxAttempts)
+	{
+		return;
+	}
+	World->GetTimerManager().ClearTimer(ReturnTimer);
+	if (!Pawn)
+	{
+		return;
+	}
+
+	const FRotator Facing(0.f, PendingReturnPoint.Rotator().Yaw, 0.f);
+	Pawn->TeleportTo(PendingReturnPoint.GetLocation(), Facing);
+	PC->SetControlRotation(FRotator(-10.f, Facing.Yaw, 0.f));
+
+	// 미니게임 위젯이 키보드 포커스를 쥔 채 사라지면 레벨을 옮긴 뒤에도 게임 화면이 키를 못 받는다
+	// (이동 키 · ESC가 안 먹힌다). 게임 화면으로 확실히 돌려준다.
+	PC->SetInputMode(FInputModeGameOnly());
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	}
+	UE_LOG(LogMiniGame, Log, TEXT("미니게임에서 복귀: 들어간 자리 %s"), *PendingReturnPoint.GetLocation().ToString());
 }
 
 void UMiniGameSubsystem::StartMiniGame(APlayerController* PC)

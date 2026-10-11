@@ -277,7 +277,8 @@ struct FFlowerPainter
 	}
 };
 
-using EAlign = FFlowerPainter::EAlign;
+// 햄버거 위젯도 같은 이름(EAlign)을 전역에 둔다 - 유니티 빌드로 한 파일에 묶이면 충돌하므로 이름을 달리한다
+using EFlowerAlign = FFlowerPainter::EAlign;
 
 // ---------------------------------------------------------------------------
 // 생성 · 준비
@@ -1580,15 +1581,15 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 
 	if (Over > 0.f)
 	{
-		P.Text(FString::Printf(TEXT("넘치기까지 %.1f초"), FMath::Max(0.f, OverflowSeconds - Over)), 420.f, DangerLine + 25.f, 24.f, Hex(TEXT("b95170")), EAlign::Center, true, 2);
+		P.Text(FString::Printf(TEXT("넘치기까지 %.1f초"), FMath::Max(0.f, OverflowSeconds - Over)), 420.f, DangerLine + 25.f, 24.f, Hex(TEXT("b95170")), EFlowerAlign::Center, true, 2);
 	}
 	else
 	{
-		P.Text(TEXT("이 선 위에 2초 쌓이면 종료"), 420.f, DangerLine + 25.f, 21.f, Hex(TEXT("8b8574")), EAlign::Center);
+		P.Text(TEXT("이 선 위에 2초 쌓이면 종료"), 420.f, DangerLine + 25.f, 21.f, Hex(TEXT("8b8574")), EFlowerAlign::Center);
 	}
 	if (bRush)
 	{
-		P.Text(TEXT("마감 준비 · 마지막 꽃을 정리해요"), 420.f, 190.f, 24.f, Rose(), EAlign::Center, true, 2);
+		P.Text(TEXT("마감 준비 · 마지막 꽃을 정리해요"), 420.f, 190.f, 24.f, Rose(), EFlowerAlign::Center, true, 2);
 	}
 
 	// 효과
@@ -1596,7 +1597,7 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 	for (const FPopText& Pop : Pops)
 	{
 		// HTML 색은 어두운 배경용이라 밝은 작업대 위에서는 외곽선을 둘러 읽히게 한다
-		P.Text(Pop.Text, FMath::Clamp(Pop.Pos.X, 160.f, 680.f), Pop.Pos.Y, 28.f, WithAlpha(Pop.Color, Pop.Life), EAlign::Center, false, 2);
+		P.Text(Pop.Text, FMath::Clamp(Pop.Pos.X, 160.f, 680.f), Pop.Pos.Y, 28.f, WithAlpha(Pop.Color, Pop.Life), EFlowerAlign::Center, false, 2);
 	}
 }
 
@@ -1613,16 +1614,16 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 		const float LeftEdge = LeftPanelX + PanelW - 44.f;
 		P.Brush(&PanelBrush, LeftPanelX, 40.f, PanelW, 1160.f);
 		P.Text(TEXT("PART-TIME / LITTLE FLOWER SHOP"), L, 100.f, 20.f, Tag());
-		P.Text(TEXT("꽃이 피는 오후"), L, 150.f, 44.f, Hex(TEXT("4d684b")), EAlign::Left, true);
+		P.Text(TEXT("꽃이 피는 오후"), L, 150.f, 44.f, Hex(TEXT("4d684b")), EFlowerAlign::Left, true);
 
 		P.Text(TEXT("남은 시간"), L, 240.f, 22.f, Muted());
 		if (Mode == EMode::Practice)
 		{
-			P.Text(TEXT("연습"), L, 310.f, 88.f, Leaf(), EAlign::Left, true);
+			P.Text(TEXT("연습"), L, 310.f, 88.f, Leaf(), EFlowerAlign::Left, true);
 		}
 		else
 		{
-			P.Text(FString::Printf(TEXT("%d초"), FMath::CeilToInt(Duration - T)), L, 310.f, 88.f, bRush ? Rose() : Ink(), EAlign::Left, true);
+			P.Text(FString::Printf(TEXT("%d초"), FMath::CeilToInt(Duration - T)), L, 310.f, 88.f, bRush ? Rose() : Ink(), EFlowerAlign::Left, true);
 		}
 		P.Text(FString::Printf(TEXT("주문 %d건  ·  합성 %s점"), Orders, *FString::FormatAsNumber(MergeScore)), L, 400.f, 30.f, Ink());
 
@@ -1654,7 +1655,7 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 		{
 			OrderName = Mode == EMode::Practice ? TEXT("연습 중 - 주문 없음") : TEXT("다음 주문 준비 중");
 		}
-		P.Text(OrderName, L, 535.f, 34.f, Ink(), EAlign::Left, true);
+		P.Text(OrderName, L, 535.f, 34.f, Ink(), EFlowerAlign::Left, true);
 
 		// 칸마다 지금 작업대에 있는지 실시간으로 (합쳐져 사라지면 다시 빈칸)
 		for (int32 j = 0; j < Want.Num(); ++j)
@@ -1663,25 +1664,25 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 			const float X = L + j * 168.f;
 			P.Brush(bReady ? &SlotDoneBrush : &SlotWaitBrush, X, 605.f, 152.f, 125.f);
 			P.ArtCentered(FlowerBrush(Want[j]), X + 76.f, 650.f, 80.f, bReady ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.45f));
-			P.Text(bReady ? TEXT("있어요!") : Tiers[Want[j]].Name, X + 76.f, 708.f, 20.f, bReady ? Leaf() : Hex(TEXT("6c6952")), EAlign::Center, bReady);
+			P.Text(bReady ? TEXT("있어요!") : Tiers[Want[j]].Name, X + 76.f, 708.f, 20.f, bReady ? Leaf() : Hex(TEXT("6c6952")), EFlowerAlign::Center, bReady);
 		}
 		P.Text(TEXT("작업대에 모두 함께 있으면 한꺼번에 포장돼요"), L, 760.f, 20.f, Muted());
 		P.Text(TEXT("같은 꽃끼리 닿으면 합쳐지니 떨어뜨려 두세요"), L, 790.f, 18.f, Rose());
 
 		// 놓을 꽃 · 다음 꽃
-		P.Text(TEXT("놓을 꽃"), L, 850.f, 22.f, Ink(), EAlign::Left, true);
+		P.Text(TEXT("놓을 꽃"), L, 850.f, 22.f, Ink(), EFlowerAlign::Left, true);
 		P.ArtCentered(FlowerBrush(NextTier), L + 150.f, 850.f, 60.f);
 		P.Text(TEXT("다음"), L + 250.f, 850.f, 22.f, Muted());
 		P.ArtCentered(FlowerBrush(QueueTier), L + 330.f, 850.f, 52.f);
 
 		P.Box(L, 890.f, LeftEdge - L, 2.f, Line);
-		P.Text(TEXT("조작"), L, 930.f, 24.f, Ink(), EAlign::Left, true);
+		P.Text(TEXT("조작"), L, 930.f, 24.f, Ink(), EFlowerAlign::Left, true);
 		P.Text(TEXT("마우스 이동 / ← → · A D"), L, 980.f, 22.f, Ink());
-		P.Text(TEXT("위치 고르기"), LeftEdge, 980.f, 22.f, Muted(), EAlign::Right);
+		P.Text(TEXT("위치 고르기"), LeftEdge, 980.f, 22.f, Muted(), EFlowerAlign::Right);
 		P.Text(TEXT("클릭 / Space"), L, 1025.f, 22.f, Ink());
-		P.Text(TEXT("떨어뜨리기"), LeftEdge, 1025.f, 22.f, Muted(), EAlign::Right);
+		P.Text(TEXT("떨어뜨리기"), LeftEdge, 1025.f, 22.f, Muted(), EFlowerAlign::Right);
 		P.Text(TEXT("P / Esc"), L, 1070.f, 22.f, Ink());
-		P.Text(TEXT("일시정지"), LeftEdge, 1070.f, 22.f, Muted(), EAlign::Right);
+		P.Text(TEXT("일시정지"), LeftEdge, 1070.f, 22.f, Muted(), EFlowerAlign::Right);
 	}
 
 	// ---- 오른쪽: 상태 · 보상 · 위험도 · 기록 · 꽃 단계표 ----
@@ -1689,7 +1690,7 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 		const float R = RightPanelX + 44.f;
 		const float RightEdge = RightPanelX + PanelW - 44.f;
 		P.Brush(&PanelBrush, RightPanelX, 40.f, PanelW, 1160.f);
-		P.Text(TEXT("오늘의 근무"), R, 110.f, 30.f, Ink(), EAlign::Left, true);
+		P.Text(TEXT("오늘의 근무"), R, 110.f, 30.f, Ink(), EFlowerAlign::Left, true);
 
 		// 상태판 (원본 800×100 비율)
 		P.Brush(FindBrush(TEXT("status-panel")), RightPanelX + 24.f, 160.f, 552.f, 69.f);
@@ -1698,13 +1699,13 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 			: Over > 0.f ? TEXT("넘치기 직전! 합치거나 포장해서 비워요")
 			: ChainTimer > 0.f && Chain > 1 ? FString::Printf(TEXT("%d연쇄 중!"), Chain)
 			: TEXT("같은 꽃을 붙여 주문 꽃을 피워요");
-		P.Text(Status, RightPanelX + PanelW * 0.5f, 194.f, 22.f, Ink(), EAlign::Center);
+		P.Text(Status, RightPanelX + PanelW * 0.5f, 194.f, 22.f, Ink(), EFlowerAlign::Center);
 
 		// 예상 보상 + 다음 단계까지 몇 건 남았는지
 		const FMiniGameReward Preview = PreviewReward(Orders);
 		const FString Stat = StatLabel(Preview.Stat);
 		P.Text(TEXT("예상 보상"), R, 300.f, 22.f, Muted());
-		P.Text(FString::Printf(TEXT("%s +%d"), *Stat, Preview.StatAmount), R, 362.f, 48.f, Leaf(), EAlign::Left, true);
+		P.Text(FString::Printf(TEXT("%s +%d"), *Stat, Preview.StatAmount), R, 362.f, 48.f, Leaf(), EFlowerAlign::Left, true);
 		P.Text(FString::Printf(TEXT("급여 %s원 (고정)"), *FString::FormatAsNumber(Preview.Money)), R, 428.f, 26.f, Ink());
 		for (int32 More = 1; More <= 20; ++More)
 		{
@@ -1717,9 +1718,9 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 
 		// 위험선 게이지
 		const float Danger = FMath::Clamp(Over / OverflowSeconds, 0.f, 1.f);
-		P.Text(TEXT("위험선"), R, 560.f, 24.f, Ink(), EAlign::Left, true);
+		P.Text(TEXT("위험선"), R, 560.f, 24.f, Ink(), EFlowerAlign::Left, true);
 		P.Text(Danger > 0.f ? FString::Printf(TEXT("넘치기까지 %.1f초"), OverflowSeconds - Over) : FString(TEXT("여유 있어요")),
-			RightEdge, 560.f, 22.f, Danger > 0.f ? Rose() : Muted(), EAlign::Right);
+			RightEdge, 560.f, 22.f, Danger > 0.f ? Rose() : Muted(), EFlowerAlign::Right);
 		P.Brush(&BarBackBrush, R, 592.f, RightEdge - R, 24.f);
 		if (Danger > 0.f)
 		{
@@ -1731,24 +1732,24 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 		P.Box(R, 710.f, RightEdge - R, 2.f, Line);
 		P.Text(TEXT("최고 단계"), R, 755.f, 24.f, Ink());
 		P.ArtCentered(FlowerBrush(BestTier), RightEdge - 150.f, 755.f, 44.f);
-		P.Text(Tiers[BestTier].Name, RightEdge, 755.f, 24.f, Ink(), EAlign::Right, true);
+		P.Text(Tiers[BestTier].Name, RightEdge, 755.f, 24.f, Ink(), EFlowerAlign::Right, true);
 		P.Text(TEXT("최고 연쇄"), R, 805.f, 24.f, Ink());
-		P.Text(FString::Printf(TEXT("%d연쇄"), BestChain), RightEdge, 805.f, 24.f, Ink(), EAlign::Right, true);
+		P.Text(FString::Printf(TEXT("%d연쇄"), BestChain), RightEdge, 805.f, 24.f, Ink(), EFlowerAlign::Right, true);
 		P.Text(TEXT("특대 꽃다발"), R, 855.f, 24.f, Ink());
-		P.Text(FString::Printf(TEXT("%d개"), Bouquets), RightEdge, 855.f, 24.f, Ink(), EAlign::Right, true);
+		P.Text(FString::Printf(TEXT("%d개"), Bouquets), RightEdge, 855.f, 24.f, Ink(), EFlowerAlign::Right, true);
 
 		// 꽃 단계표 (HTML 맨 아래 줄을 4개씩 두 줄로)
 		P.Box(R, 905.f, RightEdge - R, 2.f, Line);
-		P.Text(TEXT("같은 꽃 둘 → 다음 단계"), R, 945.f, 22.f, Ink(), EAlign::Left, true);
+		P.Text(TEXT("같은 꽃 둘 → 다음 단계"), R, 945.f, 22.f, Ink(), EFlowerAlign::Left, true);
 		for (int32 i = 0; i < NumTiers; ++i)
 		{
 			const float X = R + 56.f + (i % 4) * 128.f;
 			const float Y = 1010.f + (i / 4) * 100.f;
 			P.ArtCentered(FlowerBrush(i), X, Y, 58.f, i <= BestTier ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.45f));
-			P.Text(Tiers[i].Name, X, Y + 42.f, 16.f, Hex(TEXT("6c755b")), EAlign::Center);
+			P.Text(Tiers[i].Name, X, Y + 42.f, 16.f, Hex(TEXT("6c755b")), EFlowerAlign::Center);
 			if (i % 4 != 3)
 			{
-				P.Text(TEXT("›"), X + 64.f, Y, 26.f, Muted(), EAlign::Center);
+				P.Text(TEXT("›"), X + 64.f, Y, 26.f, Muted(), EFlowerAlign::Center);
 			}
 		}
 	}
@@ -1764,22 +1765,22 @@ void UFlowerMiniGameWidget::PaintOverlay(FFlowerPainter& P) const
 	{
 		const FMiniGameReward Reward = PreviewReward(0);
 		P.ArtCentered(FindBrush(TEXT("tulip")), 420.f, 210.f, 120.f);
-		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 300.f, 19.f, Tag(), EAlign::Center);
-		P.Text(TEXT("꽃이 피는 작업대"), 420.f, 370.f, 42.f, Ink(), EAlign::Center, true);
-		P.Text(TEXT("마우스로 위치를 고르고 클릭해서 꽃을 떨어뜨려요."), 420.f, 460.f, 26.f, Ink(), EAlign::Center);
-		P.Text(TEXT("같은 꽃 둘이 닿으면 다음 단계로 피어나요."), 420.f, 510.f, 26.f, Ink(), EAlign::Center);
-		P.Text(TEXT("주문 꽃이 모두 작업대에 있으면 포장 · 위험선 2초면 끝"), 420.f, 560.f, 26.f, Ink(), EAlign::Center);
-		P.Text(FString::Printf(TEXT("%d초 근무 · P / Esc 일시정지"), FMath::RoundToInt(Duration)), 420.f, 610.f, 26.f, Ink(), EAlign::Center);
+		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 300.f, 19.f, Tag(), EFlowerAlign::Center);
+		P.Text(TEXT("꽃이 피는 작업대"), 420.f, 370.f, 42.f, Ink(), EFlowerAlign::Center, true);
+		P.Text(TEXT("마우스로 위치를 고르고 클릭해서 꽃을 떨어뜨려요."), 420.f, 460.f, 26.f, Ink(), EFlowerAlign::Center);
+		P.Text(TEXT("같은 꽃 둘이 닿으면 다음 단계로 피어나요."), 420.f, 510.f, 26.f, Ink(), EFlowerAlign::Center);
+		P.Text(TEXT("주문 꽃이 모두 작업대에 있으면 포장 · 위험선 2초면 끝"), 420.f, 560.f, 26.f, Ink(), EFlowerAlign::Center);
+		P.Text(FString::Printf(TEXT("%d초 근무 · P / Esc 일시정지"), FMath::RoundToInt(Duration)), 420.f, 610.f, 26.f, Ink(), EFlowerAlign::Center);
 		P.Text(FString::Printf(TEXT("급여 %s원 · 주문을 많이 채울수록 %s이 올라요"), *FString::FormatAsNumber(Reward.Money), *StatLabel(Reward.Stat)),
-			420.f, 690.f, 24.f, Leaf(), EAlign::Center);
+			420.f, 690.f, 24.f, Leaf(), EFlowerAlign::Center);
 
 		if (PlayCount == 0)
 		{
-			P.Text(TEXT("처음이라 출근 전에 짧게 연습해 볼게요."), 420.f, 770.f, 22.f, Muted(), EAlign::Center);
+			P.Text(TEXT("처음이라 출근 전에 짧게 연습해 볼게요."), 420.f, 770.f, 22.f, Muted(), EFlowerAlign::Center);
 		}
 		else
 		{
-			P.Text(FString::Printf(TEXT("대충 일하면 급여는 같고 %s은 +1만 올라요."), *StatLabel(Reward.Stat)), 420.f, 1060.f, 20.f, Muted(), EAlign::Center);
+			P.Text(FString::Printf(TEXT("대충 일하면 급여는 같고 %s은 +1만 올라요."), *StatLabel(Reward.Stat)), 420.f, 1060.f, 20.f, Muted(), EFlowerAlign::Center);
 		}
 	}
 	else if (Mode == EMode::Tutorial)
@@ -1788,38 +1789,38 @@ void UFlowerMiniGameWidget::PaintOverlay(FFlowerPainter& P) const
 	}
 	else if (Mode == EMode::Pause)
 	{
-		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 470.f, 19.f, Tag(), EAlign::Center);
-		P.Text(TEXT("잠깐, 쉬는 시간"), 420.f, 540.f, 42.f, Ink(), EAlign::Center, true);
-		P.Text(TEXT("시간이 멈췄습니다."), 420.f, 610.f, 26.f, Ink(), EAlign::Center);
+		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 470.f, 19.f, Tag(), EFlowerAlign::Center);
+		P.Text(TEXT("잠깐, 쉬는 시간"), 420.f, 540.f, 42.f, Ink(), EFlowerAlign::Center, true);
+		P.Text(TEXT("시간이 멈췄습니다."), 420.f, 610.f, 26.f, Ink(), EFlowerAlign::Center);
 	}
 	else if (Mode == EMode::Result)
 	{
-		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 270.f, 19.f, Tag(), EAlign::Center);
+		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 270.f, 19.f, Tag(), EFlowerAlign::Center);
 		if (bSkipped)
 		{
-			P.Text(TEXT("대충 일하고 퇴근했어요."), 420.f, 340.f, 42.f, Ink(), EAlign::Center, true);
-			P.Text(TEXT("오늘은 물만 주다 왔어요."), 420.f, 420.f, 26.f, Ink(), EAlign::Center);
-			P.Text(FString::Printf(TEXT("직접 일하면 %s을 더 올릴 수 있어요."), *StatLabel(FinalReward.Stat)), 420.f, 470.f, 26.f, Muted(), EAlign::Center);
+			P.Text(TEXT("대충 일하고 퇴근했어요."), 420.f, 340.f, 42.f, Ink(), EFlowerAlign::Center, true);
+			P.Text(TEXT("오늘은 물만 주다 왔어요."), 420.f, 420.f, 26.f, Ink(), EFlowerAlign::Center);
+			P.Text(FString::Printf(TEXT("직접 일하면 %s을 더 올릴 수 있어요."), *StatLabel(FinalReward.Stat)), 420.f, 470.f, 26.f, Muted(), EFlowerAlign::Center);
 		}
 		else
 		{
-			P.Text(bOverflowed ? TEXT("작업대가 가득 찼어요.") : TEXT("꽃집 마감! 오늘도 향긋하게."), 420.f, 340.f, 42.f, Ink(), EAlign::Center, true);
-			P.Text(FString::Printf(TEXT("주문 %d건 · 합성 %s점"), Orders, *FString::FormatAsNumber(MergeScore)), 420.f, 420.f, 26.f, Ink(), EAlign::Center);
-			P.Text(FString::Printf(TEXT("최고 단계 %s · 최고 연쇄 %d"), Tiers[BestTier].Name, BestChain), 420.f, 470.f, 26.f, Ink(), EAlign::Center);
+			P.Text(bOverflowed ? TEXT("작업대가 가득 찼어요.") : TEXT("꽃집 마감! 오늘도 향긋하게."), 420.f, 340.f, 42.f, Ink(), EFlowerAlign::Center, true);
+			P.Text(FString::Printf(TEXT("주문 %d건 · 합성 %s점"), Orders, *FString::FormatAsNumber(MergeScore)), 420.f, 420.f, 26.f, Ink(), EFlowerAlign::Center);
+			P.Text(FString::Printf(TEXT("최고 단계 %s · 최고 연쇄 %d"), Tiers[BestTier].Name, BestChain), 420.f, 470.f, 26.f, Ink(), EFlowerAlign::Center);
 		}
 
 		// 영수증
 		P.Brush(&ReceiptBrush, 170.f, 540.f, 500.f, 300.f);
 		P.Text(TEXT("급여"), 210.f, 600.f, 26.f, Ink());
-		P.Text(FString::Printf(TEXT("%s원"), *FString::FormatAsNumber(FinalReward.Money)), 630.f, 600.f, 26.f, Ink(), EAlign::Right, true);
+		P.Text(FString::Printf(TEXT("%s원"), *FString::FormatAsNumber(FinalReward.Money)), 630.f, 600.f, 26.f, Ink(), EFlowerAlign::Right, true);
 		P.Text(StatLabel(FinalReward.Stat), 210.f, 670.f, 26.f, Ink());
-		P.Text(FString::Printf(TEXT("+%d"), FinalReward.StatAmount), 630.f, 670.f, 26.f, Ink(), EAlign::Right, true);
+		P.Text(FString::Printf(TEXT("+%d"), FinalReward.StatAmount), 630.f, 670.f, 26.f, Ink(), EFlowerAlign::Right, true);
 		P.Box(210.f, 720.f, 420.f, 2.f, Hex(TEXT("a9b893")));
-		P.Text(TEXT("받은 돈"), 210.f, 780.f, 28.f, Ink(), EAlign::Left, true);
-		P.Text(FString::Printf(TEXT("%s원"), *FString::FormatAsNumber(FinalReward.Money)), 630.f, 780.f, 30.f, Leaf(), EAlign::Right, true);
+		P.Text(TEXT("받은 돈"), 210.f, 780.f, 28.f, Ink(), EFlowerAlign::Left, true);
+		P.Text(FString::Printf(TEXT("%s원"), *FString::FormatAsNumber(FinalReward.Money)), 630.f, 780.f, 30.f, Leaf(), EFlowerAlign::Right, true);
 		if (!bSkipped)
 		{
-			P.Text(TEXT("미완성 주문은 치지 않아요"), 420.f, 870.f, 20.f, Muted(), EAlign::Center);
+			P.Text(TEXT("미완성 주문은 치지 않아요"), 420.f, 870.f, 20.f, Muted(), EFlowerAlign::Center);
 		}
 	}
 
@@ -1845,12 +1846,12 @@ void UFlowerMiniGameWidget::PaintButtons(FFlowerPainter& P) const
 		{
 			const TCHAR* ButtonArt = bPressed ? TEXT("button-pressed") : bHovered ? TEXT("button-hover") : TEXT("button-normal");
 			P.Brush(FindBrush(ButtonArt), BoxLeft, Top, B.W, B.H);
-			P.Text(B.Label, B.X, B.Y + Press, 26.f, FLinearColor::White, EAlign::Center, true, 2);
+			P.Text(B.Label, B.X, B.Y + Press, 26.f, FLinearColor::White, EFlowerAlign::Center, true, 2);
 		}
 		else
 		{
 			P.Brush(bHovered || bPressed ? &SecondaryHoverBrush : &SecondaryBrush, BoxLeft, Top, B.W, B.H);
-			P.Text(B.Label, B.X, B.Y + Press, 22.f, Leaf(), EAlign::Center, true);
+			P.Text(B.Label, B.X, B.Y + Press, 22.f, Leaf(), EFlowerAlign::Center, true);
 		}
 	}
 }
@@ -1884,8 +1885,8 @@ void UFlowerMiniGameWidget::PaintTutorialPage(FFlowerPainter& P) const
 	};
 
 	const int32 Page = FMath::Clamp(TutorialPage, 0, 2);
-	P.Text(FString::Printf(TEXT("일하는 법  %d / 3"), Page + 1), 420.f, 250.f, 20.f, Tag(), EAlign::Center);
-	P.Text(Titles[Page], 420.f, 320.f, 42.f, Ink(), EAlign::Center, true);
+	P.Text(FString::Printf(TEXT("일하는 법  %d / 3"), Page + 1), 420.f, 250.f, 20.f, Tag(), EFlowerAlign::Center);
+	P.Text(Titles[Page], 420.f, 320.f, 42.f, Ink(), EFlowerAlign::Center, true);
 
 	// 그림
 	if (Page == 0)
@@ -1903,29 +1904,29 @@ void UFlowerMiniGameWidget::PaintTutorialPage(FFlowerPainter& P) const
 			const float X = 150.f + (i % 4) * 180.f;
 			const float Y = 470.f + (i / 4) * 140.f;
 			P.ArtCentered(FlowerBrush(i), X, Y, 92.f);
-			P.Text(Tiers[i].Name, X, Y + 58.f, 18.f, Hex(TEXT("6c755b")), EAlign::Center);
+			P.Text(Tiers[i].Name, X, Y + 58.f, 18.f, Hex(TEXT("6c755b")), EFlowerAlign::Center);
 			if (i % 4 != 3)
 			{
-				P.Text(TEXT("›"), X + 90.f, Y, 34.f, Muted(), EAlign::Center);
+				P.Text(TEXT("›"), X + 90.f, Y, 34.f, Muted(), EFlowerAlign::Center);
 			}
 		}
 	}
 	else
 	{
 		PaintFlower(P, 290.f, 560.f, 0.f, 3, 0.8f);
-		P.Text(TEXT("포장 완료!"), 300.f, 470.f, 26.f, Leaf(), EAlign::Center, true);
+		P.Text(TEXT("포장 완료!"), 300.f, 470.f, 26.f, Leaf(), EFlowerAlign::Center, true);
 		// 위험선 미리보기
 		for (float X = 450.f; X < 690.f; X += 24.f)
 		{
 			P.Box(X, 520.f, 12.f, 3.f, Hex(TEXT("bd6579")));
 		}
 		PaintFlower(P, 580.f, 545.f, 0.f, 4, 0.7f);
-		P.Text(TEXT("2초면 끝"), 570.f, 640.f, 24.f, Rose(), EAlign::Center, true);
+		P.Text(TEXT("2초면 끝"), 570.f, 640.f, 24.f, Rose(), EFlowerAlign::Center, true);
 	}
 
 	for (int32 i = 0; i < 3; ++i)
 	{
-		P.Text(Lines[Page][i], 420.f, 730.f + i * 50.f, 26.f, i == 2 ? Leaf() : Ink(), EAlign::Center);
+		P.Text(Lines[Page][i], 420.f, 730.f + i * 50.f, 26.f, i == 2 ? Leaf() : Ink(), EFlowerAlign::Center);
 	}
 
 	// 몇 번째 카드인지 점으로
@@ -1957,15 +1958,15 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 
 	// 안내판 (놓을 꽃이 보이는 y 265 위쪽에)
 	P.Brush(&PanelBrush, 50.f, 30.f, CanvasW - 100.f, 150.f);
-	P.Text(FString::Printf(TEXT("연습  %d / %d"), FMath::Min(Step + 1, PracticeSteps - 1), PracticeSteps - 1), 420.f, 62.f, 20.f, Tag(), EAlign::Center);
-	P.Text(Prompts[Step][0], 420.f, 108.f, 30.f, Ink(), EAlign::Center, true);
-	P.Text(Prompts[Step][1], 420.f, 152.f, 22.f, Muted(), EAlign::Center);
+	P.Text(FString::Printf(TEXT("연습  %d / %d"), FMath::Min(Step + 1, PracticeSteps - 1), PracticeSteps - 1), 420.f, 62.f, 20.f, Tag(), EFlowerAlign::Center);
+	P.Text(Prompts[Step][0], 420.f, 108.f, 30.f, Ink(), EFlowerAlign::Center, true);
+	P.Text(Prompts[Step][1], 420.f, 152.f, 22.f, Muted(), EFlowerAlign::Center);
 
 	// 처음엔 "클릭 / Space"를 크게 깜빡인다
 	if (Step == PracticeDropStep)
 	{
 		P.Brush(&SecondaryBrush, 245.f, 620.f, 350.f, 90.f, WithAlpha(FLinearColor::White, Pulse));
-		P.Text(TEXT("클릭 / Space"), 420.f, 665.f, 40.f, WithAlpha(Leaf(), Pulse), EAlign::Center, true);
+		P.Text(TEXT("클릭 / Space"), 420.f, 665.f, 40.f, WithAlpha(Leaf(), Pulse), EFlowerAlign::Center, true);
 	}
 
 	// 합칠 짝이 되는 꽃(지금 손에 든 꽃과 같은 단계)을 둥근 테두리로 표시
@@ -1985,7 +1986,7 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 	// 튤립 주문 단계: 무엇을 만들어야 하는지 작업대 안에 크게
 	if (Step == PracticeOrderStep)
 	{
-		P.Text(TEXT("데이지 + 데이지 = 튤립"), 420.f, 420.f, 28.f, WithAlpha(Rose(), Pulse), EAlign::Center, true, 2);
+		P.Text(TEXT("데이지 + 데이지 = 튤립"), 420.f, 420.f, 28.f, WithAlpha(Rose(), Pulse), EFlowerAlign::Center, true, 2);
 	}
 
 	// 위험선 설명: 선을 깜빡이고 규칙을 항목별로 짚어 준다
@@ -1994,7 +1995,7 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 		const FLinearColor Bad = Hex(TEXT("bd6579"));
 		P.Box(Left, DangerLine - 4.f, Right - Left, 8.f, WithAlpha(Bad, Pulse));
 		P.Brush(&ReceiptBrush, 90.f, 400.f, CanvasW - 180.f, 340.f);
-		P.Text(TEXT("위험선 규칙"), 130.f, 450.f, 30.f, Bad, EAlign::Left, true);
+		P.Text(TEXT("위험선 규칙"), 130.f, 450.f, 30.f, Bad, EFlowerAlign::Left, true);
 
 		struct FRow { const TCHAR* Label; const TCHAR* Value; };
 		const FRow Rows[] =
@@ -2007,10 +2008,10 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 		for (int32 i = 0; i < UE_ARRAY_COUNT(Rows); ++i)
 		{
 			const float Y = 520.f + i * 52.f;
-			P.Text(Rows[i].Label, 130.f, Y, 24.f, Ink(), EAlign::Left, true);
-			P.Text(Rows[i].Value, CanvasW - 130.f, Y, 24.f, Bad, EAlign::Right, true);
+			P.Text(Rows[i].Label, 130.f, Y, 24.f, Ink(), EFlowerAlign::Left, true);
+			P.Text(Rows[i].Value, CanvasW - 130.f, Y, 24.f, Bad, EFlowerAlign::Right, true);
 		}
-		P.Text(TEXT("Space 또는 \"알겠어요\"를 눌러 계속"), 420.f, 890.f, 20.f, Muted(), EAlign::Center);
+		P.Text(TEXT("Space 또는 \"알겠어요\"를 눌러 계속"), 420.f, 890.f, 20.f, Muted(), EFlowerAlign::Center);
 	}
 
 	PaintButtons(P);
