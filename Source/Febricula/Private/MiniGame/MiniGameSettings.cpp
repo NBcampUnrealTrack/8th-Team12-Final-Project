@@ -28,4 +28,17 @@ UMiniGameSettings::UMiniGameSettings()
 	Burger.RewardStat = TEXT("HandWork");
 	Burger.StatThresholds = { 3, 5, 7, 9 };
 	Levels.Add(TEXT("L_BurgerHouse"), Burger);
+
+	// 꽃집 알바 (팀원 맵 FlowerHouse - 맵 수정 없음).
+	// 가로 화면 패널이 화면을 다 덮으므로 플레이어 이동 · 고정 카메라는 쓰지 않는다.
+	FMiniGameLevelEntry Flower;
+	Flower.WidgetClass = TSoftClassPtr<UMiniGameWidget>(FSoftObjectPath(TEXT("/Script/Febricula.FlowerMiniGameWidget")));
+	Flower.bMovePlayer = false;
+	Flower.bUseFixedCamera = false;
+	Flower.FallbackReturnLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/MiniGame/Maps/L_MiniGameTest.L_MiniGameTest")));
+	Flower.MoneyReward = 30000;
+	Flower.RewardStat = TEXT("Health");
+	// 완료 주문 수 0~1건 +1, 2~3건 +2, 4~5건 +3, 6~7건 +4, 8건 이상 +5
+	Flower.StatThresholds = { 2, 4, 6, 8 };
+	Levels.Add(TEXT("FlowerHouse"), Flower);
 }
