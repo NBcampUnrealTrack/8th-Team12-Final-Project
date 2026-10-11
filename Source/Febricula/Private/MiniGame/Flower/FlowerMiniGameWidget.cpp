@@ -474,6 +474,9 @@ void UFlowerMiniGameWidget::StartRound()
 	PressedButton = INDEX_NONE;
 	bSkipped = false;
 	Mode = EMode::Play;
+	// 첫 주문은 모드를 바꾼 뒤에 건다. ResetRound 안에서 걸면 연습 판에서 넘어올 때 모드가 아직 Practice라
+	// 주문이 빈 채로 시작하고, 포장이 없으니 다음 주문도 영영 안 들어온다.
+	NextOrder();
 }
 
 void UFlowerMiniGameWidget::TogglePause()
@@ -754,6 +757,12 @@ void UFlowerMiniGameWidget::NextOrder()
 void UFlowerMiniGameWidget::Fulfill()
 {
 	using namespace FlowerGame;
+
+	// 근무 중에 주문이 비어 있으면 (어떤 흐름으로든) 바로 새 주문 - 주문 없이 멈춰 있지 않게
+	if (Mode == EMode::Play && Want.Num() == 0)
+	{
+		NextOrder();
+	}
 
 	// 주문 칸마다 작업대 꽃을 하나씩 짝짓는다 (한 송이를 두 칸에 쓰지 않는다). 떨어뜨린 꽃도 인정.
 	WantReady.Init(false, Want.Num());
