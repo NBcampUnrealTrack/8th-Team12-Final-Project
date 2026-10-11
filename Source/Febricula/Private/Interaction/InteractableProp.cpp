@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성
+// 요약: 조사 가능한 사물 구현 - 나레이션 출력, 액션 실행
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Interaction/InteractableProp.h"
@@ -82,11 +84,11 @@ void AInteractableProp::Interact_Implementation(AActor* Interactor)
 		// 선택지가 필요한 사물은 대화 테이블 노드를 그대로 재생한다.
 		if (AMainNpcCharacter* Npc = Cast<AMainNpcCharacter>(GetOwner()))
 		{
-			bStarted = Dialogue->TryStartEventForNpc(Npc->GetNpcId(), this);
+			bStarted = Dialogue->TryStartEventForNpc(Npc->GetNpcId(), this, DialogueNodeId);
 		}
 		else
 		{
-			bStarted = Dialogue->TryStartEventForNpc(NAME_None, this);
+			bStarted = Dialogue->TryStartEventForNpc(NAME_None, this, DialogueNodeId);
 		}
 	}
 	else

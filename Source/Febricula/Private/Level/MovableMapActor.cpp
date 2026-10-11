@@ -24,7 +24,7 @@ void AMovableMapActor::StartMove(AActor* Interactor, bool bInstant)
 	UE_LOG(LogTemp, Warning, TEXT("AMovableMapActor::StartMove() %d"), bInstant);
 	if (UDialogueSubsystem* DialogueSubsystem = GetWorld()->GetSubsystem<UDialogueSubsystem>())
 	{
-		if (DialogueSubsystem->GetResult())
+		if (DialogueSubsystem->GetResult() || !bLogic)
 		{
 			bNowMove = true;
 			GetWorldTimerManager().ClearTimer(MoveTimer);

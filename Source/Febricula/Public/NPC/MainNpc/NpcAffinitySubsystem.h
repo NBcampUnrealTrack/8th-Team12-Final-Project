@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성
+// 요약: 메인 NPC 호감도(친밀도) 수치/단계의 단일 소유자
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 메인 NPC 호감도(친밀도) 수치/단계의 "단일 소유자".

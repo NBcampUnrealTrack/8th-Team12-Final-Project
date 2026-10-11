@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-21)
+// 요약: 대화 그래프 실행 + 이벤트 선택 + 액션 실행 런타임 코어
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 대화 그래프 실행 + 이벤트 선택 + 액션 실행을 담당하는 런타임 코어.
@@ -54,7 +56,7 @@ class FEBRICULA_API UDialogueSubsystem : public UTickableWorldSubsystem
 
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-	
+	virtual void Deinitialize() override;	
 	//~ Begin FTickableGameObject
 	// 자동 진행(AutoAdvance) 조건을 매 틱 검사해야 해서 Tickable 서브시스템으로 둔다.
 	virtual void Tick(float DeltaTime) override;
@@ -78,7 +80,7 @@ public:
 	 * 조건을 만족하는 이벤트가 하나도 없으면 false를 반환한다 (이때는 기본 잡담을 띄우면 된다).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	bool TryStartEventForNpc(FName NpcId, AActor* InInstigator);
+	bool TryStartEventForNpc(FName NpcId, AActor* InInstigator, FName DialogueNodeId = NAME_None);
 
 	/** 특정 노드부터 직접 대화를 시작한다 (이벤트 테이블을 거치지 않는 경우) */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")

@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-07)
+// 요약: 행인 활동 지점 구현 - 행동 선택, 칸/줄 자리 점유 관리
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/NpcActivitySpot.h"

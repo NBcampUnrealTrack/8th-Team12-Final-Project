@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인이 잠깐 멈춰 행동하는 지점(키오스크, 진열장 등)
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 행인이 잠깐 멈춰서 뭔가 하는 지점.

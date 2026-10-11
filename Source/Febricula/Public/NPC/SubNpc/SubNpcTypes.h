@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-06)
+// 요약: 행인 군중 시스템 공용 타입 - 아키타입, 부딪힘 단계, 스팟 행동 정의
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 서브 NPC(행인) 군중 시스템의 공용 타입.

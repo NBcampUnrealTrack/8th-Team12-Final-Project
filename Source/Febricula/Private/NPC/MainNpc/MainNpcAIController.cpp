@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-12 작성 (최종 수정 2026-08-21)
+// 요약: 메인 NPC AI 컨트롤러 구현 - Blackboard AIState, 순찰/안내/추적 전환
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/MainNpcAIController.h"
@@ -5,6 +7,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "NPC/MainNpc/MainNpcCharacter.h"
 #include "NPC/MainNpc/NpcRoute.h"
@@ -13,6 +16,8 @@ const FName AMainNpcAIController::BBKey_AIState(TEXT("AIState"));
 const FName AMainNpcAIController::BBKey_Route(TEXT("Route"));
 const FName AMainNpcAIController::BBKey_RouteIndex(TEXT("RouteIndex"));
 const FName AMainNpcAIController::BBKey_RouteTargetLocation(TEXT("RouteTargetLocation"));
+const FName AMainNpcAIController::BBKey_RouteTargetRotator(TEXT("RouteTargetRotator"));
+
 const FName AMainNpcAIController::BBKey_ChaseTarget(TEXT("ChaseTarget"));
 
 AMainNpcAIController::AMainNpcAIController()
@@ -33,6 +38,40 @@ void AMainNpcAIController::OnPossess(APawn* InPawn)
 	{
 		CurrentAIState = static_cast<ENpcAIState>(BBComp->GetValueAsEnum(BBKey_AIState));
 	}
+}
+
+// [skydodo] 2026-10-08 추가: BT Patrol 분기에 다음 지점 넘기기가 없어서 코드에서 처리
+void AMainNpcAIController::OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result)
+{
+	Super::OnMoveCompleted(RequestID, Result);
+
+	// 도착했을 때만 넘긴다. 막혀서 실패한 경우까지 넘기면 갈 수 없는 지점을 건너뛰고 엉뚱하게 돈다.
+	if (bAdvancePatrolInCode && CurrentAIState == ENpcAIState::Patrol && Result.IsSuccess())
+	{
+		AdvancePatrolTarget();
+	}
+}
+
+// [skydodo] 2026-10-08 추가
+void AMainNpcAIController::AdvancePatrolTarget()
+{
+	UBlackboardComponent* BBComp = GetBlackboardComponent();
+	const ANpcRoute* Route = BBComp ? Cast<ANpcRoute>(BBComp->GetValueAsObject(BBKey_Route)) : nullptr;
+	if (!Route || Route->GetNumPoints() <= 0)
+	{
+		return;
+	}
+
+	const int32 ReachedIndex = BBComp->GetValueAsInt(BBKey_RouteIndex);
+
+	// BT Patrol 분기는 MoveTo 다음에 RotateToTarget(RouteTargetRotator)이 온다.
+	// 이 함수는 도착 즉시(그 태스크보다 먼저) 불리므로, 방향은 방금 도착한 지점 것으로 둬야 거기서 제대로 돈다.
+	BBComp->SetValueAsRotator(BBKey_RouteTargetRotator, Route->GetPointRotation(ReachedIndex));
+
+	// 위치만 다음 지점으로. 순찰은 끝에 닿으면 처음으로 순환한다 (GetNextIndex가 감아준다).
+	const int32 NextIndex = Route->GetNextIndex(ReachedIndex);
+	BBComp->SetValueAsInt(BBKey_RouteIndex, NextIndex);
+	BBComp->SetValueAsVector(BBKey_RouteTargetLocation, Route->GetPointLocation(NextIndex));
 }
 
 void AMainNpcAIController::SetAIState(ENpcAIState NewState)
@@ -63,6 +102,7 @@ bool AMainNpcAIController::SetupRoute(ANpcRoute* Route)
 	BBComp->SetValueAsObject(BBKey_Route, Route);
 	BBComp->SetValueAsInt(BBKey_RouteIndex, 0);
 	BBComp->SetValueAsVector(BBKey_RouteTargetLocation, Route->GetPointLocation(0));
+	BBComp->SetValueAsRotator(BBKey_RouteTargetRotator, Route->GetPointRotation(0));
 	return true;
 }
 

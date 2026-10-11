@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성 (최종 수정 2026-10-08)
+// 요약: 메인 NPC 베이스 - 추적/동행, 대화, 호감도 조회, 경로
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
@@ -34,6 +36,23 @@ public:
 	virtual FText GetInteractionPrompt_Implementation(AActor* Interactor) const override;
 	
 	[[nodiscard]] FName GetDefaultAnimation() const { return DefaultAnimation; }
+
+	/** 스포너가 스폰 직후(BeginPlay 전) 자리별 기본 애니메이션을 넣을 때 쓴다 */
+	void SetDefaultAnimation(FName AnimId) { DefaultAnimation = AnimId; }
+
+	// [skydodo] 2026-10-08 추가
+	/** 스포너가 자리(상황)별 대화 테이블을 넣을 때 쓴다. null/빈 값은 무시하고 블루프린트 설정을 유지한다 */
+	void SetDialogueTables(UDataTable* InEventTable, const TSoftObjectPtr<UDataTable>& InDialogueTable)
+	{
+		if (InEventTable)
+		{
+			ConnectedEventTable = InEventTable;
+		}
+		if (!InDialogueTable.IsNull())
+		{
+			DefaultDialogueTable = InDialogueTable;
+		}
+	}
 
 	/**
 	 * 상호작용 시 Talk 상태로 들어가고 이벤트 트리 대화를 시작한다.

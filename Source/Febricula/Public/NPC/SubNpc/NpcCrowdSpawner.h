@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 거리에 행인이 끊기지 않게 채우는 스포너
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 거리에 사람이 끊기지 않게 채워 넣는 스포너.

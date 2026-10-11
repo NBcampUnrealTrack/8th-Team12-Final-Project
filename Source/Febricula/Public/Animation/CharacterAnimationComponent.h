@@ -27,6 +27,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Animation Component")
 	void StopAnim(float BlendOutTime = 0.25f, bool bFromLogic = false);
 
+	// [skydodo] 2026-10-06 추가: 슬롯 지정 재생/정지 (상체 슬롯용)
 	/**
 	 * 지정한 슬롯에 재생한다. 상체 전용 슬롯("UpperBody")에 걸면 하체는 걷기를 유지한 채
 	 * 손짓·대화 같은 동작을 얹을 수 있다. 애님 블루프린트에 같은 이름의 Slot 노드가 있어야 한다.

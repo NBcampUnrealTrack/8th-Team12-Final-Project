@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성
+// 요약: 조사 가능한 사물 - NPC와 같은 HUD로 나레이션을 띄운다
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 조사 가능한 사물. NPC와 똑같은 HUD를 써서 "시체인 것 같다." 같은 나레이션을 띄운다.

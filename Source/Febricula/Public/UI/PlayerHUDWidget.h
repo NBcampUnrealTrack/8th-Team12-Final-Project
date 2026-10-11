@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-18)
+// 요약: 프롬프트/대화창/선택지를 한 위젯에 모은 플레이어 HUD
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 플레이어가 들고 있는 단일 HUD 위젯.

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-18 작성
+// 요약: 경로 다음 지점으로 넘기는 BT 태스크 구현
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/BTTask_AdvanceRouteTarget.h"
@@ -13,6 +15,7 @@ UBTTask_AdvanceRouteTarget::UBTTask_AdvanceRouteTarget()
 	RouteKey.AddObjectFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteKey), ANpcRoute::StaticClass());
 	RouteIndexKey.AddIntFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteIndexKey));
 	RouteTargetLocationKey.AddVectorFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteTargetLocationKey));
+	RouteTargetRotatorKey.AddRotatorFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_AdvanceRouteTarget, RouteTargetRotatorKey));
 }
 
 EBTNodeResult::Type UBTTask_AdvanceRouteTarget::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -56,5 +59,6 @@ EBTNodeResult::Type UBTTask_AdvanceRouteTarget::ExecuteTask(UBehaviorTreeCompone
 
 	BBComp->SetValueAsInt(RouteIndexKey.SelectedKeyName, NextIndex);
 	BBComp->SetValueAsVector(RouteTargetLocationKey.SelectedKeyName, Route->GetPointLocation(NextIndex));
+	BBComp->SetValueAsRotator(RouteTargetRotatorKey.SelectedKeyName, Route->GetPointRotation(NextIndex));
 	return EBTNodeResult::Succeeded;
 }

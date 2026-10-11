@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인(서브 NPC) 캐릭터 - 경로 추종/그룹/스팟/LOD 상태
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 행인(서브 NPC).

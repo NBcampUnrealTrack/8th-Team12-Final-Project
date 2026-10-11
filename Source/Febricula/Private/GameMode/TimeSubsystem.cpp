@@ -7,6 +7,7 @@
 #include "GameMode/ScheduleBlockRow.h"
 #include "GameMode/TimeSettings.h"
 
+// [skydodo] 2026-08-26 수정: 누적 일차(AbsoluteDay) 초기화, 시간표 애셋이 비었을 때 크래시 방어
 void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -21,6 +22,7 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	NowMonth = S->StartMonth;
 	MaxDay = GetDayPerMonth();
 
+	
 	WeekDaySchedule = S->WeekDaySchedule.LoadSynchronous();
 	WeekEndSchedule = S->WeekEndSchedule.LoadSynchronous();
 
@@ -44,6 +46,7 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	NowRepeatCount = 0;
 }
 
+// [skydodo] 2026-08-26 추가: 선언만 있던 InitScheduleBlock 정의 + ScheduleBlockTable 로드
 void UTimeSubsystem::InitScheduleBlock()
 {
 	// [변경] 선언만 있고 정의가 없어서, 누가 호출하는 순간 링크 에러가 나는 상태였다.
@@ -70,6 +73,7 @@ int32 UTimeSubsystem::GetDayPerMonth()
 	}
 }
 
+// [skydodo] 2026-08-26 수정: 누적 일차 증가
 void UTimeSubsystem::SpendDay()
 {
 	// [변경] 누적 일차는 달이 바뀌어도 계속 증가시킨다.
@@ -84,6 +88,7 @@ void UTimeSubsystem::SpendDay()
 	OnDayChanged.Broadcast(NowDay);
 }
 
+// [skydodo] 2026-08-26 수정: 빈 시간표 방어, 날이 바뀐 뒤 시간표 다시 읽기, 인덱스 범위 보정, 로그
 void UTimeSubsystem::SpendSchedule()
 {
 	// [변경] 빈 배열이면 아래 인덱싱이 전부 크래시라서 먼저 막는다.
@@ -155,6 +160,7 @@ void UTimeSubsystem::ResetSchedule()
 	}
 }
 
+// [skydodo] 2026-08-26 추가: 누적 일차 기준 주말 판정
 bool UTimeSubsystem::IsWeekend() const
 {
 	// [변경] 원본은 NowDay % 7 을 썼는데, NowDay는 달마다 1로 리셋되므로
@@ -162,12 +168,14 @@ bool UTimeSubsystem::IsWeekend() const
 	return ((AbsoluteDay - 1) % 7) >= 5;
 }
 
+// [skydodo] 2026-08-26 수정: 참조 반환 -> 포인터 반환 (범위 밖이면 nullptr)
 const FScheduleDef* UTimeSubsystem::GetScheduleByIndex(int32 Index) const
 {
 	const TArray<FScheduleDef>& Defs = GetScheduleDefs();
 	return Defs.IsValidIndex(Index) ? &Defs[Index] : nullptr;
 }
 
+// [skydodo] 2026-08-26 수정: 포인터 반환 (못 찾으면 nullptr)
 const FScheduleDef* UTimeSubsystem::GetScheduleByTag(FGameplayTag Tag) const
 {
 	for (const FScheduleDef& ScheduleDef : GetScheduleDefs())
@@ -180,11 +188,13 @@ const FScheduleDef* UTimeSubsystem::GetScheduleByTag(FGameplayTag Tag) const
 	return nullptr;
 }
 
+// [skydodo] 2026-08-26 추가: 오늘(평일/주말) 시간표 애셋
 const UDayScheduleAsset* UTimeSubsystem::GetTodaySchedule() const
 {
 	return IsWeekend() ? WeekEndSchedule : WeekDaySchedule;
 }
 
+// [skydodo] 2026-08-26 추가: 애셋이 없을 때 빈 배열을 돌려주는 안전한 시간표 조회
 const TArray<FScheduleDef>& UTimeSubsystem::GetScheduleDefs() const
 {
 	// 애셋이 없을 때 참조를 반환해야 하므로 빈 배열 하나를 정적으로 들고 있는다.
@@ -194,6 +204,7 @@ const TArray<FScheduleDef>& UTimeSubsystem::GetScheduleDefs() const
 	return Asset ? Asset->ScheduleDefs : EmptyDefs;
 }
 
+// [skydodo] 2026-08-26 추가: 오늘의 날 종류 태그
 FGameplayTag UTimeSubsystem::GetNowDayTypeTag() const
 {
 	// 날 종류는 시간표 애셋이 스스로 선언한다.

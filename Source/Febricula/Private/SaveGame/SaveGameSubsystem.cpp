@@ -9,6 +9,7 @@
 #include "GameMode/TimeSubsystem.h"
 #include "Activity/ActivitySubsystem.h"
 #include "Dialogue/DialogueLogSubsystem.h"
+#include "Dialogue/DialogueSubsystem.h"
 
 // ---------------------------------------------------------------------------
 // 내부 헬퍼
@@ -71,6 +72,17 @@ bool USaveGameSubsystem::SaveToSlot(int32 SlotIndex)
 		return false;
 	}
 
+	// 대화 진행 중 저장을 막는다: 대화 자체(현재 노드, 선택지 대기 등)는 저장 대상이 아니라서,
+	// 대화 도중 저장했다가 불러오면 "대사는 계속 진행되는데 백로그만 과거로 되돌아가는" 모순이 생긴다.
+	if (const UDialogueSubsystem* Dialogue = World->GetSubsystem<UDialogueSubsystem>())
+	{
+		if (Dialogue->IsDialogueActive())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("SaveGameSubsystem::SaveToSlot: 대화 중에는 저장할 수 없습니다."));
+			return false;
+		}
+	}
+
 	// 레벨 종속 값: 현재 레벨 + 플레이어 트랜스폼
 	Save->LevelName = FName(*UWorld::RemovePIEPrefix(World->GetOutermost()->GetName()));
 
@@ -121,6 +133,19 @@ bool USaveGameSubsystem::LoadFromSlot(int32 SlotIndex)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("USaveGameSubsystem::LoadFromSlot: 슬롯 %d가 존재하지 않습니다."), SlotIndex);
 		return false;
+	}
+
+	// 저장과 같은 이유로, 대화 중에는 불러오기도 막는다.
+	if (const UWorld* CurrentWorld = GetWorld())
+	{
+		if (const UDialogueSubsystem* Dialogue = CurrentWorld->GetSubsystem<UDialogueSubsystem>())
+		{
+			if (Dialogue->IsDialogueActive())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("SaveGameSubsystem::LoadFromSlot: 대화 중에는 불러올 수 없습니다."));
+				return false;
+			}
+		}
 	}
 
 	UFebriculaSaveGame* Save = Cast<UFebriculaSaveGame>(

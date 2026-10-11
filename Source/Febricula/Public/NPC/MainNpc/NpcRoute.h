@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-18 작성
+// 요약: 레벨에 배치하는 NPC 이동 경로 (순찰/안내 공용)
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 레벨에 배치해서 쓰는 NPC 이동 경로.
@@ -29,6 +31,9 @@ public:
 	/** Index가 배열 범위를 벗어나면 이 액터 자신의 위치를 반환 (안전한 폴백) */
 	UFUNCTION(BlueprintPure, Category = "NPC|Route")
 	FVector GetPointLocation(int32 Index) const;
+	
+	UFUNCTION(BlueprintPure, Category = "NPC|Route")
+	FRotator GetPointRotation(int32 Index) const;
 
 	/** 항상 마지막 지점 다음엔 0번으로 순환한다 (왕복이 필요해지면 나중에 확장) */
 	UFUNCTION(BlueprintPure, Category = "NPC|Route")

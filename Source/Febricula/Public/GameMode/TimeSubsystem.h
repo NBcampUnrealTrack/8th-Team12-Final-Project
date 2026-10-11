@@ -1,5 +1,6 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 //
+// [skydodo] 2026-08-26 수정 - 아래 변경 요약 전체
 // [변경 요약 - NPC 담당자]
 //  1) AbsoluteDay 추가        : NowDay는 달이 바뀌면 1로 되돌아가서 "3일차 이벤트"를 표현할 수 없다.
 //                               누적 일차가 있어야 이벤트 조건(DayEquals/DayAtLeast)을 쓸 수 있어서 추가.
@@ -89,6 +90,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	int32 GetNowMonth() const { return NowMonth; }
 
+	// [skydodo] 2026-08-26 추가: 누적 일차, 주말 판정, 시간대/날 종류 태그 Getter, 포인터 반환 시간표 조회 (GetScheduleByTag까지)
 	/**
 	 * 게임 시작(1일차)부터 한 번도 초기화되지 않는 누적 일차.
 	 *
@@ -152,10 +154,12 @@ public:
 	void LoadSaveData(const FTimeSaveData& Data);
 
 
-protected:
-
 	const TArray<FScheduleDef>& GetScheduleDefs() const;
 
+
+protected:
+	
+	// [skydodo] 2026-08-26 추가
 	/** 오늘 적용할 시간표 애셋. 없으면 nullptr */
 	const UDayScheduleAsset* GetTodaySchedule() const;
 
@@ -166,6 +170,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 NowMonth;
 
+	// [skydodo] 2026-08-26 추가
 	/** 게임 시작부터의 누적 일차 (달이 바뀌어도 리셋되지 않는다) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Day")
 	int32 AbsoluteDay = 1;
@@ -181,7 +186,7 @@ protected:
 	//Weather 제어 어트리뷰트 추가 예정
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Schedule")
-	int32 NowScheduleIndex = 0;
+	int32 NowScheduleIndex = 0; // [skydodo] 2026-08-26 초기값 추가
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Schedule")
 	FScheduleDef NowSchedule;
 
@@ -193,6 +198,6 @@ protected:
 	TObjectPtr<UDataTable> ScheduleBlockTable;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Schedule")
 	FScheduleBlock ScheduleBlock;
-
+	
 	int32 NowRepeatCount;
 };

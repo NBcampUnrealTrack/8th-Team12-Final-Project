@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-12 작성 (최종 수정 2026-08-19)
+// 요약: 메인 NPC 전용 AI 컨트롤러 - Idle/Patrol/Guide/Chase
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
@@ -49,6 +51,9 @@ public:
 
 	virtual void OnPossess(APawn* InPawn) override;
 
+	// [skydodo] 2026-10-08 추가: 순찰 중 지점에 도착하면 다음 지점으로 넘긴다 (bAdvancePatrolInCode)
+	virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
+
 	UFUNCTION(BlueprintPure, Category = "NPC|AI")
 	ENpcAIState GetAIState() const { return CurrentAIState; }
 
@@ -89,11 +94,25 @@ public:
 	static const FName BBKey_Route;
 	static const FName BBKey_RouteIndex;
 	static const FName BBKey_RouteTargetLocation;
+	static const FName BBKey_RouteTargetRotator;
 	static const FName BBKey_ChaseTarget;
 
 protected:
 	/** StartPatrol/StartGuide가 공유하는 경로 세팅 부분 */
 	bool SetupRoute(ANpcRoute* Route);
+
+	// [skydodo] 2026-10-08 추가
+	/** 경로의 다음 지점을 Blackboard에 넣는다. 끝에 닿으면 처음으로 돌아간다 */
+	void AdvancePatrolTarget();
+
+	/**
+	 * 순찰 중 지점 도착 시 다음 지점으로 넘기는 일을 코드에서 할지.
+	 *
+	 * BT_MainNpc의 Patrol 분기는 MoveTo 하나뿐이라, 이게 없으면 첫 지점에서 멈춘다.
+	 * BT Patrol 분기에 Advance Route Target 노드를 넣는다면 반드시 끈다 (안 끄면 두 칸씩 건너뛴다).
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|AI")
+	bool bAdvancePatrolInCode = true;
 
 	UPROPERTY(BlueprintReadOnly, Category = "NPC|AI")
 	ENpcAIState CurrentAIState = ENpcAIState::Idle;

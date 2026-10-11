@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-07 작성 (최종 수정 2026-10-08)
+// 요약: 행인 이동 Mass 프로세서 구현 - 경로 이동 병렬 계산, 원경 인스턴스 갱신
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/SubNpc/SubNpcMassProcessors.h"

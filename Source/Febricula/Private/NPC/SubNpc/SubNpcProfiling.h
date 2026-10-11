@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-06 작성 (최종 수정 2026-10-08)
+// 요약: 군중 성능 측정용 구간 표식 (Insights / CSV 프로파일러)
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 군중 성능 측정용 구간 표식.

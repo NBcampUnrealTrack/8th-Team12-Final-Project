@@ -49,6 +49,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Activity")
 	TArray<FInteractionBranch> Branches;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Type")
+	bool bLogic = true;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	TArray<USceneComponent*> Hinges;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Openable Map Actor | Debug")
@@ -60,6 +63,7 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere , BlueprintReadOnly, Category = "Openable Map Actor | Debug")
 	bool bInteracted;
+	
 
 	FTimerHandle MoveTimer;
 };

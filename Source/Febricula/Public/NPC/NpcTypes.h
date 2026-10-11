@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-10 작성 (최종 수정 2026-08-19)
+// 요약: 모든 NPC가 공유하는 열거형 (이동 상태, 관계 단계, AI 상태 등)
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 프로젝트 내 모든 NPC(메인/서브)가 공유하는 공용 열거형 모음.

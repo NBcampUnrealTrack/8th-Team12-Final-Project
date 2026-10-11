@@ -1,0 +1,65 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "Direction/FixedViewComponent.h"
+
+#include "Engine/TriggerBox.h"
+#include "Kismet/GameplayStatics.h"
+
+
+// Sets default values for this component's properties
+UFixedViewComponent::UFixedViewComponent()
+{
+	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
+	// off to improve performance if you don't need them.
+	PrimaryComponentTick.bCanEverTick = false;
+
+	// ...
+}
+
+bool UFixedViewComponent::HasTriggerBox()
+{
+	if (ConnectedTriggerBox)
+	{
+		return true;
+	}
+	return false;
+	
+}
+
+void UFixedViewComponent::HandleOverlapBegin(AActor* OverlappedActor, AActor* OtherActor)
+{
+	OnOverlapBegin.Broadcast(ComponentTags[0], true);
+}
+
+void UFixedViewComponent::HandleOverlapEnd(AActor* OverlappedActor, AActor* OtherActor)
+{
+	OnOverlapBegin.Broadcast(ComponentTags[0], false);
+}
+
+
+// Called when the game starts
+void UFixedViewComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	if (ConnectedTriggerBox)
+	{
+		ConnectedTriggerBox->OnActorBeginOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapBegin);
+		ConnectedTriggerBox->OnActorEndOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapEnd);
+		
+		if (APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0))
+		{
+			if (ConnectedTriggerBox->IsOverlappingActor(Pawn))
+			{
+				HandleOverlapBegin(ConnectedTriggerBox, Pawn);
+			}
+		}
+		CameraYaw = GetOwner()->GetActorRotation().Yaw;
+
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Fixed View Component: 트리거 박스가 연결되지 않음"));
+	
+}
+
+

@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-17 작성 (최종 수정 2026-08-26)
+// 요약: 게임 진행 상태 구현 - 태그/카운터/능력치/완료 이벤트, 조건 판정
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Progress/GameProgressSubsystem.h"
@@ -116,7 +118,20 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	case EGameConditionType::ScheduleAfter:
 	{
 		const UTimeSubsystem* TimeSubsystem = GetTime();
-			
+		TArray<FScheduleDef> ScheduleDef = TimeSubsystem->GetScheduleDefs();
+		if (ScheduleDef.IsEmpty())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GameProcess Subsystem: ScheduleDef가 비어있음"));
+			return false;
+		}
+		for (FScheduleDef Def : ScheduleDef)
+		{
+			if (Def.ScheduleName == FGameplayTag::RequestGameplayTag(Condition.Key))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	case EGameConditionType::ScheduleIsChildOf:

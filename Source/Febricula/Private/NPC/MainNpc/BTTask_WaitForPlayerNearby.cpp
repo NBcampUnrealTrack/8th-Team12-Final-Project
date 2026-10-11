@@ -1,3 +1,5 @@
+// [skydodo] 2026-08-12 작성 (최종 수정 2026-08-19)
+// 요약: 안내 BT 태스크 구현 - 플레이어가 다가올 때까지 대기
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "NPC/MainNpc/BTTask_WaitForPlayerNearby.h"

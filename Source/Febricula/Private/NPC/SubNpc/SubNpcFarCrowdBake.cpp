@@ -1,3 +1,5 @@
+// [skydodo] 2026-10-07 작성 (최종 수정 2026-10-08)
+// 요약: 원경 행인 애니메이션 굽기 콘솔 명령(crowd.BakeFarCrowd) - 에디터 전용
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 원경 행인 애니메이션 굽기 — 에디터 전용 콘솔 명령 crowd.BakeFarCrowd.

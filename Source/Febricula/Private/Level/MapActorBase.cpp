@@ -11,8 +11,6 @@ AMapActorBase::AMapActorBase()
 	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	bAllowTickBeforeBeginPlay = false;
-	RootComponent = CreateDefaultSubobject<USceneComponent>(FName("Root"));
-	
 }
 
 bool AMapActorBase::CanInteract_Implementation(AActor* Interactor) const

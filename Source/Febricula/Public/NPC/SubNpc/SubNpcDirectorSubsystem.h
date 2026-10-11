@@ -1,3 +1,5 @@
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// 요약: 행인 군중 감독 - 비용을 한 곳에 모아 분할 갱신, 풀 관리
 // Fill out your copyright notice in the Description page of Project Settings.
 //
 // 군중 전체를 한 곳에서 관리하는 감독.
