@@ -4,6 +4,8 @@
 
 #include "MiniGame/Flower/FlowerMiniGameWidget.h"
 
+#include "FlowerPhysics.h"
+
 #include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Engine/Texture2D.h"
@@ -54,33 +56,27 @@ namespace FlowerGame
 	constexpr int32 NumTiers = UE_ARRAY_COUNT(Tiers);
 	constexpr int32 MaxTier = NumTiers - 1;
 
-	// ---- 규칙 수치 (HTML 그대로) ----
+	// ---- 규칙 수치 ----
+	// 작업대 · 커서 · 낙하 간격은 HTML 그대로. 물리(모양 · 마찰 · 합성)는 FlowerPhysics.h.
 	constexpr float Left = 45.f;
 	constexpr float Right = 795.f;
 	constexpr float Floor = 1140.f;
-	constexpr float DangerLine = 340.f;
+	/**
+	 * 위험선. HTML은 340이었는데 꽃을 키우고 모양대로 쌓이게 바꾸면서 460으로 내렸다.
+	 * 난이도 시뮬레이션(전략별 20판): 한 자리 연타 60% · 아무렇게나 연타 85~90% 넘침, 잘 고르면 넘침 5%.
+	 */
+	constexpr float DangerLine = 460.f;
 	constexpr float DropY = 265.f;
 	constexpr float CursorMargin = 24.f;
 	constexpr float CursorSpeed = 600.f;
 	constexpr float DropCooldown = 0.4f;
-	constexpr int32 MaxBalls = 100;
-	constexpr float Gravity = 1600.f;
-	constexpr float Damping = 1.5f;
+	/** 본 근무에 떨어지는 꽃: 씨앗 ~ 장미 (HTML은 데이지까지 - 종류가 적으면 아무렇게나 놓아도 저절로 합쳐진다) */
+	constexpr int32 DropMaxTier = 4;
 	constexpr float PhysicsStep = 1.f / 120.f;
-	constexpr int32 SolverIterations = 8;
-	/** 생긴 직후 합성 유예 · 위험선 판정 유예 */
-	constexpr float MergeGrace = 0.08f;
-	/**
-	 * 합성 판정 거리 (두 반지름 합의 배수).
-	 * 꽃 그림이 충돌 원보다 15% 크게 그려져서, HTML처럼 원이 딱 닿아야만 합치면 "겹쳐 보이는데 안 합쳐진다".
-	 * 그림 크기만큼 넉넉하게 잡고, 그보다 조금 먼 같은 꽃끼리는 서로 끌어당긴다.
-	 */
-	// 너무 넉넉하면 아무렇게나 놓아도 저절로 합쳐져 쉬워진다 (난이도 시뮬레이션으로 맞춘 값)
-	constexpr float MergeReach = 1.06f;
-	constexpr float MagnetReach = 1.2f;
-	constexpr float MagnetAccel = 400.f;
-	/** 꽃 그림 크기 (충돌 반지름의 배수) */
-	constexpr float ArtScale = 2.25f;
+	/** 물리 손잡이 (FlowerPhysics::FParams 덮어쓰기). 마찰 · 회전 감쇠가 크면 비스듬히 걸쳐 쌓인다 */
+	constexpr float Friction = 0.8f;
+	constexpr float AngularDamping = 6.f;
+	constexpr float LinearDamping = 1.f;
 	constexpr float DangerGrace = 1.3f;
 	constexpr float OverflowSeconds = 2.f;
 	constexpr float ChainWindow = 1.2f;
@@ -167,7 +163,9 @@ namespace FlowerGame
 	const TCHAR* const ConfettiColors[] = { TEXT("f29ab5"), TEXT("8fd3c1"), TEXT("f6c445"), TEXT("b8a3e3"), TEXT("ffffff") };
 
 	/** 피어날 때 한마디 (해바라기부터) */
-	const TCHAR* const BornCheers[] = { nullptr, nullptr, nullptr, nullptr, nullptr, TEXT("해바라기 활짝! 쿵!"), TEXT("수국 몽글몽글! 쿵!"), TEXT("꽃다발 완성! 쿵!!") };
+	const TCHAR* const BornCheers[] = { TEXT("씨앗!"), TEXT("새싹 쏙!"), TEXT("데이지 활짝!"), TEXT("튤립 피었다!"), TEXT("장미 활짝!"), TEXT("해바라기 활짝! 쿵!"), TEXT("수국 몽글몽글! 쿵!"), TEXT("꽃다발 완성! 쿵!!") };
+	/** 조각 크기 배율 (화면에서 잘 보이게) */
+	constexpr float ParticleScale = 1.7f;
 
 	FLinearColor Hex(const TCHAR* InHex)
 	{
@@ -328,6 +326,14 @@ void UFlowerMiniGameWidget::NativeConstruct()
 	Super::NativeConstruct();
 	using namespace FlowerGame;
 
+	World = MakeShared<FlowerPhysics::FWorld>();
+	World->P.Left = Left;
+	World->P.Right = Right;
+	World->P.Floor = Floor;
+	World->P.Friction = Friction;
+	World->P.AngularDamping = AngularDamping;
+	World->P.LinearDamping = LinearDamping;
+
 	LoadedTextures.Reset();
 	ArtBrushes.Reset();
 	for (const TPair<FName, TSoftObjectPtr<UTexture2D>>& Pair : Art)
@@ -407,7 +413,10 @@ void UFlowerMiniGameWidget::ResetRound()
 {
 	T = 0.f;
 	Cursor = 420.f;
-	Balls.Reset();
+	if (World)
+	{
+		World->Reset();
+	}
 	Pops.Reset();
 	Particles.Reset();
 	Rings.Reset();
@@ -667,7 +676,7 @@ int32 UFlowerMiniGameWidget::RollNext() const
 		default: return 0;               // 씨앗
 		}
 	}
-	return FMath::RandRange(0, 2);
+	return FMath::RandRange(0, DropMaxTier);
 }
 
 void UFlowerMiniGameWidget::AddPop(float InX, float InY, const FString& Text, const FLinearColor& Color)
@@ -685,24 +694,11 @@ void UFlowerMiniGameWidget::Burst(float InX, float InY, const FLinearColor& Colo
 	}
 }
 
-UFlowerMiniGameWidget::FFlowerBall& UFlowerMiniGameWidget::AddBall(int32 Tier, float InX, float InY, float InVY, float InPop)
-{
-	FFlowerBall& Ball = Balls.AddDefaulted_GetRef();
-	Ball.Id = Serial++;
-	Ball.Tier = Tier;
-	Ball.R = FlowerGame::Tiers[Tier].Radius;
-	Ball.X = InX;
-	Ball.Y = InY;
-	Ball.VY = InVY;
-	Ball.Pop = InPop;
-	return Ball;
-}
-
 void UFlowerMiniGameWidget::Drop()
 {
 	using namespace FlowerGame;
 
-	if (Cooldown > 0.f || Balls.Num() >= MaxBalls)
+	if (Cooldown > 0.f || !World || World->Count >= FlowerPhysics::MaxBodies)
 	{
 		return;
 	}
@@ -712,64 +708,20 @@ void UFlowerMiniGameWidget::Drop()
 		return;
 	}
 
-	const float R = Tiers[NextTier].Radius;
-	FFlowerBall& Ball = AddBall(NextTier, FMath::Clamp(Cursor, Left + R, Right - R), DropY, 0.f, 0.15f);
-	// 떨어지면서 빙글 돈다 (데이지는 바람개비처럼 더 빨리)
-	Ball.Spin = FMath::FRandRange(1.5f, 3.f) * (FMath::RandBool() ? 1.f : -1.f) * (NextTier == 2 ? 2.f : 1.f);
+	const FlowerPhysics::FTierShape& Shape = World->Shapes[NextTier];
+	const float X = FMath::Clamp(Cursor, Left + Shape.HalfWidth, Right - Shape.HalfWidth);
+	const int32 Id = World->Add(NextTier, X, DropY, FMath::FRandRange(-0.3f, 0.3f), 0.f);
+	if (FlowerPhysics::FBody* Body = World->FindById(Id))
+	{
+		// 떨어지면서 빙글 돈다 (데이지는 바람개비처럼 더 빨리)
+		Body->W = FMath::FRandRange(1.5f, 3.f) * (FMath::RandBool() ? 1.f : -1.f) * (NextTier == 2 ? 2.f : 1.f);
+		Body->Pop = 0.15f;
+	}
 	NextTier = QueueTier;
 	QueueTier = RollNext();
 	Cooldown = DropCooldown;
 	++Drops;
 	PlaySfx(TEXT("drop"));
-}
-
-void UFlowerMiniGameWidget::Merge(int32 IndexA, int32 IndexB)
-{
-	using namespace FlowerGame;
-
-	const FFlowerBall A = Balls[IndexA];
-	const FFlowerBall B = Balls[IndexB];
-	// 뒤 번호부터 지워야 앞 번호가 안 밀린다
-	Balls.RemoveAt(FMath::Max(IndexA, IndexB));
-	Balls.RemoveAt(FMath::Min(IndexA, IndexB));
-
-	const int32 NewTier = A.Tier + 1;
-	const float X = (A.X + B.X) * 0.5f;
-	const float Y = (A.Y + B.Y) * 0.5f;
-	BestTier = FMath::Max(BestTier, FMath::Min(MaxTier, NewTier));
-	MergeScore += 30 * NewTier * NewTier;
-	Chain = ChainTimer > 0.f ? Chain + 1 : 1;
-	ChainTimer = ChainWindow;
-	BestChain = FMath::Max(BestChain, Chain);
-	++Merges;
-
-	if (NewTier > MaxTier)
-	{
-		// 꽃다발 둘 → 특대 꽃다발. HTML은 700원 보너스였는데 돈이 고정이라 주문 1건으로 쳐 준다.
-		++Bouquets;
-		++Orders;
-		Spray(MaxTier, X, Y, 60, 520.f, 260.f);
-		AddRing(X, Y, A.R, 700.f, 0.7f, 14.f, Hex(TEXT("ffd18d")));
-		PushAround(X, Y, A.R * 3.f, 520.f, INDEX_NONE);
-		AddShake(18.f);
-		AddPop(X, Y, TEXT("특대 꽃다발! 주문 +1"), Hex(TEXT("ffd18d")));
-		PlaySfx(TEXT("order"));
-		return;
-	}
-
-	const float R = Tiers[NewTier].Radius;
-	FFlowerBall& Born = AddBall(NewTier, FMath::Clamp(X, Left + R, Right - R), FMath::Min(Y, Floor - R), -65.f, 0.22f);
-	// 피어난 자리에서 시작하므로 착지 효과는 주지 않는다
-	Born.bLanded = true;
-	Born.Angle = (A.Angle + B.Angle) * 0.5f;
-	if (NewTier == 1)
-	{
-		Born.Wobble = WobbleSeconds; // 새싹은 돋아나며 흔들흔들
-	}
-	const FFlowerBall BornCopy = Born; // OnBorn이 배열을 건드리기 전에 복사
-	OnBorn(BornCopy);
-	AddPop(X, Y - 30.f, Chain > 1 ? FString::Printf(TEXT("%d연쇄!"), Chain) : FString(TEXT("합성!")), Hex(TEXT("b8e2ae")));
-	PlaySfx(TEXT("merge"));
 }
 
 void UFlowerMiniGameWidget::NextOrder()
@@ -792,282 +744,206 @@ void UFlowerMiniGameWidget::NextOrder()
 
 void UFlowerMiniGameWidget::Fulfill()
 {
-	// 주문 꽃이 작업대에 있으면 자동 포장 (두 꽃 주문은 하나씩 먼저 납품할 수 있다)
-	for (int32 i = Balls.Num() - 1; i >= 0; --i)
+	using namespace FlowerGame;
+
+	// 주문 꽃이 작업대에 피어 있으면 자동 포장 (두 꽃 주문은 하나씩 먼저 납품할 수 있다).
+	// 떨어뜨린 꽃(장미까지 떨어진다)은 받지 않는다 - 합성으로 피워 낸 꽃만.
+	for (int32 i = World->Count - 1; i >= 0; --i)
 	{
-		const FFlowerBall& Ball = Balls[i];
-		const int32 WantIndex = Want.Find(Ball.Tier);
+		const FlowerPhysics::FBody& Body = World->Bodies[i];
+		if (!Body.bBloomed)
+		{
+			continue;
+		}
+		const int32 WantIndex = Want.Find(Body.Tier);
 		if (WantIndex != INDEX_NONE)
 		{
-			Burst(Ball.X, Ball.Y, FlowerGame::Hex(TEXT("ffcf9b")));
-			AddPop(Ball.X, Ball.Y, TEXT("포장 완료!"), FlowerGame::Hex(TEXT("ffd18d")));
-			Fulfilled.Add(Ball.Tier);
+			const float R = World->Shapes[Body.Tier].EquivR;
+			Spray(Body.Tier, Body.X, Body.Y, 24, 320.f, 200.f);
+			AddRing(Body.X, Body.Y, R * 0.5f, 700.f, 0.25f, 0.f, Hex(TEXT("fff3c4")), true);
+			AddPop(Body.X, Body.Y, TEXT("포장 완료!"), Hex(TEXT("ffd18d")));
+			Fulfilled.Add(Body.Tier);
 			Want.RemoveAt(WantIndex);
-			Balls.RemoveAt(i);
+			World->RemoveAt(i);
 		}
 	}
 
 	if (Want.Num() == 0 && Fulfilled.Num() > 0)
 	{
 		++Orders;
-		AddPop(420.f, 520.f, FString::Printf(TEXT("주문 완료! %d건째"), Orders), FlowerGame::Hex(TEXT("ffd18d")));
+		AddPop(420.f, 620.f, FString::Printf(TEXT("주문 완료! %d건째"), Orders), Hex(TEXT("ffd18d")));
 		PlaySfx(TEXT("order"));
 		NextOrder();
 	}
 }
 
-float UFlowerMiniGameWidget::Bounds(FFlowerBall& Ball)
+void UFlowerMiniGameWidget::ProcessEvents()
 {
 	using namespace FlowerGame;
 
-	if (Ball.X - Ball.R < Left)
+	for (int32 e = 0; e < World->NumEvents; ++e)
 	{
-		Ball.X = Left + Ball.R;
-		Ball.VX = FMath::Abs(Ball.VX) * 0.15f;
+		const FlowerPhysics::FEvent Event = World->Events[e];
+		if (Event.Type == FlowerPhysics::EEventType::Landed)
+		{
+			if (FlowerPhysics::FBody* Body = World->FindById(Event.Id))
+			{
+				OnLanded(*Body, Event.Impact);
+			}
+			continue;
+		}
+
+		// 합성
+		const int32 NewTier = Event.Tier;
+		BestTier = FMath::Max(BestTier, FMath::Min(MaxTier, NewTier));
+		MergeScore += 30 * NewTier * NewTier;
+		Chain = ChainTimer > 0.f ? Chain + 1 : 1;
+		ChainTimer = ChainWindow;
+		BestChain = FMath::Max(BestChain, Chain);
+		++Merges;
+
+		if (NewTier > MaxTier)
+		{
+			// 꽃다발 둘 → 특대 꽃다발. HTML은 700원 보너스였는데 돈이 고정이라 주문 1건으로 쳐 준다.
+			++Bouquets;
+			++Orders;
+			Spray(MaxTier, Event.X, Event.Y, 90, 700.f, 320.f);
+			AddRing(Event.X, Event.Y, 60.f, 1400.f, 0.3f, 0.f, FLinearColor::White, true);
+			AddRing(Event.X, Event.Y, 120.f, 900.f, 0.7f, 18.f, Hex(TEXT("ffd18d")));
+			World->Push(Event.X, Event.Y, 420.f, 600.f, INDEX_NONE);
+			AddShake(14.f);
+			AddPop(Event.X, Event.Y, TEXT("특대 꽃다발! 주문 +1"), Hex(TEXT("ffd18d")));
+			PlaySfx(TEXT("order"));
+			continue;
+		}
+
+		if (FlowerPhysics::FBody* Born = World->FindById(Event.Id))
+		{
+			// 크게 부풀었다가 돌아온다
+			Born->Pop = 0.35f;
+			if (NewTier == 1)
+			{
+				Born->Wobble = WobbleSeconds; // 새싹은 돋아나며 흔들흔들
+			}
+			const FlowerPhysics::FBody Copy = *Born; // OnBorn이 다른 꽃을 밀어도 안전하게
+			OnBorn(Copy);
+		}
+		if (Chain > 1)
+		{
+			AddPop(Event.X, Event.Y + 40.f, FString::Printf(TEXT("%d연쇄!"), Chain), Hex(TEXT("b8e2ae")));
+		}
+		PlaySfx(TEXT("merge"));
 	}
-	if (Ball.X + Ball.R > Right)
-	{
-		Ball.X = Right - Ball.R;
-		Ball.VX = -FMath::Abs(Ball.VX) * 0.15f;
-	}
-	float Impact = 0.f;
-	if (Ball.Y + Ball.R > Floor)
-	{
-		Impact = FMath::Max(0.f, Ball.VY);
-		Ball.Y = Floor - Ball.R;
-		Ball.VY = -FMath::Abs(Ball.VY) * 0.05f;
-		Ball.VX *= 0.9f;
-	}
-	return Impact;
+	World->NumEvents = 0;
 }
 
-void UFlowerMiniGameWidget::Physics(float Dt)
+void UFlowerMiniGameWidget::UpdateBodyFx(float Dt)
 {
-	using namespace FlowerGame;
-
-	// 이번 스텝에 처음 닿은 꽃 (Id, 부딪힌 속도). 합성으로 배열이 바뀔 수 있어 Id로 기억했다가 마지막에 처리한다.
-	TArray<TPair<int32, float>, TInlineAllocator<8>> Landings;
-	auto NoteLanding = [&Landings](FFlowerBall& Ball, float Impact)
+	for (int32 i = 0; i < World->Count; ++i)
 	{
-		if (!Ball.bLanded)
-		{
-			Ball.bLanded = true;
-			Landings.Add({ Ball.Id, Impact });
-		}
-	};
-
-	const float Drag = FMath::Exp(-Damping * Dt);
-	for (FFlowerBall& Ball : Balls)
-	{
-		Ball.Age += Dt;
-		Ball.Pop = FMath::Max(0.f, Ball.Pop - Dt);
-		Ball.Squash = FMath::Max(0.f, Ball.Squash - Dt);
-		Ball.Wobble = FMath::Max(0.f, Ball.Wobble - Dt);
-		Ball.VY += Gravity * Dt;
-		Ball.VX *= Drag;
-		Ball.X += Ball.VX * Dt;
-		Ball.Y += Ball.VY * Dt;
-		// 공중에서는 빙글빙글, 닿은 뒤에는 굴러간 거리만큼 돈다
-		Ball.Angle += Ball.bLanded ? Ball.VX * Dt / Ball.R : Ball.Spin * Dt;
-		const float Impact = Bounds(Ball);
-		if (Impact > 0.f)
-		{
-			NoteLanding(Ball, Impact);
-		}
-	}
-
-	// 겹친 꽃을 밀어내는 반복 (HTML physics 기준). 같은 단계가 닿으면 합성하고 이번 반복은 끝낸다.
-	for (int32 Iter = 0; Iter < SolverIterations; ++Iter)
-	{
-		bool bDidMerge = false;
-		for (int32 i = 0; i < Balls.Num() && !bDidMerge; ++i)
-		{
-			for (int32 j = i + 1; j < Balls.Num(); ++j)
-			{
-				FFlowerBall& A = Balls[i];
-				FFlowerBall& B = Balls[j];
-				float Dx = B.X - A.X;
-				float Dy = B.Y - A.Y;
-				float D = FMath::Sqrt(Dx * Dx + Dy * Dy);
-				const float Rr = A.R + B.R;
-				const bool bSame = A.Tier == B.Tier;
-				if (D > (bSame ? Rr * MagnetReach : Rr + 0.2f))
-				{
-					continue;
-				}
-				if (D < 0.001f)
-				{
-					Dx = 1.f;
-					Dy = 0.f;
-					D = 1.f;
-				}
-				const float Nx = Dx / D;
-				const float Ny = Dy / D;
-
-				if (bSame)
-				{
-					// 그림이 맞닿을 만큼 가까우면 합성
-					if (D <= Rr * MergeReach && A.Age > MergeGrace && B.Age > MergeGrace)
-					{
-						Merge(i, j);
-						bDidMerge = true;
-						break;
-					}
-					// 조금 떨어져 있으면 서로 끌어당긴다 (반복 횟수로 나눠 한 스텝에 한 번만큼)
-					if (D > Rr)
-					{
-						const float Pull = MagnetAccel * Dt / SolverIterations;
-						A.VX += Nx * Pull;
-						A.VY += Ny * Pull;
-						B.VX -= Nx * Pull;
-						B.VY -= Ny * Pull;
-						continue;
-					}
-				}
-				if (D >= Rr)
-				{
-					continue;
-				}
-				// 큰 꽃일수록 덜 밀린다 (면적 비례)
-				const float Wa = B.R * B.R / (A.R * A.R + B.R * B.R);
-				const float Wb = 1.f - Wa;
-				const float Overlap = Rr - D;
-				A.X -= Nx * Overlap * Wa;
-				A.Y -= Ny * Overlap * Wa;
-				B.X += Nx * Overlap * Wb;
-				B.Y += Ny * Overlap * Wb;
-				const float Rv = (B.VX - A.VX) * Nx + (B.VY - A.VY) * Ny;
-				if (Rv < 0.f)
-				{
-					// 처음 다른 꽃 위에 떨어진 것도 착지로 친다
-					NoteLanding(A, -Rv);
-					NoteLanding(B, -Rv);
-					// 세게 부딪히면 살짝 튕긴다 (살살 닿은 건 그대로 멈춰 쌓이게)
-					const float Impulse = Rv * (1.f + (-Rv > BounceMinSpeed ? BallRestitution : 0.f));
-					A.VX += Nx * Impulse * Wa;
-					A.VY += Ny * Impulse * Wa;
-					B.VX -= Nx * Impulse * Wb;
-					B.VY -= Ny * Impulse * Wb;
-				}
-			}
-		}
-		for (FFlowerBall& Ball : Balls)
-		{
-			const float Impact = Bounds(Ball);
-			if (Impact > 0.f)
-			{
-				NoteLanding(Ball, Impact);
-			}
-		}
-		if (bDidMerge)
-		{
-			Fulfill();
-		}
-	}
-
-	for (const TPair<int32, float>& Landing : Landings)
-	{
-		if (FFlowerBall* Ball = Balls.FindByPredicate([&Landing](const FFlowerBall& B) { return B.Id == Landing.Key; }))
-		{
-			OnLanded(*Ball, Landing.Value);
-		}
+		FlowerPhysics::FBody& Body = World->Bodies[i];
+		Body.Pop = FMath::Max(0.f, Body.Pop - Dt);
+		Body.Squash = FMath::Max(0.f, Body.Squash - Dt);
+		Body.Wobble = FMath::Max(0.f, Body.Wobble - Dt);
+		EmitTrail(Body, Dt);
 	}
 }
 
 // ---------------------------------------------------------------------------
 // 단계별 효과
-//   떨어질 때: 빙글 돌며 단계별 꼬리 (씨앗 흙 · 새싹 잎 · 데이지 꽃잎)
-//   착지할 때: 찌그러짐 + 씨앗 톡 튀기 · 새싹 흔들 · 데이지 꽃잎 고리 …
-//   피어날 때: 점선 고리 + 단계별 조각. 장미부터 화면 흔들림, 해바라기부터 주변 꽃 밀어내기
+//   떨어질 때: 빙글 돌며 단계별 꼬리 (씨앗 흙 · 새싹 잎 · 데이지 꽃잎 …)
+//   착지할 때: 찌그러짐 + 단계별 바운스 + 주변 밀쳐내기 + 조각 (큰 꽃은 화면이 흔들린다)
+//   피어날 때: 번쩍임 + 크게 부풀기 + 고리 + 조각 + 단계 이름 외침 + 주변 밀어내기. 해바라기부터 쿵!
 // ---------------------------------------------------------------------------
 
-void UFlowerMiniGameWidget::OnLanded(FFlowerBall& Ball, float Impact)
+void UFlowerMiniGameWidget::OnLanded(FlowerPhysics::FBody& Body, float Impact)
 {
 	using namespace FlowerGame;
 
-	if (Impact < LandImpactMin)
-	{
-		return;
-	}
+	const int32 Tier = Body.Tier;
+	const float R = World->Shapes[Tier].EquivR;
 	const float Strength = FMath::Clamp(Impact / 1000.f, 0.3f, 1.f);
-	Ball.Squash = SquashSeconds * Strength;
-	const float BottomY = Ball.Y + Ball.R * 0.8f;
+	Body.Squash = SquashSeconds * Strength;
 
-	// 모든 꽃이 착지할 때 통 튀고, 부딪힌 자리 주변 꽃을 밀쳐낸다
-	Ball.VY = -Impact * LandHop[FMath::Clamp(Ball.Tier, 0, MaxTier)];
-	PushAround(Ball.X, Ball.Y + Ball.R * 0.5f, Ball.R * 1.8f, Impact * LandPush * (1.f + Ball.Tier * 0.15f), Ball.Id);
+	// 통 튀고, 부딪힌 자리 주변 꽃을 밀쳐낸다
+	Body.VY = -Impact * LandHop[FMath::Clamp(Tier, 0, MaxTier)];
+	World->Push(Body.X, Body.Y + R * 0.5f, R * 1.8f, Impact * LandPush * (1.f + Tier * 0.15f), Body.Id);
 
-	switch (Ball.Tier)
+	const float BottomY = Body.Y + R * 0.8f;
+	switch (Tier)
 	{
 	case 0:
 		// 씨앗: 제일 높이 톡 튀며 흙이 튄다
-		Spray(0, Ball.X, BottomY, 10, 140.f, 220.f * Strength);
+		Spray(0, Body.X, BottomY, 18, 220.f, 320.f * Strength);
+		AddRing(Body.X, BottomY, R * 0.4f, 260.f, 0.3f, 8.f, Hex(TierFx[0].Accent));
 		break;
 	case 1:
 		// 새싹: 잎이 살랑 떨어지고 흔들흔들
-		Ball.Wobble = WobbleSeconds;
-		Spray(1, Ball.X, Ball.Y - Ball.R * 0.5f, 6, 110.f, 120.f);
+		Body.Wobble = WobbleSeconds;
+		Spray(1, Body.X, Body.Y - R * 0.5f, 12, 160.f, 180.f);
 		break;
 	case 2:
 		// 데이지: 꽃잎이 동그랗게 퍼진다
-		Spray(2, Ball.X, Ball.Y, 12, 260.f * Strength + 80.f, 60.f);
-		AddRing(Ball.X, Ball.Y, Ball.R * 0.8f, 260.f, 0.35f, 6.f, Hex(TierFx[2].Accent));
+		Spray(2, Body.X, Body.Y, 20, 360.f * Strength + 100.f, 80.f);
+		AddRing(Body.X, Body.Y, R * 0.8f, 340.f, 0.4f, 11.f, Hex(TierFx[2].Accent));
 		break;
 	default:
-		// 큰 꽃이 떨어지면 단계만큼 묵직하게
-		Spray(Ball.Tier, Ball.X, BottomY, 8 + Ball.Tier * 2, 220.f, 160.f);
-		AddRing(Ball.X, BottomY, Ball.R * 0.6f, 300.f, 0.4f, 7.f, Hex(TierFx[Ball.Tier].Color));
-		AddShake(Ball.Tier * 1.5f * Strength);
+		// 튤립 · 장미가 떨어지면 묵직하게 쿵
+		Spray(Tier, Body.X, BottomY, 14 + Tier * 3, 300.f, 220.f);
+		AddRing(Body.X, BottomY, R * 0.6f, 420.f, 0.45f, 13.f, Hex(TierFx[Tier].Color));
+		AddShake(Tier * 2.2f * Strength);
 		break;
 	}
 }
 
-void UFlowerMiniGameWidget::OnBorn(const FFlowerBall& Ball)
+void UFlowerMiniGameWidget::OnBorn(const FlowerPhysics::FBody& Body)
 {
 	using namespace FlowerGame;
 
-	const int32 Tier = Ball.Tier;
+	const int32 Tier = Body.Tier;
 	const FTierFx& Fx = TierFx[Tier];
-	AddRing(Ball.X, Ball.Y, Ball.R * 0.6f, 240.f + Tier * 50.f, 0.45f, 6.f + Tier, Hex(Fx.Color));
-	Spray(Tier, Ball.X, Ball.Y, 10 + Tier * 4, 200.f + Tier * 30.f, Tier >= 3 ? 200.f : 40.f);
+	const float R = World->Shapes[Tier].EquivR;
 
-	if (Tier >= 4)
-	{
-		AddShake(Tier * 2.f - 4.f);
-	}
+	// 번쩍 + 단계 색 고리 + 조각
+	AddRing(Body.X, Body.Y, R * 0.4f, 900.f + Tier * 120.f, 0.22f, 0.f, FLinearColor::White, true);
+	AddRing(Body.X, Body.Y, R * 0.6f, 320.f + Tier * 60.f, 0.5f, 10.f + Tier * 1.5f, Hex(Fx.Color));
+	Spray(Tier, Body.X, Body.Y, 18 + Tier * 6, 260.f + Tier * 40.f, Tier >= 3 ? 260.f : 60.f);
+
 	if (Tier < 5)
 	{
-		// 피어나며 주변 꽃을 살짝 밀어낸다 (단계가 오를수록 세게)
-		PushAround(Ball.X, Ball.Y, Ball.R * 2.f, 100.f + Tier * 30.f, Ball.Id);
+		// 피어나며 주변 꽃을 밀어낸다 (단계가 오를수록 세게)
+		World->Push(Body.X, Body.Y, R * 2.f, 140.f + Tier * 40.f, Body.Id);
 	}
 	else
 	{
 		// 해바라기부터는 쿵! 크게 밀려난다 (빈자리가 생겨 연쇄가 이어지기도 한다)
-		PushAround(Ball.X, Ball.Y, Ball.R * 2.6f, 260.f + (Tier - 5) * 120.f, Ball.Id);
-		AddRing(Ball.X, Ball.Y, Ball.R, 520.f, 0.55f, 10.f, Hex(Fx.Accent));
+		World->Push(Body.X, Body.Y, R * 2.6f, 300.f + (Tier - 5) * 140.f, Body.Id);
+		AddRing(Body.X, Body.Y, R, 640.f, 0.6f, 16.f, Hex(Fx.Accent));
 	}
-	if (BornCheers[Tier])
+	if (Tier >= 3)
 	{
-		AddPop(Ball.X, Ball.Y - Ball.R - 20.f, BornCheers[Tier], Hex(Fx.Accent));
+		AddShake(Tier * 2.5f - 5.f);
 	}
+	AddPop(Body.X, Body.Y - R - 30.f, BornCheers[Tier], Hex(Fx.Color));
 }
 
-void UFlowerMiniGameWidget::EmitTrail(FFlowerBall& Ball, float Dt)
+void UFlowerMiniGameWidget::EmitTrail(FlowerPhysics::FBody& Body, float Dt)
 {
 	using namespace FlowerGame;
 
-	if (Ball.bLanded || Ball.VY < 150.f)
+	if (Body.bLanded || Body.VY < 150.f)
 	{
 		return;
 	}
-	Ball.TrailTimer -= Dt;
-	if (Ball.TrailTimer > 0.f)
+	Body.TrailTimer -= Dt;
+	if (Body.TrailTimer > 0.f)
 	{
 		return;
 	}
-	Ball.TrailTimer = TrailInterval;
-	const float Ox = FMath::FRandRange(-0.6f, 0.6f) * Ball.R;
-	Spray(Ball.Tier, Ball.X + Ox, Ball.Y - Ball.R * 0.7f, 1, 40.f, -Ball.VY * 0.15f);
+	Body.TrailTimer = TrailInterval;
+	const float R = World->Shapes[Body.Tier].EquivR;
+	const float Ox = FMath::FRandRange(-0.6f, 0.6f) * R;
+	Spray(Body.Tier, Body.X + Ox, Body.Y - R * 0.7f, 2, 50.f, -Body.VY * 0.15f);
 }
 
 void UFlowerMiniGameWidget::Spray(int32 Tier, float InX, float InY, int32 Count, float Speed, float Upward)
@@ -1083,12 +959,12 @@ void UFlowerMiniGameWidget::Spray(int32 Tier, float InX, float InY, int32 Count,
 		Part.Pos = FVector2f(InX, InY);
 		Part.Vel = FVector2f(FMath::Cos(Angle) * V, FMath::Sin(Angle) * V - Upward * FMath::FRandRange(0.6f, 1.f));
 		Part.Shape = static_cast<EParticleShape>(Fx.Shape);
-		Part.Size = Fx.Size * FMath::FRandRange(0.7f, 1.2f);
+		Part.Size = Fx.Size * ParticleScale * FMath::FRandRange(0.7f, 1.2f);
 		Part.Gravity = Fx.Gravity;
 		Part.Sway = Fx.Sway;
 		Part.Angle = FMath::FRand() * UE_TWO_PI;
 		Part.Spin = FMath::FRandRange(-8.f, 8.f);
-		Part.MaxLife = Part.Life = Fx.Life * FMath::FRandRange(0.7f, 1.2f);
+		Part.MaxLife = Part.Life = Fx.Life * FMath::FRandRange(0.8f, 1.3f);
 		if (Tier >= MaxTier)
 		{
 			Part.Color = Hex(ConfettiColors[FMath::RandRange(0, UE_ARRAY_COUNT(ConfettiColors) - 1)]);
@@ -1106,7 +982,7 @@ void UFlowerMiniGameWidget::Spray(int32 Tier, float InX, float InY, int32 Count,
 	}
 }
 
-void UFlowerMiniGameWidget::AddRing(float InX, float InY, float StartRadius, float Speed, float Life, float DotSize, const FLinearColor& Color)
+void UFlowerMiniGameWidget::AddRing(float InX, float InY, float StartRadius, float Speed, float Life, float DotSize, const FLinearColor& Color, bool bFlash)
 {
 	FRing& Ring = Rings.AddDefaulted_GetRef();
 	Ring.Center = FVector2f(InX, InY);
@@ -1115,28 +991,7 @@ void UFlowerMiniGameWidget::AddRing(float InX, float InY, float StartRadius, flo
 	Ring.MaxLife = Ring.Life = Life;
 	Ring.DotSize = DotSize;
 	Ring.Color = Color;
-}
-
-void UFlowerMiniGameWidget::PushAround(float InX, float InY, float Radius, float Strength, int32 ExcludeId)
-{
-	for (FFlowerBall& Ball : Balls)
-	{
-		if (Ball.Id == ExcludeId)
-		{
-			continue;
-		}
-		const FVector2f Delta(Ball.X - InX, Ball.Y - InY);
-		const float D = Delta.Size();
-		if (D > Radius + Ball.R || D < 0.001f)
-		{
-			continue;
-		}
-		// 가까울수록 세게, 살짝 위로 띄워서 "쿵" 하고 들썩이게
-		const float Falloff = 1.f - FMath::Clamp(D / (Radius + Ball.R), 0.f, 1.f);
-		const FVector2f Dir = Delta / D;
-		Ball.VX += Dir.X * Strength * Falloff;
-		Ball.VY += Dir.Y * Strength * Falloff - Strength * 0.35f * Falloff;
-	}
+	Ring.bFlash = bFlash;
 }
 
 void UFlowerMiniGameWidget::AddShake(float Amount)
@@ -1149,10 +1004,12 @@ void UFlowerMiniGameWidget::UpdateDanger(float Dt)
 	using namespace FlowerGame;
 
 	// 방금 놓은 꽃은 1.3초 동안 위험선 위에 있어도 봐준다
-	const bool bBad = Balls.ContainsByPredicate([](const FFlowerBall& Ball)
+	bool bBad = false;
+	for (int32 i = 0; i < World->Count && !bBad; ++i)
 	{
-		return Ball.Age > DangerGrace && Ball.Y - Ball.R < DangerLine;
-	});
+		const FlowerPhysics::FBody& Body = World->Bodies[i];
+		bBad = Body.Age > DangerGrace && World->TopY(Body) < DangerLine;
+	}
 	Over = bBad ? Over + Dt : FMath::Max(0.f, Over - Dt * 2.f);
 	if (Over >= OverflowSeconds)
 	{
@@ -1195,13 +1052,11 @@ void UFlowerMiniGameWidget::Update(float Dt)
 	const int32 Steps = FMath::Max(1, FMath::CeilToInt(Dt / PhysicsStep));
 	for (int32 i = 0; i < Steps; ++i)
 	{
-		Physics(Dt / Steps);
+		World->Step(Dt / Steps);
+		ProcessEvents();
+		Fulfill();
 	}
-	for (FFlowerBall& Ball : Balls)
-	{
-		EmitTrail(Ball, Dt);
-	}
-	Fulfill();
+	UpdateBodyFx(Dt);
 
 	if (bPractice)
 	{
@@ -1565,25 +1420,24 @@ int32 UFlowerMiniGameWidget::NativePaint(const FPaintArgs& Args, const FGeometry
 	return P.Layer;
 }
 
-void UFlowerMiniGameWidget::PaintBall(FFlowerPainter& P, float InX, float InY, int32 Tier, float Bounce, float Alpha, float Angle, float Squash) const
+void UFlowerMiniGameWidget::PaintFlower(FFlowerPainter& P, float InX, float InY, float Angle, int32 Tier, float Scale, float Alpha, float Squash) const
 {
 	using namespace FlowerGame;
 
-	// HTML ball(): 그림자 원 → 단계 색 테두리 → 크림색 받침 → 꽃 그림 (충돌 원보다 조금 크게)
-	// 찌그러짐은 바닥(아래 끝)을 기준으로 가로로 넓히고 세로로 줄인다
-	const FTier& Info = Tiers[FMath::Clamp(Tier, 0, MaxTier)];
-	const float R = Info.Radius * (1.f + Bounce * 0.7f);
-	const float Sx = 1.f + Squash;
-	const float Sy = 1.f - Squash;
-	const float Rx = R * Sx;
-	const float Ry = R * Sy;
-	const float Cy = InY + R - Ry;
-	P.Brush(&CircleBrush, InX - Rx, Cy + 3.f - Ry, Rx * 2.f, Ry * 2.f, WithAlpha(Hex(TEXT("c9ccb4")), Alpha));
-	P.Brush(&CircleBrush, InX - Rx + 1.f, Cy - Ry + 1.f, Rx * 2.f - 2.f, Ry * 2.f - 2.f, WithAlpha(Hex(Info.Color), Alpha));
-	P.Brush(&CircleBrush, InX - Rx + 3.f, Cy - Ry + 3.f, Rx * 2.f - 6.f, Ry * 2.f - 6.f, WithAlpha(Hex(TEXT("fff9e9")), Alpha));
-	const float ArtW = R * ArtScale * Sx;
-	const float ArtH = R * ArtScale * Sy;
-	P.RotatedBrush(FlowerBrush(Tier), InX - ArtW * 0.5f, Cy - ArtH * 0.5f, ArtW, ArtH, Angle, WithAlpha(FLinearColor::White, Alpha));
+	// 무게중심 → 그림 가운데 (돌린 만큼 같이 돈다)
+	const FlowerPhysics::FTierShape& Shape = World->Shapes[FMath::Clamp(Tier, 0, MaxTier)];
+	const float Cs = FMath::Cos(Angle);
+	const float Sn = FMath::Sin(Angle);
+	const float Size = Shape.Size * Scale;
+	const float W = Size * (1.f + Squash);
+	const float H = Size * (1.f - Squash);
+	const float Cx = InX + (Shape.ArtX * Cs - Shape.ArtY * Sn) * Scale;
+	// 찌그러질 때 바닥 쪽은 그대로 두고 위가 눌리게
+	const float Cy = InY + (Shape.ArtX * Sn + Shape.ArtY * Cs) * Scale + Size * Squash * 0.4f;
+
+	// 그림자 (같은 그림을 어둡게 살짝 아래로) → 꽃
+	P.RotatedBrush(FlowerBrush(Tier), Cx - W * 0.5f + 5.f, Cy - H * 0.5f + 8.f, W, H, Angle, FLinearColor(0.25f, 0.2f, 0.15f, 0.28f * Alpha));
+	P.RotatedBrush(FlowerBrush(Tier), Cx - W * 0.5f, Cy - H * 0.5f, W, H, Angle, WithAlpha(FLinearColor::White, Alpha));
 }
 
 void UFlowerMiniGameWidget::PaintEffects(FFlowerPainter& P) const
@@ -1594,6 +1448,12 @@ void UFlowerMiniGameWidget::PaintEffects(FFlowerPainter& P) const
 	for (const FRing& Ring : Rings)
 	{
 		const float Fade = FMath::Clamp(Ring.Life / Ring.MaxLife, 0.f, 1.f);
+		if (Ring.bFlash)
+		{
+			// 합성 순간 번쩍: 꽉 찬 원이 빠르게 커지며 사라진다
+			P.Brush(&CircleBrush, Ring.Center.X - Ring.Radius, Ring.Center.Y - Ring.Radius, Ring.Radius * 2.f, Ring.Radius * 2.f, WithAlpha(Ring.Color, Fade * 0.75f));
+			continue;
+		}
 		const float Dot = Ring.DotSize * (0.5f + 0.5f * Fade);
 		constexpr int32 Dots = 24;
 		for (int32 i = 0; i < Dots; ++i)
@@ -1629,9 +1489,10 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 
 	const bool bRush = Mode != EMode::Practice && T >= Duration - WarningSeconds;
 
-	// 배경과 작업대
+	// 배경과 작업대 (위험선 위쪽도 작업대 안 - 꽃이 위험선을 넘어 쌓이는 게 보이게)
+	constexpr float WorkTop = 330.f;
 	P.Brush(FindBrush(TEXT("shop")), 0.f, 0.f, CanvasW, CanvasH);
-	P.Brush(&WorkAreaBrush, Left - 7.f, DangerLine - 12.f, Right - Left + 14.f, Floor - DangerLine + 22.f);
+	P.Brush(&WorkAreaBrush, Left - 7.f, WorkTop, Right - Left + 14.f, Floor - WorkTop + 10.f);
 	for (float Y = DangerLine + 30.f; Y < Floor; Y += 70.f)
 	{
 		P.Box(Left + 10.f, Y, Right - Left - 20.f, 1.f, WithAlpha(Hex(TEXT("c8c5ac")), 0.3f));
@@ -1645,44 +1506,46 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 	}
 
 	// 놓을 위치 안내선과 손에 든 꽃
-	const float R = Tiers[NextTier].Radius;
-	const float AimX = FMath::Clamp(Cursor, Left + R, Right - R);
+	const float HalfW = World->Shapes[NextTier].HalfWidth;
+	const float AimX = FMath::Clamp(Cursor, Left + HalfW, Right - HalfW);
 	if (Mode != EMode::Result)
 	{
-		for (float Y = DropY + 50.f; Y < Floor; Y += 18.f)
+		for (float Y = DropY + 60.f; Y < Floor; Y += 18.f)
 		{
 			P.Box(AimX - 1.5f, Y, 3.f, FMath::Min(4.f, Floor - Y), Hex(TEXT("a6b698")));
 		}
-		PaintBall(P, AimX, DropY, NextTier, 0.f, Cooldown > 0.f ? 0.4f : 1.f);
+		PaintFlower(P, AimX, DropY, 0.f, NextTier, 1.f, Cooldown > 0.f ? 0.4f : 1.f);
 	}
 
-	for (const FFlowerBall& Ball : Balls)
+	for (int32 i = 0; i < World->Count; ++i)
 	{
-		// 착지 직후엔 납작하게, 빠르게 떨어지는 중엔 길쭉하게. 새싹은 흔들흔들.
+		const FlowerPhysics::FBody& Body = World->Bodies[i];
+		// 착지 직후엔 납작하게, 빠르게 떨어지는 중엔 길쭉하게. 새싹은 흔들흔들. 피어날 땐 크게 부풀었다 돌아온다.
 		float Squash = 0.f;
-		if (Ball.Squash > 0.f)
+		if (Body.Squash > 0.f)
 		{
-			Squash = 0.22f * FMath::Sin(Ball.Squash / SquashSeconds * UE_PI);
+			Squash = 0.22f * FMath::Sin(Body.Squash / SquashSeconds * UE_PI);
 		}
-		else if (!Ball.bLanded)
+		else if (!Body.bLanded)
 		{
-			Squash = -FMath::Min(0.12f, FMath::Max(0.f, Ball.VY) / 9000.f);
+			Squash = -FMath::Min(0.12f, FMath::Max(0.f, Body.VY) / 9000.f);
 		}
-		const float WobbleAngle = Ball.Wobble > 0.f ? FMath::Sin(Ball.Wobble * 22.f) * 0.35f * (Ball.Wobble / WobbleSeconds) : 0.f;
-		PaintBall(P, Ball.X, Ball.Y, Ball.Tier, Ball.Pop, 1.f, Ball.Angle + WobbleAngle, Squash);
+		const float WobbleAngle = Body.Wobble > 0.f ? FMath::Sin(Body.Wobble * 22.f) * 0.35f * (Body.Wobble / WobbleSeconds) : 0.f;
+		const float Scale = 1.f + Body.Pop * 1.1f * FMath::Sin(Body.Pop / 0.35f * UE_PI);
+		PaintFlower(P, Body.X, Body.Y, Body.A + WobbleAngle, Body.Tier, Scale, 1.f, Squash);
 	}
 
 	if (Over > 0.f)
 	{
-		P.Text(FString::Printf(TEXT("넘치기까지 %.1f초"), FMath::Max(0.f, OverflowSeconds - Over)), 420.f, 365.f, 22.f, Hex(TEXT("b95170")), EAlign::Center, true);
+		P.Text(FString::Printf(TEXT("넘치기까지 %.1f초"), FMath::Max(0.f, OverflowSeconds - Over)), 420.f, DangerLine + 25.f, 24.f, Hex(TEXT("b95170")), EAlign::Center, true, 2);
 	}
 	else
 	{
-		P.Text(TEXT("이 선 위에 2초 쌓이면 종료"), 420.f, 365.f, 21.f, Hex(TEXT("8b8574")), EAlign::Center);
+		P.Text(TEXT("이 선 위에 2초 쌓이면 종료"), 420.f, DangerLine + 25.f, 21.f, Hex(TEXT("8b8574")), EAlign::Center);
 	}
 	if (bRush)
 	{
-		P.Text(TEXT("마감 준비 · 마지막 꽃을 정리해요"), 420.f, 315.f, 22.f, Rose(), EAlign::Center, true, 2);
+		P.Text(TEXT("마감 준비 · 마지막 꽃을 정리해요"), 420.f, 190.f, 24.f, Rose(), EAlign::Center, true, 2);
 	}
 
 	// 효과
@@ -1749,7 +1612,7 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 			P.ArtCentered(FlowerBrush(Slots[j]), X + 76.f, 650.f, 80.f);
 			P.Text(bDone ? TEXT("포장 완료") : Tiers[Slots[j]].Name, X + 76.f, 708.f, 20.f, bDone ? Leaf() : Hex(TEXT("6c6952")), EAlign::Center, bDone);
 		}
-		P.Text(TEXT("작업대에 피어나면 자동으로 포장돼요"), L, 760.f, 20.f, Muted());
+		P.Text(TEXT("합성으로 피워 낸 꽃만 포장돼요 (떨어뜨린 꽃 X)"), L, 760.f, 20.f, Muted());
 
 		// 놓을 꽃 · 다음 꽃
 		P.Text(TEXT("놓을 꽃"), L, 830.f, 22.f, Ink(), EAlign::Left, true);
@@ -1851,7 +1714,7 @@ void UFlowerMiniGameWidget::PaintOverlay(FFlowerPainter& P) const
 		P.Text(TEXT("꽃이 피는 작업대"), 420.f, 370.f, 42.f, Ink(), EAlign::Center, true);
 		P.Text(TEXT("마우스로 위치를 고르고 클릭해서 꽃을 떨어뜨려요."), 420.f, 460.f, 26.f, Ink(), EAlign::Center);
 		P.Text(TEXT("같은 꽃 둘이 닿으면 다음 단계로 피어나요."), 420.f, 510.f, 26.f, Ink(), EAlign::Center);
-		P.Text(TEXT("주문 꽃이 피면 자동 포장 · 위험선 위 2초면 끝"), 420.f, 560.f, 26.f, Ink(), EAlign::Center);
+		P.Text(TEXT("주문 꽃을 피워 내면 자동 포장 · 위험선 위 2초면 끝"), 420.f, 560.f, 26.f, Ink(), EAlign::Center);
 		P.Text(FString::Printf(TEXT("%d초 근무 · P / Esc 일시정지"), FMath::RoundToInt(Duration)), 420.f, 610.f, 26.f, Ink(), EAlign::Center);
 		P.Text(FString::Printf(TEXT("급여 %s원 · 주문을 많이 채울수록 %s이 올라요"), *FString::FormatAsNumber(Reward.Money), *StatLabel(Reward.Stat)),
 			420.f, 690.f, 24.f, Leaf(), EAlign::Center);
@@ -1960,7 +1823,7 @@ void UFlowerMiniGameWidget::PaintTutorialPage(FFlowerPainter& P) const
 			TEXT("꽃다발 둘을 합치면 특대 꽃다발 - 주문 1건으로 쳐요."),
 		},
 		{
-			TEXT("주문판의 꽃이 작업대에 피면 자동으로 포장돼요."),
+			TEXT("주문판의 꽃을 합성으로 피워 내면 자동으로 포장돼요."),
 			TEXT("꽃이 위험선 위로 2초 넘게 쌓이면 근무가 끝나요."),
 			FString::Printf(TEXT("주문을 많이 채울수록 %s이 더 올라요 (급여는 고정)."), *Stat),
 		},
@@ -1975,7 +1838,7 @@ void UFlowerMiniGameWidget::PaintTutorialPage(FFlowerPainter& P) const
 	{
 		for (int32 i = 0; i < 3; ++i)
 		{
-			PaintBall(P, 420.f + (i - 1) * 170.f, 540.f, i, 0.f);
+			PaintFlower(P, 420.f + (i - 1) * 190.f, 540.f, 0.f, i);
 		}
 	}
 	else if (Page == 1)
@@ -1995,14 +1858,14 @@ void UFlowerMiniGameWidget::PaintTutorialPage(FFlowerPainter& P) const
 	}
 	else
 	{
-		PaintBall(P, 300.f, 560.f, 3, 0.f);
+		PaintFlower(P, 290.f, 560.f, 0.f, 3, 0.8f);
 		P.Text(TEXT("포장 완료!"), 300.f, 470.f, 26.f, Leaf(), EAlign::Center, true);
 		// 위험선 미리보기
 		for (float X = 450.f; X < 690.f; X += 24.f)
 		{
 			P.Box(X, 520.f, 12.f, 3.f, Hex(TEXT("bd6579")));
 		}
-		PaintBall(P, 570.f, 545.f, 4, 0.f);
+		PaintFlower(P, 580.f, 545.f, 0.f, 4, 0.7f);
 		P.Text(TEXT("2초면 끝"), 570.f, 640.f, 24.f, Rose(), EAlign::Center, true);
 	}
 
@@ -2030,7 +1893,7 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 		{ TEXT("마우스로 위치를 고르고 클릭해 씨앗을 떨어뜨려요"), TEXT("← → · A D로 옮기고 Space로 떨어뜨려도 돼요") },
 		{ TEXT("방금 씨앗 위에 씨앗을 하나 더 떨어뜨려요"), TEXT("같은 꽃 둘이 닿으면 다음 단계로 피어나요") },
 		{ TEXT("이번엔 새싹끼리 붙여 데이지를 피워요"), TEXT("단계가 오를수록 꽃이 커져요") },
-		{ TEXT("데이지끼리 합쳐 주문한 튤립을 피워요"), TEXT("주문 꽃이 피면 자동으로 포장돼서 자리가 비어요") },
+		{ TEXT("데이지끼리 합쳐 주문한 튤립을 피워요"), TEXT("직접 피워 낸 꽃만 포장돼요 - 떨어뜨린 튤립은 안 받아요") },
 		{ TEXT("위험선을 조심해요!"), TEXT("작업대가 넘치면 근무가 바로 끝나요") },
 		{ TEXT("준비 끝! 곧 출근해요"), TEXT("") },
 	};
@@ -2054,12 +1917,13 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 	// 합칠 짝이 되는 꽃(지금 손에 든 꽃과 같은 단계)을 둥근 테두리로 표시
 	if (Step >= PracticeMergeStep && Step <= PracticeOrderStep)
 	{
-		for (const FFlowerBall& Ball : Balls)
+		for (int32 i = 0; i < World->Count; ++i)
 		{
-			if (Ball.Tier == NextTier)
+			const FlowerPhysics::FBody& Body = World->Bodies[i];
+			if (Body.Tier == NextTier)
 			{
-				const float Size = Ball.R * 2.f + 30.f;
-				P.Brush(&HighlightBrush, Ball.X - Size * 0.5f, Ball.Y - Size * 0.5f, Size, Size, WithAlpha(FLinearColor::White, Pulse));
+				const float Size = World->Shapes[Body.Tier].EquivR * 2.4f + 30.f;
+				P.Brush(&HighlightBrush, Body.X - Size * 0.5f, Body.Y - Size * 0.5f, Size, Size, WithAlpha(FLinearColor::White, Pulse));
 			}
 		}
 	}

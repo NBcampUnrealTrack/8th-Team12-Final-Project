@@ -23,6 +23,12 @@ class USoundBase;
 class UTexture2D;
 struct FFlowerPainter;
 
+namespace FlowerPhysics
+{
+	class FWorld;
+	struct FBody;
+}
+
 UCLASS()
 class FEBRICULA_API UFlowerMiniGameWidget : public UMiniGameWidget
 {
@@ -103,32 +109,6 @@ private:
 		bool bPrimary = false;
 	};
 
-	/** 작업대 위의 꽃 하나 (HTML의 ball) */
-	struct FFlowerBall
-	{
-		int32 Id = 0;
-		int32 Tier = 0;
-		float X = 0.f;
-		float Y = 0.f;
-		float VX = 0.f;
-		float VY = 0.f;
-		float R = 0.f;
-		/** 생긴 뒤 지난 시간 - 합성 유예 · 위험선 유예 판정 */
-		float Age = 0.f;
-		/** 생길 때 살짝 부풀었다 돌아오는 연출 */
-		float Pop = 0.f;
-		/** 그림 회전 (라디안). 공중에서는 Spin으로 돌고, 바닥에 닿으면 굴러간 만큼 돈다 */
-		float Angle = 0.f;
-		float Spin = 0.f;
-		/** 처음 어딘가에 닿았는지 - 착지 효과는 한 번만 */
-		bool bLanded = false;
-		/** 착지 찌그러짐 · 새싹 흔들림 남은 시간 */
-		float Squash = 0.f;
-		float Wobble = 0.f;
-		/** 떨어지는 동안 꽃잎 꼬리를 뿌리는 간격 */
-		float TrailTimer = 0.f;
-	};
-
 	struct FPopText
 	{
 		FVector2f Pos;
@@ -171,6 +151,8 @@ private:
 		float MaxLife = 0.5f;
 		float DotSize = 8.f;
 		FLinearColor Color;
+		/** 점 고리 대신 꽉 찬 원이 번쩍 퍼진다 (합성 순간) */
+		bool bFlash = false;
 	};
 
 	// ---- 규칙 (HTML의 reset / action / merge / fulfill / physics / danger) ----
@@ -190,28 +172,26 @@ private:
 	void UpdateEffects(float Dt);
 	/** 지금 꽃을 커서 위치에 떨어뜨린다 */
 	void Drop();
-	/** 다음에 나올 꽃 (본 근무는 무작위 씨앗~데이지, 연습은 단계마다 정해진 꽃) */
+	/** 다음에 나올 꽃 (본 근무는 무작위 씨앗~장미, 연습은 단계마다 정해진 꽃) */
 	int32 RollNext() const;
-	FFlowerBall& AddBall(int32 Tier, float InX, float InY, float InVY, float InPop);
-	void Merge(int32 IndexA, int32 IndexB);
+	/** 피워 낸 주문 꽃을 포장한다 (떨어뜨린 꽃은 안 받는다) */
 	void Fulfill();
 	void NextOrder();
-	void Physics(float Dt);
-	/** 벽 · 바닥 처리. 바닥에 부딪혔으면 그때 떨어지던 속도를 돌려준다 (아니면 0) */
-	static float Bounds(FFlowerBall& Ball);
+	/** 물리 한 스텝 뒤 착지 · 합성 이벤트를 받아 점수 · 효과로 바꾼다 */
+	void ProcessEvents();
+	/** 연출 타이머 (부풀기 · 찌그러짐 · 흔들림) */
+	void UpdateBodyFx(float Dt);
 
 	// ---- 단계별 효과 ----
-	/** 처음 바닥이나 다른 꽃에 닿았을 때 (씨앗은 톡 튀고, 새싹은 흔들리고, 데이지는 꽃잎이 퍼진다…) */
-	void OnLanded(FFlowerBall& Ball, float Impact);
-	/** 합성으로 새 꽃이 피어날 때. 해바라기부터는 주변 꽃을 밀어내고 화면이 흔들린다 */
-	void OnBorn(const FFlowerBall& Ball);
+	/** 처음 바닥이나 다른 꽃에 닿았을 때: 단계별 바운스 + 주변 밀쳐내기 + 조각 */
+	void OnLanded(FlowerPhysics::FBody& Body, float Impact);
+	/** 합성으로 새 꽃이 피어날 때: 번쩍임 · 고리 · 조각 · 주변 밀어내기. 해바라기부터 화면 흔들림 */
+	void OnBorn(const FlowerPhysics::FBody& Body);
 	/** 떨어지는 동안 단계별 꼬리 (흙 알갱이 · 잎 · 꽃잎) */
-	void EmitTrail(FFlowerBall& Ball, float Dt);
+	void EmitTrail(FlowerPhysics::FBody& Body, float Dt);
 	/** 단계별 조각 한 무리. Upward > 0이면 위로 솟구치는 분수 모양 */
 	void Spray(int32 Tier, float InX, float InY, int32 Count, float Speed, float Upward);
-	void AddRing(float InX, float InY, float StartRadius, float Speed, float Life, float DotSize, const FLinearColor& Color);
-	/** (X, Y) 주변 꽃을 바깥으로 밀어낸다. 큰 꽃이 피어날 때의 "쿵" */
-	void PushAround(float InX, float InY, float Radius, float Strength, int32 ExcludeId);
+	void AddRing(float InX, float InY, float StartRadius, float Speed, float Life, float DotSize, const FLinearColor& Color, bool bFlash = false);
 	void AddShake(float Amount);
 	void UpdateDanger(float Dt);
 	void AddPop(float InX, float InY, const FString& Text, const FLinearColor& Color);
@@ -233,8 +213,11 @@ private:
 	void PaintSidePanels(FFlowerPainter& P) const;
 	void PaintGame(FFlowerPainter& P) const;
 	/** HTML의 ball(): 받침 원 + 꽃 그림 */
-	/** Squash > 0이면 납작하게(착지), < 0이면 길쭉하게(빠르게 떨어지는 중). 바닥 기준으로 찌그러진다 */
-	void PaintBall(FFlowerPainter& P, float InX, float InY, int32 Tier, float Bounce, float Alpha = 1.f, float Angle = 0.f, float Squash = 0.f) const;
+	/**
+	 * 꽃 하나. (InX, InY)는 무게중심, 그림은 무게중심에서 떨어진 그림 가운데에 Angle만큼 돌려 그린다.
+	 * Scale은 피어날 때 부풀기, Squash > 0이면 납작(착지), < 0이면 길쭉(빠르게 떨어지는 중).
+	 */
+	void PaintFlower(FFlowerPainter& P, float InX, float InY, float Angle, int32 Tier, float Scale = 1.f, float Alpha = 1.f, float Squash = 0.f) const;
 	void PaintEffects(FFlowerPainter& P) const;
 	void PaintOverlay(FFlowerPainter& P) const;
 	void PaintTutorialPage(FFlowerPainter& P) const;
@@ -269,7 +252,8 @@ private:
 	EMode Mode = EMode::Title;
 	float T = 0.f;
 	float Cursor = 420.f;
-	TArray<FFlowerBall> Balls;
+	/** 작업대 물리 (꽃 모양 강체). 헤더에 물리 정의를 끌어오지 않으려고 포인터로 둔다 */
+	TSharedPtr<FlowerPhysics::FWorld> World;
 	TArray<FPopText> Pops;
 	TArray<FParticle> Particles;
 	TArray<FRing> Rings;
