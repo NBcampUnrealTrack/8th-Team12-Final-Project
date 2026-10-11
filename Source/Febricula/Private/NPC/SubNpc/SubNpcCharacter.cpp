@@ -494,6 +494,13 @@ namespace SubNpcSpotWalk
 			{
 				MinTtc = FMath::Min(MinTtc, TimeToCollision(N.Pos, MyVel - N.Vel));
 			}
+			// [버그 수정] 목표로 곧장 가는 방향은 도착한 뒤에 닿는 충돌을 보지 않는다 (그 전에 멈춰 선다).
+			// 칸 22cm 앞에서 줄1(칸에서 83cm)과 "0.23초 뒤 닿는다"로 판정해 서 버렸고, 줄1은 칸 둘레가
+			// 비기를 기다려서 서로 20초 넘게 멈췄다 (crowd.DebugSpot 2 기록: 칸으로 상태 21초).
+			if (Deg == 0.f && MinTtc * MySpeed >= DesiredLen)
+			{
+				MinTtc = 1000.f;
+			}
 			// 목표에서 벗어나는 각도 + 곧 부딪히는 정도
 			float Cost = FMath::Abs(Deg) / 90.f + FMath::Max(0.f, Horizon - MinTtc) * 3.f;
 			// [흔들림 방지] 직전에 걷던 방향에서 많이 꺾일수록 벌점. 없으면 비용이 비슷한 좌우 후보를

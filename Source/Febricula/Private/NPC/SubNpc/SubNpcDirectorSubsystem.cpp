@@ -1654,6 +1654,11 @@ namespace SubNpcPathDebug
 		TEXT("스팟 근처 행인의 상태(줄N 이동/대기, 칸으로, 이벤트, 길로 복귀, 일행 대기, 양보)를 머리 위에 쓰고 가려는 곳까지 선을 긋는다."),
 		ECVF_Cheat);
 
+	static float DebugTextScale = 1.f;
+	static FAutoConsoleVariableRef CVarDebugTextScale(TEXT("crowd.DebugTextScale"), DebugTextScale,
+		TEXT("crowd.DebugSpot / crowd.DebugRole 머리 위 글자 배율 (시연 영상 녹화용). 기본 1."),
+		ECVF_Cheat);
+
 	static void DrawSpotStates(UWorld* World, const TArray<TObjectPtr<ASubNpcCharacter>>& Npcs)
 	{
 		// crowd.DebugSpot 2: 0.5초마다 스팟 근처 행인을 스팟 기준 좌표로 로그에 남긴다 (동선 재구성용).
@@ -1703,7 +1708,7 @@ namespace SubNpcPathDebug
 				: Label.Contains(TEXT("일행")) ? FColor::Green
 				: Label.Contains(TEXT("합류")) || Label.Contains(TEXT("복귀")) ? FColor::Cyan
 				: FColor::Yellow;
-			DrawDebugString(World, Loc + FVector(0.f, 0.f, 120.f), Label, nullptr, Color, 0.f, true, 1.1f);
+			DrawDebugString(World, Loc + FVector(0.f, 0.f, 120.f), Label, nullptr, Color, 0.f, true, 1.1f * DebugTextScale);
 			if (FVector::DistSquared2D(Loc, Target) > FMath::Square(10.f))
 			{
 				DrawDebugLine(World, Loc - FVector(0.f, 0.f, 80.f), FVector(Target.X, Target.Y, Loc.Z - 80.f), Color, false, 0.f, 0, 2.f);
@@ -1810,11 +1815,11 @@ namespace SubNpcPathDebug
 					Text += TEXT(" 비킴");
 				}
 			}
-			DrawDebugString(World, Npc->GetActorLocation() + FVector(0.f, 0.f, 120.f), Text, nullptr, Color, 0.f, true, 1.f);
+			DrawDebugString(World, Npc->GetActorLocation() + FVector(0.f, 0.f, 120.f), Text, nullptr, Color, 0.f, true, DebugTextScale);
 		}
 		if (Player)
 		{
-			DrawDebugString(World, Player->GetActorLocation() + FVector(0.f, 0.f, 120.f), TEXT("플레이어"), nullptr, FColor::Silver, 0.f, true, 1.f);
+			DrawDebugString(World, Player->GetActorLocation() + FVector(0.f, 0.f, 120.f), TEXT("플레이어"), nullptr, FColor::Silver, 0.f, true, DebugTextScale);
 		}
 	}
 
