@@ -61,17 +61,17 @@ namespace FlowerGame
 	constexpr float Left = 45.f;
 	constexpr float Right = 795.f;
 	constexpr float Floor = 1140.f;
-	/**
-	 * 위험선. HTML은 340이었는데 꽃을 키우고 모양대로 쌓이게 바꾸면서 460으로 내렸다.
-	 * 난이도 시뮬레이션(전략별 20판): 한 자리 연타 60% · 아무렇게나 연타 85~90% 넘침, 잘 고르면 넘침 5%.
-	 */
-	constexpr float DangerLine = 460.f;
+	/** 위험선. HTML은 340이었는데 꽃을 1.4배 키우고 모양대로 쌓이게 바꾸면서 내렸다 */
+	constexpr float DangerLine = 520.f;
 	constexpr float DropY = 265.f;
 	constexpr float CursorMargin = 24.f;
 	constexpr float CursorSpeed = 600.f;
 	constexpr float DropCooldown = 0.4f;
-	/** 본 근무에 떨어지는 꽃: 씨앗 ~ 장미 (HTML은 데이지까지 - 종류가 적으면 아무렇게나 놓아도 저절로 합쳐진다) */
-	constexpr int32 DropMaxTier = 4;
+	/**
+	 * 본 근무에 떨어지는 꽃: 씨앗 ~ 튤립. 장미부터는 직접 키워야 한다.
+	 * (HTML은 데이지까지 - 종류가 적으면 아무렇게나 놓아도 저절로 합쳐졌다)
+	 */
+	constexpr int32 DropMaxTier = 3;
 	constexpr float PhysicsStep = 1.f / 120.f;
 	/** 물리 손잡이 (FlowerPhysics::FParams 덮어쓰기). 마찰 · 회전 감쇠가 크면 비스듬히 걸쳐 쌓인다 */
 	constexpr float Friction = 0.8f;
@@ -87,21 +87,26 @@ namespace FlowerGame
 	constexpr int32 OrderBaseTier = 3;
 
 	/**
-	 * 주문 순서. 건수가 늘수록 큰 꽃을 요구한다 (마지막 줄 반복). Second가 INDEX_NONE이면 한 송이 주문.
-	 * HTML은 튤립 · 장미만 나와서 아무 데나 놓아도 우연한 합성만으로 주문이 채워졌다
-	 * (시뮬레이션: 무작위로 놓아도 90초에 26건). 단계를 올려 넓게 · 쉬지 않고 놓아야 6~7건이 되게 했다.
+	 * 주문 묶음. 묶음의 꽃이 **작업대에 동시에 모두 있으면** 한꺼번에 포장한다 (떨어뜨린 꽃도 인정).
+	 * 같은 꽃 둘이 닿으면 합쳐져 버리므로 "튤립 2송이"는 서로 떨어뜨려 지켜야 한다 - 작업대를 계속 관리하게 만든다.
+	 * 끝까지 가면 RepeatFrom부터 다시 돈다. 빈칸은 INDEX_NONE.
 	 */
-	struct FOrderStep { int32 First; int32 Second; };
+	constexpr int32 MaxOrderFlowers = 3;
+	struct FOrderStep { int32 Tiers[MaxOrderFlowers]; };
 	const FOrderStep OrderSteps[] =
 	{
-		{ 3, INDEX_NONE },  // 튤립
-		{ 4, INDEX_NONE },  // 장미
-		{ 5, INDEX_NONE },  // 해바라기
-		{ 4, 5 },           // 장미 + 해바라기
-		{ 6, INDEX_NONE },  // 수국
-		{ 5, 6 },           // 해바라기 + 수국
-		{ 7, INDEX_NONE },  // 꽃다발 (이후 반복)
+		{ { 3, 3, INDEX_NONE } },  // 튤립 ×2
+		{ { 4, 3, INDEX_NONE } },  // 장미 + 튤립
+		{ { 5, 3, INDEX_NONE } },  // 해바라기 + 튤립
+		{ { 4, 4, INDEX_NONE } },  // 장미 ×2
+		{ { 5, 4, 3 } },           // 해바라기 + 장미 + 튤립
+		{ { 3, 3, 3 } },           // 튤립 ×3   ← 여기부터 반복
+		{ { 6, 4, INDEX_NONE } },  // 수국 + 장미
+		{ { 5, 5, INDEX_NONE } },  // 해바라기 ×2
+		{ { 6, 5, 3 } },           // 수국 + 해바라기 + 튤립
+		{ { 7, 4, INDEX_NONE } },  // 꽃다발 + 장미
 	};
+	constexpr int32 OrderRepeatFrom = 5;
 
 	/**
 	 * 연습 판 단계
@@ -430,8 +435,7 @@ void UFlowerMiniGameWidget::ResetRound()
 	BestTier = 0;
 	Over = 0.f;
 	Serial = 0;
-	Want = { FlowerGame::OrderBaseTier };
-	Fulfilled.Reset();
+	NextOrder();
 	Chain = 0;
 	ChainTimer = 0.f;
 	BestChain = 0;
@@ -629,8 +633,9 @@ void UFlowerMiniGameWidget::SetPracticeStep(int32 Step)
 	PracticeDropBase = Drops;
 
 	// 주문은 튤립 단계에서만 걸어 둔다 (그 전에 우연히 튤립이 생겨도 포장되지 않게)
-	Fulfilled.Reset();
 	Want.Reset();
+	WantReady.Reset();
+	ReadyIds.Reset();
 	if (Step == PracticeOrderStep)
 	{
 		Want = { OrderBaseTier };
@@ -728,17 +733,21 @@ void UFlowerMiniGameWidget::NextOrder()
 {
 	using namespace FlowerGame;
 
-	Fulfilled.Reset();
 	Want.Reset();
+	WantReady.Reset();
+	ReadyIds.Reset();
 	if (Mode == EMode::Practice)
 	{
-		return; // 연습 판 주문은 튤립 한 번뿐
+		return; // 연습 판 주문은 튤립 한 번뿐 (SetPracticeStep이 건다)
 	}
-	const FOrderStep& Step = OrderSteps[FMath::Min(Orders, static_cast<int32>(UE_ARRAY_COUNT(OrderSteps)) - 1)];
-	Want.Add(Step.First);
-	if (Step.Second != INDEX_NONE)
+	const int32 NumSteps = UE_ARRAY_COUNT(OrderSteps);
+	const int32 Index = Orders < NumSteps ? Orders : OrderRepeatFrom + (Orders - NumSteps) % (NumSteps - OrderRepeatFrom);
+	for (const int32 Tier : OrderSteps[Index].Tiers)
 	{
-		Want.Add(Step.Second);
+		if (Tier != INDEX_NONE)
+		{
+			Want.Add(Tier);
+		}
 	}
 }
 
@@ -746,35 +755,45 @@ void UFlowerMiniGameWidget::Fulfill()
 {
 	using namespace FlowerGame;
 
-	// 주문 꽃이 작업대에 피어 있으면 자동 포장 (두 꽃 주문은 하나씩 먼저 납품할 수 있다).
-	// 떨어뜨린 꽃(장미까지 떨어진다)은 받지 않는다 - 합성으로 피워 낸 꽃만.
-	for (int32 i = World->Count - 1; i >= 0; --i)
+	// 주문 칸마다 작업대 꽃을 하나씩 짝짓는다 (한 송이를 두 칸에 쓰지 않는다). 떨어뜨린 꽃도 인정.
+	WantReady.Init(false, Want.Num());
+	ReadyIds.Reset();
+	TArray<int32, TInlineAllocator<MaxOrderFlowers>> Picks;
+	for (int32 w = 0; w < Want.Num(); ++w)
 	{
-		const FlowerPhysics::FBody& Body = World->Bodies[i];
-		if (!Body.bBloomed)
+		for (int32 i = 0; i < World->Count; ++i)
 		{
-			continue;
+			const FlowerPhysics::FBody& Body = World->Bodies[i];
+			if (Body.Tier == Want[w] && !ReadyIds.Contains(Body.Id))
+			{
+				WantReady[w] = true;
+				ReadyIds.Add(Body.Id);
+				Picks.Add(i);
+				break;
+			}
 		}
-		const int32 WantIndex = Want.Find(Body.Tier);
-		if (WantIndex != INDEX_NONE)
-		{
-			const float R = World->Shapes[Body.Tier].EquivR;
-			Spray(Body.Tier, Body.X, Body.Y, 24, 320.f, 200.f);
-			AddRing(Body.X, Body.Y, R * 0.5f, 700.f, 0.25f, 0.f, Hex(TEXT("fff3c4")), true);
-			AddPop(Body.X, Body.Y, TEXT("포장 완료!"), Hex(TEXT("ffd18d")));
-			Fulfilled.Add(Body.Tier);
-			Want.RemoveAt(WantIndex);
-			World->RemoveAt(i);
-		}
+	}
+	if (Want.Num() == 0 || Picks.Num() < Want.Num())
+	{
+		return;
 	}
 
-	if (Want.Num() == 0 && Fulfilled.Num() > 0)
+	// 묶음이 작업대에 동시에 다 있다 → 한꺼번에 포장 (뒤 번호부터 지워야 앞 번호가 안 밀린다)
+	Picks.Sort([](const int32& A, const int32& B) { return A > B; });
+	for (const int32 Index : Picks)
 	{
-		++Orders;
-		AddPop(420.f, 620.f, FString::Printf(TEXT("주문 완료! %d건째"), Orders), Hex(TEXT("ffd18d")));
-		PlaySfx(TEXT("order"));
-		NextOrder();
+		const FlowerPhysics::FBody Body = World->Bodies[Index];
+		const float R = World->Shapes[Body.Tier].EquivR;
+		Spray(Body.Tier, Body.X, Body.Y, 24, 320.f, 200.f);
+		AddRing(Body.X, Body.Y, R * 0.5f, 700.f, 0.25f, 0.f, Hex(TEXT("fff3c4")), true);
+		AddPop(Body.X, Body.Y, TEXT("포장!"), Hex(TEXT("ffd18d")));
+		World->RemoveAt(Index);
 	}
+	++Orders;
+	AddPop(420.f, 620.f, FString::Printf(TEXT("주문 완료! %d건째"), Orders), Hex(TEXT("ffd18d")));
+	AddShake(4.f);
+	PlaySfx(TEXT("order"));
+	NextOrder();
 }
 
 void UFlowerMiniGameWidget::ProcessEvents()
@@ -1535,6 +1554,21 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 		PaintFlower(P, Body.X, Body.Y, Body.A + WobbleAngle, Body.Tier, Scale, 1.f, Squash);
 	}
 
+	// 주문에 잡혀 있는 꽃은 둥근 테두리로 - 합쳐 버리지 않게 지켜야 할 꽃
+	if (ReadyIds.Num() > 0 && Mode != EMode::Result)
+	{
+		const float Pulse = 0.55f + 0.35f * FMath::Sin(T * 5.f);
+		for (int32 i = 0; i < World->Count; ++i)
+		{
+			const FlowerPhysics::FBody& Body = World->Bodies[i];
+			if (ReadyIds.Contains(Body.Id))
+			{
+				const float Size = World->Shapes[Body.Tier].EquivR * 2.3f + 16.f;
+				P.Brush(&HighlightBrush, Body.X - Size * 0.5f, Body.Y - Size * 0.5f, Size, Size, WithAlpha(FLinearColor::White, Pulse));
+			}
+		}
+	}
+
 	if (Over > 0.f)
 	{
 		P.Text(FString::Printf(TEXT("넘치기까지 %.1f초"), FMath::Max(0.f, OverflowSeconds - Over)), 420.f, DangerLine + 25.f, 24.f, Hex(TEXT("b95170")), EAlign::Center, true, 2);
@@ -1586,39 +1620,50 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 		// 주문판 (원본 792×176 비율)
 		P.Brush(FindBrush(TEXT("order-panel")), LeftPanelX + 24.f, 455.f, 552.f, 123.f);
 		P.Text(TEXT("오늘의 주문"), L, 492.f, 20.f, Muted());
-		TArray<int32> Slots = Fulfilled;
-		const int32 DoneCount = Slots.Num();
-		Slots.Append(Want);
+		// 주문 이름: 같은 꽃은 묶어서 "튤립 ×2 + 장미"
 		FString OrderName;
-		for (int32 i = 0; i < Slots.Num(); ++i)
+		TArray<int32> Listed;
+		for (const int32 Tier : Want)
 		{
-			OrderName += (i > 0 ? TEXT(" + ") : TEXT("")) + FString(Tiers[Slots[i]].Name);
+			if (Listed.Contains(Tier))
+			{
+				continue;
+			}
+			Listed.Add(Tier);
+			int32 Count = 0;
+			for (const int32 Other : Want)
+			{
+				Count += Other == Tier ? 1 : 0;
+			}
+			OrderName += (OrderName.IsEmpty() ? TEXT("") : TEXT(" + ")) + FString(Tiers[Tier].Name);
+			if (Count > 1)
+			{
+				OrderName += FString::Printf(TEXT(" ×%d"), Count);
+			}
 		}
-		if (Slots.Num() == 0)
+		if (Want.Num() == 0)
 		{
 			OrderName = Mode == EMode::Practice ? TEXT("연습 중 - 주문 없음") : TEXT("다음 주문 준비 중");
 		}
-		else
-		{
-			OrderName += Slots.Num() > 1 ? TEXT(" 꽃다발") : Slots[0] == MaxTier ? TEXT(" 주문") : TEXT(" 한 송이");
-		}
 		P.Text(OrderName, L, 535.f, 34.f, Ink(), EAlign::Left, true);
 
-		for (int32 j = 0; j < Slots.Num(); ++j)
+		// 칸마다 지금 작업대에 있는지 실시간으로 (합쳐져 사라지면 다시 빈칸)
+		for (int32 j = 0; j < Want.Num(); ++j)
 		{
-			const bool bDone = j < DoneCount;
+			const bool bReady = WantReady.IsValidIndex(j) && WantReady[j];
 			const float X = L + j * 168.f;
-			P.Brush(bDone ? &SlotDoneBrush : &SlotWaitBrush, X, 605.f, 152.f, 125.f);
-			P.ArtCentered(FlowerBrush(Slots[j]), X + 76.f, 650.f, 80.f);
-			P.Text(bDone ? TEXT("포장 완료") : Tiers[Slots[j]].Name, X + 76.f, 708.f, 20.f, bDone ? Leaf() : Hex(TEXT("6c6952")), EAlign::Center, bDone);
+			P.Brush(bReady ? &SlotDoneBrush : &SlotWaitBrush, X, 605.f, 152.f, 125.f);
+			P.ArtCentered(FlowerBrush(Want[j]), X + 76.f, 650.f, 80.f, bReady ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.45f));
+			P.Text(bReady ? TEXT("있어요!") : Tiers[Want[j]].Name, X + 76.f, 708.f, 20.f, bReady ? Leaf() : Hex(TEXT("6c6952")), EAlign::Center, bReady);
 		}
-		P.Text(TEXT("합성으로 피워 낸 꽃만 포장돼요 (떨어뜨린 꽃 X)"), L, 760.f, 20.f, Muted());
+		P.Text(TEXT("작업대에 모두 함께 있으면 한꺼번에 포장돼요"), L, 760.f, 20.f, Muted());
+		P.Text(TEXT("같은 꽃끼리 닿으면 합쳐지니 떨어뜨려 두세요"), L, 790.f, 18.f, Rose());
 
 		// 놓을 꽃 · 다음 꽃
-		P.Text(TEXT("놓을 꽃"), L, 830.f, 22.f, Ink(), EAlign::Left, true);
-		P.ArtCentered(FlowerBrush(NextTier), L + 150.f, 830.f, 64.f);
-		P.Text(TEXT("다음"), L + 250.f, 830.f, 22.f, Muted());
-		P.ArtCentered(FlowerBrush(QueueTier), L + 330.f, 830.f, 56.f);
+		P.Text(TEXT("놓을 꽃"), L, 850.f, 22.f, Ink(), EAlign::Left, true);
+		P.ArtCentered(FlowerBrush(NextTier), L + 150.f, 850.f, 60.f);
+		P.Text(TEXT("다음"), L + 250.f, 850.f, 22.f, Muted());
+		P.ArtCentered(FlowerBrush(QueueTier), L + 330.f, 850.f, 52.f);
 
 		P.Box(L, 890.f, LeftEdge - L, 2.f, Line);
 		P.Text(TEXT("조작"), L, 930.f, 24.f, Ink(), EAlign::Left, true);
@@ -1714,7 +1759,7 @@ void UFlowerMiniGameWidget::PaintOverlay(FFlowerPainter& P) const
 		P.Text(TEXT("꽃이 피는 작업대"), 420.f, 370.f, 42.f, Ink(), EAlign::Center, true);
 		P.Text(TEXT("마우스로 위치를 고르고 클릭해서 꽃을 떨어뜨려요."), 420.f, 460.f, 26.f, Ink(), EAlign::Center);
 		P.Text(TEXT("같은 꽃 둘이 닿으면 다음 단계로 피어나요."), 420.f, 510.f, 26.f, Ink(), EAlign::Center);
-		P.Text(TEXT("주문 꽃을 피워 내면 자동 포장 · 위험선 위 2초면 끝"), 420.f, 560.f, 26.f, Ink(), EAlign::Center);
+		P.Text(TEXT("주문 꽃이 모두 작업대에 있으면 포장 · 위험선 2초면 끝"), 420.f, 560.f, 26.f, Ink(), EAlign::Center);
 		P.Text(FString::Printf(TEXT("%d초 근무 · P / Esc 일시정지"), FMath::RoundToInt(Duration)), 420.f, 610.f, 26.f, Ink(), EAlign::Center);
 		P.Text(FString::Printf(TEXT("급여 %s원 · 주문을 많이 채울수록 %s이 올라요"), *FString::FormatAsNumber(Reward.Money), *StatLabel(Reward.Stat)),
 			420.f, 690.f, 24.f, Leaf(), EAlign::Center);
@@ -1820,10 +1865,10 @@ void UFlowerMiniGameWidget::PaintTutorialPage(FFlowerPainter& P) const
 		{
 			TEXT("같은 꽃 둘이 닿으면 다음 단계로 피어나요."),
 			TEXT("해바라기부터는 피어날 때 쿵! 주변 꽃을 밀어내요."),
-			TEXT("꽃다발 둘을 합치면 특대 꽃다발 - 주문 1건으로 쳐요."),
+			TEXT("튤립 ×2 주문이면 튤립끼리 닿지 않게 떨어뜨려 두세요."),
 		},
 		{
-			TEXT("주문판의 꽃을 합성으로 피워 내면 자동으로 포장돼요."),
+			TEXT("주문 꽃이 작업대에 모두 함께 있으면 한꺼번에 포장돼요."),
 			TEXT("꽃이 위험선 위로 2초 넘게 쌓이면 근무가 끝나요."),
 			FString::Printf(TEXT("주문을 많이 채울수록 %s이 더 올라요 (급여는 고정)."), *Stat),
 		},
@@ -1893,7 +1938,7 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 		{ TEXT("마우스로 위치를 고르고 클릭해 씨앗을 떨어뜨려요"), TEXT("← → · A D로 옮기고 Space로 떨어뜨려도 돼요") },
 		{ TEXT("방금 씨앗 위에 씨앗을 하나 더 떨어뜨려요"), TEXT("같은 꽃 둘이 닿으면 다음 단계로 피어나요") },
 		{ TEXT("이번엔 새싹끼리 붙여 데이지를 피워요"), TEXT("단계가 오를수록 꽃이 커져요") },
-		{ TEXT("데이지끼리 합쳐 주문한 튤립을 피워요"), TEXT("직접 피워 낸 꽃만 포장돼요 - 떨어뜨린 튤립은 안 받아요") },
+		{ TEXT("데이지끼리 합쳐 주문한 튤립을 피워요"), TEXT("주문 꽃이 작업대에 있으면 바로 포장돼요") },
 		{ TEXT("위험선을 조심해요!"), TEXT("작업대가 넘치면 근무가 바로 끝나요") },
 		{ TEXT("준비 끝! 곧 출근해요"), TEXT("") },
 	};

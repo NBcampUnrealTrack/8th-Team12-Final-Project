@@ -100,8 +100,6 @@ namespace FlowerPhysics
 		float Age = 0.f;
 		/** 처음 어딘가에 닿았는지 - 착지 효과는 한 번만 */
 		bool bLanded = false;
-		/** 합성으로 피어난 꽃인지. 주문은 피워 낸 꽃만 받는다 (떨어뜨린 꽃을 바로 납품하지 못하게) */
-		bool bBloomed = false;
 		// ---- 연출용 (물리에는 안 쓴다) ----
 		float Pop = 0.f;
 		float Squash = 0.f;
@@ -486,7 +484,6 @@ namespace FlowerPhysics
 				if (FBody* Born = FindById(E.Id))
 				{
 					Born->bLanded = true; // 피어난 자리에서 시작 - 착지 효과는 주지 않는다
-					Born->bBloomed = true;
 					Born->VX = (A.VX + B.VX) * 0.5f;
 					Born->W = (A.W + B.W) * 0.5f;
 				}

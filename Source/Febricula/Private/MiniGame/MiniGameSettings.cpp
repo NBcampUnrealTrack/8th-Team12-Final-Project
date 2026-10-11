@@ -38,10 +38,9 @@ UMiniGameSettings::UMiniGameSettings()
 	Flower.FallbackReturnLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/MiniGame/Maps/L_MiniGameTest.L_MiniGameTest")));
 	Flower.MoneyReward = 30000;
 	Flower.RewardStat = TEXT("Health");
-	// 완료 주문 수 0~6건 +1, 7~9건 +2, 10~12건 +3, 13~14건 +4, 15건 이상 +5.
-	// 난이도 시뮬레이션(실제 물리 코드 그대로, 전략별 30판, 중앙값) 기준:
-	//   아무렇게나 연타 8건(73% 넘침) +2 · 한 자리 연타 12건(47% 넘침) +3 · 천천히 신중하게 10건 +3
-	//   · 빠르고 정확하게 13건(최대 16) +4~+5. 최대 보상은 빠르고 정확해야 나온다.
-	Flower.StatThresholds = { 7, 10, 13, 15 };
+	// 완료 주문 수 0~6건 +1, 7~9건 +2, 10~11건 +3, 12~13건 +4, 14건 이상 +5.
+	// 주문은 묶음이 작업대에 동시에 다 있어야 완료된다. 난이도 시뮬레이션(실제 물리 코드 그대로, 전략별 30판) 기준
+	// 천천히(0.6초 간격) 9건 +2, 쉬지 않고 놓으면 11~13건 +3~+4, 14건(+5)은 30판 중 손에 꼽게 나온다.
+	Flower.StatThresholds = { 7, 10, 12, 14 };
 	Levels.Add(TEXT("FlowerHouse"), Flower);
 }

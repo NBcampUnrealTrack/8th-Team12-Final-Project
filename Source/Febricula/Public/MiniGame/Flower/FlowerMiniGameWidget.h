@@ -272,9 +272,12 @@ private:
 	/** 위험선 위에 쌓여 있던 시간 (2초면 끝) */
 	float Over = 0.f;
 	int32 Serial = 0;
-	/** 남은 주문 꽃 단계 / 이번 주문에서 이미 포장한 꽃 단계 */
+	/** 지금 주문의 꽃 단계들 (같은 단계가 여러 번 나올 수 있다) */
 	TArray<int32> Want;
-	TArray<int32> Fulfilled;
+	/** Want 칸마다 지금 작업대에 해당 꽃이 있는지 (주문판 체크 표시) */
+	TArray<bool> WantReady;
+	/** 주문에 잡혀 있는 작업대 꽃 Id (작업대에 테두리로 표시) */
+	TArray<int32> ReadyIds;
 	int32 Chain = 0;
 	float ChainTimer = 0.f;
 	int32 BestChain = 0;
