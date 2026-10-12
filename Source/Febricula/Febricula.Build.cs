@@ -19,6 +19,8 @@ public class Febricula : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
+			// [skydodo] 2026-10-10 추가: 미니게임 위젯이 NativePaint에서 직접 그린다 (FSlateDrawElement, 브러시, 글꼴)
+			"SlateCore",
 			"DeveloperSettings",
 			"GameplayTags", "CinematicCamera",
 			// BurgerHouse — 손님이 앉을 자리로 순간이동할 때 내비메시에 투영한다

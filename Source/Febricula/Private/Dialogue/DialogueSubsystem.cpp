@@ -31,6 +31,8 @@
 #include "NPC/MainNpc/MainNpcAIController.h"
 #include "NPC/MainNpc/MainNpcCharacter.h"
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"
+#include "WorldPartition/HLOD/HLODActor.h"
+#include "Dialogue/DialogueLogSubsystem.h"
 
 TStatId UDialogueSubsystem::GetStatId() const
 {
@@ -481,6 +483,14 @@ void UDialogueSubsystem::SelectChoice(int32 ChoiceIndex, bool bYesNo)
 		return;
 	}
 
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			Log->AddPlayerChoice(Chosen.Text);
+		}
+	}
+
 	if (bYesNo == true)
 	{
 		if (ChoiceIndex == PendingChoices.Num() - 1)
@@ -692,7 +702,7 @@ void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
 		HoldingSpeaker = Row.SpeakerName;
 		HoldingDialogue = Row.Text;
 		bDialogueActive = true;
-		OnDialogueLine.Broadcast(Row.SpeakerName, Row.Text);
+		BroadcastDialogueLine(Row.SpeakerName, Row.Text);
 		UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
 
 		if (Row.Choices.Num() > 0)
@@ -726,6 +736,18 @@ void UDialogueSubsystem::PresentChoices(const TArray<FDialogueChoice>& InChoices
 		UE_LOG(LogTemp, Warning, TEXT("View Name2: %s"), *Choice.Text.ToString());		
 	}
 	HoldingChoices = Views;
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+	{
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			TArray<FText> ChoiceTexts;
+			for (const FDialogueChoiceView& V : Views)
+			{
+				ChoiceTexts.Add(V.Text);
+			}
+			Log->AttachChoices(ChoiceTexts);
+		}
+	}
 	OnDialogueChoices.Broadcast(Views, bYesNo);
 	UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueChoices.IsBound());
 	bWaitingForChoice = true;
@@ -1559,15 +1581,12 @@ ABaseNpcCharacter* UDialogueSubsystem::FindNpcById(FName NpcId) const
 
 void UDialogueSubsystem::BroadcastDialogueLine(const FText& Speaker, const FText& Body)
 {
-	FDialogueLogEntry Entry;
-	Entry.Speaker = Speaker;
-	Entry.Body = Body;
-	DialogueLog.Add(Entry);
-
-	if (MaxLogEntries > 0 && DialogueLog.Num() > MaxLogEntries)
+	if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
 	{
-		DialogueLog.RemoveAt(0, DialogueLog.Num() - MaxLogEntries);
+		if (UDialogueLogSubsystem* Log = GI->GetSubsystem<UDialogueLogSubsystem>())
+		{
+			Log->AddLine(Speaker, Body);
+		}
 	}
-
 	OnDialogueLine.Broadcast(Speaker, Body);
 }

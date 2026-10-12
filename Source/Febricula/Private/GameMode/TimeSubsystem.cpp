@@ -18,6 +18,7 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	MaxMonth = S->MaxMonth;
 
+	StartMonth = S->StartMonth;
 	NowMonth = S->StartMonth;
 	MaxDay = GetDayPerMonth();
 
@@ -243,6 +244,40 @@ FTimeSaveData UTimeSubsystem::GetSaveData() const
 	Data.NowSchedule = NowSchedule;
 	Data.NowRepeatCount = NowRepeatCount;
 	return Data;
+}
+
+void UTimeSubsystem::GoBackOneDay()
+{
+	if (AbsoluteDay <= 1) return;
+	--AbsoluteDay;
+	RecalcFromAbsoluteDay(AbsoluteDay);
+	OnDayChanged.Broadcast(NowDay);
+}
+
+void UTimeSubsystem::SetAbsoluteDay(int32 NewAbsoluteDay)
+{
+	AbsoluteDay = FMath::Max(NewAbsoluteDay, 1);
+	RecalcFromAbsoluteDay(AbsoluteDay);
+	OnDayChanged.Broadcast(NowDay);
+}
+
+void UTimeSubsystem::RecalcFromAbsoluteDay(int32 InAbsoluteDay)
+{
+	int32 Remaining = InAbsoluteDay - 1;
+	int32 Month = StartMonth;
+	while (true)
+	{
+		const int32 DaysInMonth = (Month % 2 == 1) ? 31 : 30;
+		if (Remaining < DaysInMonth)
+		{
+			NowDay = Remaining + 1;
+			NowMonth = Month;
+			MaxDay = DaysInMonth;
+			return;
+		}
+		Remaining -= DaysInMonth;
+		if (++Month > 12) Month = 1;
+	}
 }
 
 void UTimeSubsystem::LoadSaveData(const FTimeSaveData& Data)

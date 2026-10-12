@@ -15,8 +15,8 @@
 #include "GameFramework/SaveGame.h"
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"
 #include "GameMode/TimeSubsystem.h"
-#include "Dialogue/DialogueSubsystem.h"
 #include "Progress/GameProgressSaveData.h"
+#include "Dialogue/DialogueLogSubsystem.h"
 #include "FebriculaSaveGame.generated.h"
 
 UCLASS()

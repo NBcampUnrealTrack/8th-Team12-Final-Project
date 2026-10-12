@@ -63,8 +63,14 @@ void AMainNpcAIController::AdvancePatrolTarget()
 		return;
 	}
 
-	// 순찰은 끝에 닿으면 처음으로 순환한다 (GetNextIndex가 감아준다).
-	const int32 NextIndex = Route->GetNextIndex(BBComp->GetValueAsInt(BBKey_RouteIndex));
+	const int32 ReachedIndex = BBComp->GetValueAsInt(BBKey_RouteIndex);
+
+	// BT Patrol 분기는 MoveTo 다음에 RotateToTarget(RouteTargetRotator)이 온다.
+	// 이 함수는 도착 즉시(그 태스크보다 먼저) 불리므로, 방향은 방금 도착한 지점 것으로 둬야 거기서 제대로 돈다.
+	BBComp->SetValueAsRotator(BBKey_RouteTargetRotator, Route->GetPointRotation(ReachedIndex));
+
+	// 위치만 다음 지점으로. 순찰은 끝에 닿으면 처음으로 순환한다 (GetNextIndex가 감아준다).
+	const int32 NextIndex = Route->GetNextIndex(ReachedIndex);
 	BBComp->SetValueAsInt(BBKey_RouteIndex, NextIndex);
 	BBComp->SetValueAsVector(BBKey_RouteTargetLocation, Route->GetPointLocation(NextIndex));
 }
