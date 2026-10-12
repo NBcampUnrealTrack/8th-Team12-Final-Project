@@ -170,9 +170,9 @@ struct FBurgerPainter
 	}
 
 	/** HTML의 art(): (X, Y)를 가운데로 Size×Size */
-	void ArtCentered(const FSlateBrush* InBrush, float X, float Y, float Size)
+	void ArtCentered(const FSlateBrush* InBrush, float X, float Y, float Size, const FLinearColor& Tint = FLinearColor::White)
 	{
-		Brush(InBrush, X - Size * 0.5f, Y - Size * 0.5f, Size, Size);
+		Brush(InBrush, X - Size * 0.5f, Y - Size * 0.5f, Size, Size, Tint);
 	}
 
 	/** HTML의 txt(): Y는 글자 세로 가운데. 크기는 CSS px */
@@ -1233,111 +1233,141 @@ void UBurgerMiniGameWidget::PaintSidePanels(FBurgerPainter& P) const
 	const bool bRush = T >= Duration - RushSeconds;
 	const FLinearColor Line = Hex(TEXT("dbc6ae"));
 
-	// ---- 왼쪽: 시간 · 점수 · 주문 · 조작 ----
+	const FLinearColor Alert = Hex(TEXT("c14b40"));
+
+	// 패널은 "주문표"와 "시간 · 점수" 두 가지만 담는다 (꽃집과 같은 구성). 가짓수를 줄인 대신 남는 자리는
+	// 그 정보를 크게 키워 채운다. 상태 문구 · 팁 · 기록은 뺐다 (작업대 위 경고 · 튜토리얼 · 결과 화면에 있다).
+
+	// ---- 왼쪽: 주문표 + 트레이 ----
 	{
 		const float L = LeftPanelX + 44.f;
+		const float LeftEdge = LeftPanelX + PanelW - 44.f;
 		P.Brush(&PanelBrush, LeftPanelX, 40.f, PanelW, 1160.f);
-		P.Text(TEXT("PART-TIME / BURGER SHOP"), L, 100.f, 20.f, Hex(TEXT("b56b55")));
-		P.Text(TEXT("BURGER DAY"), L, 150.f, 44.f, Coral(), EAlign::Left, true);
-
-		P.Text(TEXT("남은 시간"), L, 240.f, 22.f, Muted());
-		if (Mode == EMode::Practice)
-		{
-			P.Text(TEXT("연습"), L, 310.f, 88.f, Green(), EAlign::Left, true);
-		}
-		else
-		{
-			P.Text(FString::Printf(TEXT("%d초"), FMath::CeilToInt(Duration - T)), L, 310.f, 88.f,
-				bRush ? Hex(TEXT("c14b40")) : Ink(), EAlign::Left, true);
-		}
-		P.Text(FString::Printf(TEXT("완성 %d개  ·  연속 %d"), Orders, Combo), L, 400.f, 30.f, Ink());
 
 		// 주문판 (원본 792×176 비율)
 		const FRecipe& Recipe = Recipes[RecipeIndex];
-		P.Brush(FindBrush(TEXT("order-panel")), LeftPanelX + 24.f, 455.f, 552.f, 123.f);
-		P.Text(TEXT("지금 주문"), L, 492.f, 20.f, Muted());
-		P.Text(Recipe.Name, L, 535.f, 34.f, Ink(), EAlign::Left, true);
+		P.Brush(FindBrush(TEXT("order-panel")), LeftPanelX + 24.f, 70.f, 552.f, 123.f);
+		P.Text(TEXT("지금 주문"), L, 107.f, 20.f, Muted());
+		P.Text(Recipe.Name, L, 150.f, 34.f, Ink(), EAlign::Left, true);
 
+		// 재료 칸 - 패널 폭을 다 쓰게 크게 (최대 4칸)
 		TArray<int32> Unused = Got;
 		for (int32 j = 0; j < Recipe.Count; ++j)
 		{
 			const int32 Id = Recipe.Parts[j];
 			const bool bDone = Unused.RemoveSingle(Id) > 0;
-			const float X = L + j * 128.f;
-			P.Brush(bDone ? &SlotDoneBrush : &SlotWaitBrush, X, 605.f, 112.f, 125.f);
-			P.ArtCentered(FindBrush(Ingredients[Id].Asset), X + 56.f, 652.f, 84.f);
-			P.Text(bDone ? TEXT("완료") : Ingredients[Id].Name, X + 56.f, 708.f, 20.f, bDone ? Green() : Hex(TEXT("8f7868")), EAlign::Center, bDone);
+			const float X = L + j * 132.f;
+			P.Brush(bDone ? &SlotDoneBrush : &SlotWaitBrush, X, 225.f, 116.f, 215.f);
+			P.ArtCentered(FindBrush(Ingredients[Id].Asset), X + 58.f, 310.f, 100.f);
+			P.Text(bDone ? TEXT("완료") : Ingredients[Id].Name, X + 58.f, 405.f, 22.f, bDone ? Green() : Hex(TEXT("8f7868")), EAlign::Center, bDone);
 		}
-		P.Text(TEXT("순서 상관없이 · 빵은 세트 1개면 돼요"), L, 770.f, 20.f, Muted());
+		P.Text(TEXT("순서 상관없이 · 빵은 세트 1개면 돼요"), L, 485.f, 20.f, Muted());
+		if (Mode == EMode::Play && Missing().Num() == 0)
+		{
+			P.Text(TEXT("완성! Space로 제출해요"), L, 520.f, 22.f, Green(), EAlign::Left, true);
+		}
 
-		P.Box(L, 860.f, PanelW - 88.f, 2.f, Line);
-		P.Text(TEXT("조작"), L, 905.f, 24.f, Ink(), EAlign::Left, true);
-		P.Text(TEXT("방향키 / A · D"), L, 955.f, 22.f, Ink());
-		P.Text(TEXT("이동"), L + PanelW - 88.f, 955.f, 22.f, Muted(), EAlign::Right);
-		P.Text(TEXT("Space"), L, 1000.f, 22.f, Ink());
-		P.Text(TEXT("제출 · 정리"), L + PanelW - 88.f, 1000.f, 22.f, Muted(), EAlign::Right);
-		P.Text(TEXT("P / Esc"), L, 1045.f, 22.f, Ink());
-		P.Text(TEXT("일시정지"), L + PanelW - 88.f, 1045.f, 22.f, Muted(), EAlign::Right);
+		// 트레이 - 무게가 곧 속도라 크게
+		const int32 Load = Got.Num() + Junk;
+		const bool bHeavy = Load >= HeavyWarnLoad;
+		P.Box(L, 575.f, LeftEdge - L, 2.f, Line);
+		P.Text(TEXT("트레이"), L, 630.f, 24.f, Ink(), EAlign::Left, true);
+		P.Text(TEXT("가벼울수록 빨리 움직여요"), LeftEdge, 630.f, 20.f, Muted(), EAlign::Right);
+		P.Text(FString::Printf(TEXT("%d / 10"), Load), L, 725.f, 72.f, bHeavy ? Alert : Ink(), EAlign::Left, true);
+		P.Text(FString::Printf(TEXT("속도 %d%%"), FMath::RoundToInt(GetSpeedRatio() * 100.f)), LeftEdge, 735.f, 36.f, bHeavy ? Alert : Muted(), EAlign::Right, true);
+		P.Brush(&BarBackBrush, L, 800.f, LeftEdge - L, 30.f);
+		const float Fill = (LeftEdge - L) * FMath::Min(1.f, Load / 10.f);
+		if (Fill > 0.f)
+		{
+			P.Brush(&BarFillBrush, L, 800.f, Fill, 30.f);
+		}
+
+		// 트레이 위 재료를 그대로 (치워야 할 재료는 어둡게)
+		TArray<int32> OnTray = Got;
+		OnTray.Append(JunkIds);
+		if (OnTray.Num() == 0)
+		{
+			P.Text(TEXT("비어 있어요"), L, 905.f, 22.f, Muted());
+		}
+		for (int32 j = 0; j < OnTray.Num() && j < 10; ++j)
+		{
+			const int32 Id = OnTray[j];
+			const bool bJunk = j >= Got.Num();
+			const TCHAR* Asset = Id == SpoiledId ? TEXT("spoiled_patty") : Ingredients[Id].Asset;
+			P.ArtCentered(FindBrush(Asset), L + 26.f + j * 51.f, 905.f, 48.f, bJunk ? FLinearColor(0.75f, 0.7f, 0.7f, 1.f) : FLinearColor::White);
+		}
+		if (Junk > 0)
+		{
+			P.Text(FString::Printf(TEXT("필요 없는 재료 %d개 · Space로 치워요"), Junk), L, 970.f, 22.f, Hex(TEXT("b1574c")), EAlign::Left, true);
+		}
+
+		P.Box(L, 1030.f, LeftEdge - L, 2.f, Line);
+		P.Text(TEXT("방향키 / A · D  이동    Space  제출 · 정리"), L, 1085.f, 20.f, Muted());
+		P.Text(TEXT("P / Esc  일시정지"), L, 1125.f, 20.f, Muted());
 	}
 
-	// ---- 오른쪽: 상태 · 보상 · 트레이 · 기록 ----
+	// ---- 오른쪽: 시간 · 점수 (+ 재료 안내) ----
 	{
 		const float R = RightPanelX + 44.f;
 		const float RightEdge = RightPanelX + PanelW - 44.f;
+		const float Mid = RightPanelX + PanelW * 0.5f + 10.f;
 		P.Brush(&PanelBrush, RightPanelX, 40.f, PanelW, 1160.f);
-		P.Text(TEXT("오늘의 근무"), R, 110.f, 30.f, Ink(), EAlign::Left, true);
 
-		// 상태판 (원본 800×100 비율)
-		P.Brush(FindBrush(TEXT("status-panel")), RightPanelX + 24.f, 160.f, 552.f, 69.f);
-		const FString Status = Mode == EMode::Practice ? TEXT("연습 중 - 시간 제한 없어요")
-			: Mode != EMode::Play ? TEXT("근무 준비 중")
-			: Stun > 0.f ? TEXT("배탈! 잠깐 못 움직여요")
-			: Serving > 0.f ? TEXT("포장 중이에요")
-			: Missing().Num() == 0 ? TEXT("주문 완성! Space로 제출해 주세요")
-			: Junk > 0 ? TEXT("불필요한 재료는 Space로 치워요")
-			: TEXT("주문판의 재료를 트레이로 받아 주세요");
-		P.Text(Status, RightPanelX + PanelW * 0.5f, 194.f, 22.f, Ink(), EAlign::Center);
+		P.Text(TEXT("남은 시간"), R, 110.f, 24.f, Muted());
+		if (Mode == EMode::Practice)
+		{
+			P.Text(TEXT("연습"), R, 215.f, 104.f, Green(), EAlign::Left, true);
+		}
+		else
+		{
+			P.Text(FString::Printf(TEXT("%d초"), FMath::CeilToInt(Duration - T)), R, 215.f, 104.f, bRush ? Alert : Ink(), EAlign::Left, true);
+		}
+		P.Text(TEXT("완성한 버거"), Mid, 110.f, 24.f, Muted());
+		P.Text(FString::Printf(TEXT("%d개"), Orders), Mid, 215.f, 104.f, Ink(), EAlign::Left, true);
 
-		// 예상 보상 + 다음 단계까지 몇 개 남았는지
+		// 예상 보상: 지금 받을 손재주 + 다음 단계까지 남은 개수
 		const FMiniGameReward Preview = PreviewReward(Orders);
-		P.Text(TEXT("예상 보상"), R, 300.f, 22.f, Muted());
-		P.Text(FString::Printf(TEXT("손재주 +%d"), Preview.StatAmount), R, 362.f, 48.f, Coral(), EAlign::Left, true);
-		P.Text(FString::Printf(TEXT("급여 %s원 (고정)"), *FString::FormatAsNumber(Preview.Money)), R, 428.f, 26.f, Ink());
+		P.Box(R, 320.f, RightEdge - R, 2.f, Line);
+		P.Text(TEXT("예상 보상"), R, 370.f, 22.f, Muted());
+		P.Text(FString::Printf(TEXT("급여 %s원"), *FString::FormatAsNumber(Preview.Money)), RightEdge, 370.f, 22.f, Muted(), EAlign::Right);
+		P.Text(FString::Printf(TEXT("손재주 +%d"), Preview.StatAmount), R, 430.f, 48.f, Coral(), EAlign::Left, true);
 		for (int32 More = 1; More <= 20; ++More)
 		{
 			if (PreviewReward(Orders + More).StatAmount > Preview.StatAmount)
 			{
-				P.Text(FString::Printf(TEXT("%d개 더 완성하면 +%d"), More, Preview.StatAmount + 1), R, 470.f, 22.f, Muted());
+				P.Text(FString::Printf(TEXT("%d개 더 완성하면 +%d"), More, Preview.StatAmount + 1), RightEdge, 435.f, 22.f, Muted(), EAlign::Right);
 				break;
 			}
 		}
 
-		// 트레이 적재량
-		const int32 Load = Got.Num() + Junk;
-		P.Text(TEXT("트레이 적재량"), R, 560.f, 24.f, Ink(), EAlign::Left, true);
-		P.Text(FString::Printf(TEXT("%d / 10 · 속도 %d%%"), Load, FMath::RoundToInt(GetSpeedRatio() * 100.f)), RightEdge, 560.f, 22.f,
-			Load >= HeavyWarnLoad ? Hex(TEXT("c14b40")) : Muted(), EAlign::Right);
-		P.Brush(&BarBackBrush, R, 592.f, RightEdge - R, 24.f);
-		const float Fill = (RightEdge - R) * FMath::Min(1.f, Load / 10.f);
-		if (Fill > 0.f)
+		// 떨어지는 재료 안내 - 지금 주문에 필요한 재료는 또렷하게, 나머지는 흐리게. 상한 패티는 늘 경고색.
+		const FRecipe& Recipe = Recipes[RecipeIndex];
+		P.Box(R, 510.f, RightEdge - R, 2.f, Line);
+		P.Text(TEXT("떨어지는 재료"), R, 560.f, 24.f, Ink(), EAlign::Left, true);
+		P.Text(TEXT("지금 주문에 필요한 것만 받아요"), RightEdge, 560.f, 20.f, Muted(), EAlign::Right);
+		for (int32 i = 0; i <= NumIngredients; ++i)
 		{
-			P.Brush(&BarFillBrush, R, 592.f, Fill, 24.f);
+			const float X = R + 85.f + (i % 3) * 171.f;
+			const float Y = 680.f + (i / 3) * 200.f;
+			if (i == SpoiledId)
+			{
+				P.ArtCentered(FindBrush(TEXT("spoiled_patty")), X, Y, 96.f);
+				P.Text(TEXT("상한 패티"), X, Y + 70.f, 20.f, Alert, EAlign::Center, true);
+				P.Text(TEXT("완성 -1 · 잠깐 멈춤"), X, Y + 98.f, 16.f, Hex(TEXT("b1574c")), EAlign::Center);
+				continue;
+			}
+			bool bNeeded = false;
+			for (int32 j = 0; j < Recipe.Count; ++j)
+			{
+				bNeeded |= Recipe.Parts[j] == i;
+			}
+			P.ArtCentered(FindBrush(Ingredients[i].Asset), X, Y, 96.f, bNeeded ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.35f));
+			P.Text(Ingredients[i].Name, X, Y + 70.f, 20.f, bNeeded ? Ink() : Hex(TEXT("b3a091")), EAlign::Center, bNeeded);
 		}
-		P.Text(Junk > 0 ? FString::Printf(TEXT("정리할 재료 %d개 · Space로 치워요"), Junk) : FString(TEXT("가벼울수록 빨리 움직여요")),
-			R, 650.f, 22.f, Junk > 0 ? Hex(TEXT("b1574c")) : Muted());
 
-		// 기록
-		P.Box(R, 720.f, RightEdge - R, 2.f, Line);
-		P.Text(TEXT("최고 연속"), R, 770.f, 24.f, Ink());
-		P.Text(FString::Printf(TEXT("%d개"), Best), RightEdge, 770.f, 24.f, Ink(), EAlign::Right, true);
-		P.Text(TEXT("불필요한 재료"), R, 820.f, 24.f, Ink());
-		P.Text(FString::Printf(TEXT("%d회"), Errors - SpoiledCount), RightEdge, 820.f, 24.f, Ink(), EAlign::Right, true);
-		P.Text(TEXT("상한 패티"), R, 870.f, 24.f, Ink());
-		P.Text(FString::Printf(TEXT("%d회"), SpoiledCount), RightEdge, 870.f, 24.f, SpoiledCount > 0 ? Hex(TEXT("c14b40")) : Ink(), EAlign::Right, true);
-
-		P.Text(TEXT("상한 패티는 완성 -1 · 잠깐 못 움직여요"), R, 1040.f, 20.f, Hex(TEXT("b1574c")));
-		P.Text(TEXT("완성하면 바로 제출해야 다시 가벼워져요"), R, 1080.f, 20.f, Muted());
-		P.Text(TEXT("마지막 10초에는 재료가 더 자주 떨어져요"), R, 1120.f, 20.f, Muted());
+		P.Box(R, 1030.f, RightEdge - R, 2.f, Line);
+		P.Text(TEXT("연속 완성"), R, 1100.f, 22.f, Muted());
+		P.Text(FString::Printf(TEXT("%d개  (최고 %d개)"), Combo, Best), RightEdge, 1100.f, 26.f, Ink(), EAlign::Right, true);
 	}
 }
 
@@ -1377,6 +1407,12 @@ void UBurgerMiniGameWidget::PaintOverlay(FBurgerPainter& P) const
 		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 470.f, 19.f, Tag, EAlign::Center);
 		P.Text(TEXT("잠깐, 쉬는 시간"), 420.f, 540.f, 42.f, Ink(), EAlign::Center, true);
 		P.Text(TEXT("시간이 멈췄습니다."), 420.f, 610.f, 26.f, Ink(), EAlign::Center);
+
+		// 조작법은 패널 아래쪽에 작게 두고, 여기서 한 번 더 크게
+		P.Text(TEXT("조작"), 420.f, 800.f, 24.f, Ink(), EAlign::Center, true);
+		P.Text(TEXT("방향키 / A · D  -  이동"), 420.f, 850.f, 22.f, Ink(), EAlign::Center);
+		P.Text(TEXT("Space  -  제출 · 정리"), 420.f, 892.f, 22.f, Ink(), EAlign::Center);
+		P.Text(TEXT("P / Esc  -  일시정지"), 420.f, 934.f, 22.f, Ink(), EAlign::Center);
 	}
 	else if (Mode == EMode::Result)
 	{
