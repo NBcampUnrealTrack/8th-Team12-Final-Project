@@ -38,10 +38,25 @@ public:
 
 	const FString& GetPreviousLevel() const { return PreviousLevel; }
 
+	/**
+	 * 문으로 미니게임에 들어갈 때 플레이어가 서 있던 자리. 돌아오면 PlayerStart 대신 이 자리에 세운다.
+	 * (PlayerStart가 행인이 다니는 길 위면, 돌아오자마자 행인 무리에 밀려 혼자 움직이는 것처럼 보였다)
+	 */
+	void SetReturnPoint(const UWorld& World, const FTransform& Transform);
+
+	/** 이 레벨에 쓸 돌아올 자리가 있으면 꺼낸다 (한 번 쓰면 지운다) */
+	bool ConsumeReturnPoint(const UWorld& World, FTransform& OutTransform);
+
+	static FString GetLevelPath(const UWorld& World);
+
 private:
 	/** 긴 패키지 경로 (PIE 접두사 제거). 예: /Game/MiniGame/Maps/L_MiniGameTest */
 	FString CurrentLevel;
 	FString PreviousLevel;
+
+	FString ReturnPointLevel;
+	FTransform ReturnPoint;
+	bool bHasReturnPoint = false;
 };
 
 UCLASS()
@@ -76,6 +91,9 @@ public:
 private:
 	/** 플레이어 폰이 생길 때까지 잠깐 기다렸다가 시작한다 */
 	void TryStart();
+
+	/** 미니게임에서 돌아온 레벨: 들어간 자리로 되돌리고 키보드 포커스를 게임 화면으로 돌려준다 */
+	void TryRestoreReturnPoint();
 	void StartMiniGame(APlayerController* PC);
 
 	static FName GetLevelShortName(const UWorld& World);
@@ -99,6 +117,10 @@ private:
 
 	FTimerHandle StartTimer;
 	int32 StartAttempts = 0;
+
+	FTransform PendingReturnPoint;
+	FTimerHandle ReturnTimer;
+	int32 ReturnAttempts = 0;
 
 	bool bRewardGranted = false;
 	FMiniGameReward GrantedReward;
