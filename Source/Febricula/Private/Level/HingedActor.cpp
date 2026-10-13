@@ -56,11 +56,13 @@ void AHingedActor::OpenActor(AActor* Interactor, bool bInstant)
 	}
 }
 
+// [skydodo] 2026-10-13 버그 수정: 'CurrentMove >= 0'은 항상 참이라 닫힘이 끝나지 않고 타이머가 영원히 돌았다(ExecuteActionsWrapper도 호출 안 됨)
 void AHingedActor::CloseActor(AActor* Interactor, bool bInstant)
 {
 	Super::CloseActor(Interactor);
 	bool bEnd = true;
-	if (CurrentMove >= 0)
+	// 0까지 다 닫힌 다음 틱에 종료한다 (>= 0이면 항상 참이라 타이머가 끝나지 않았다)
+	if (CurrentMove > 0)
 	{
 		const FVector Axis = AxisComponent->GetRelativeRotation().Vector().GetSafeNormal();
 		if (!bInstant)

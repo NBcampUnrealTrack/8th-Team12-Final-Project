@@ -101,9 +101,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
 	void SetStat(FName StatId, int32 NewValue)
 	{
-		const int32 Val = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
-		if (Val == INDEX_NONE) return;
-		Stats[Val] = NewValue;
+		int32 Index;
+		if (!TryGetStatIndex(StatId, Index)) return;
+		Stats[Index] = NewValue;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
@@ -174,4 +174,7 @@ protected:
 
 	UPROPERTY()
 	int32 Stats[static_cast<uint8>(EPlayerStat::Max)];
+
+	/** 스탯 이름을 Stats 배열 인덱스로 바꾼다. 없는 이름이면 경고를 남기고 false */
+	static bool TryGetStatIndex(FName StatId, int32& OutIndex);
 };

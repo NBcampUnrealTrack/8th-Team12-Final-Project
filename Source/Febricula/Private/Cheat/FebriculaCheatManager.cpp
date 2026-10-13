@@ -76,8 +76,10 @@ void UFebriculaCheatManager::AddClearedEvent(FName EventId)
 	}
 }
 
+// [skydodo] 2026-10-13 버그 수정: 아래 세 함수는 Shipping에 없는 디버그 함수를 불러 Shipping 빌드가 깨졌다 -> 본문을 가드
 void UFebriculaCheatManager::GetRunnableActivities()
 {
+#if !UE_BUILD_SHIPPING	// 디버그 조회 함수는 Shipping에 없다
 	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
 		const TMap<FGameplayTag, FActivityDefinition> RunnableActivity = ActivitySubsystem->GetRunnableActivities();
@@ -96,10 +98,12 @@ void UFebriculaCheatManager::GetRunnableActivities()
 			UE_LOG(LogTemp, Warning, TEXT("\n"));
 		}
 	}
+#endif
 }
 
 void UFebriculaCheatManager::GetAllActivities()
 {
+#if !UE_BUILD_SHIPPING	// 디버그 조회 함수는 Shipping에 없다
 	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
 		const TMap<FGameplayTag, FActivityDefinition> AllActivities = ActivitySubsystem->GetAllActivities();
@@ -118,14 +122,17 @@ void UFebriculaCheatManager::GetAllActivities()
 			UE_LOG(LogTemp, Warning, TEXT("\n"));
 		}
 	}
+#endif
 }
 
 void UFebriculaCheatManager::GetAllCachedTargetPoints()
 {
+#if !UE_BUILD_SHIPPING	// 디버그 조회 함수는 Shipping에 없다
 	if (UActorCacheSubsystem* ActorCacheSubsystem = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
 	{
 		ActorCacheSubsystem->PrintAllCachedTarget();
 	}
+#endif
 }
 
 void UFebriculaCheatManager::GetNowStat(FName StatName)

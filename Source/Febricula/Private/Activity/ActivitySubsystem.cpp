@@ -173,6 +173,8 @@ FGameplayTag UActivitySubsystem::GetNowScheduleTag() const
 	return NowSchedule;
 }
 
+// [skydodo] 2026-10-13 버그 수정: 헤더만 Shipping 가드가 있고 정의는 없어 Shipping 빌드가 깨졌다
+#if !UE_BUILD_SHIPPING
 const TMap<FGameplayTag, FActivityDefinition>& UActivitySubsystem::GetAllActivities() const
 {
 	return AllActivities;
@@ -182,6 +184,7 @@ const TMap<FGameplayTag, FActivityDefinition>& UActivitySubsystem::GetRunnableAc
 {
 	return RunnableActivities;
 }
+#endif
 
 void UActivitySubsystem::OnChangeSchedule(FGameplayTag ChangedSchedule)
 {

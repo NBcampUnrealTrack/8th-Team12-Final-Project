@@ -74,6 +74,7 @@ int32 UTimeSubsystem::GetDayPerMonth()
 }
 
 // [skydodo] 2026-08-26 수정: 누적 일차 증가
+// [skydodo] 2026-10-13 버그 수정: 12월 다음이 13월이 됐다 -> 1월로 되돌림
 void UTimeSubsystem::SpendDay()
 {
 	// [변경] 누적 일차는 달이 바뀌어도 계속 증가시킨다.
@@ -82,7 +83,10 @@ void UTimeSubsystem::SpendDay()
 	if (++NowDay > MaxDay)
 	{
 		NowDay = 1;
-		NowMonth += 1;
+		if (++NowMonth > 12)
+		{
+			NowMonth = 1;
+		}
 		MaxDay = GetDayPerMonth();
 	}
 	OnDayChanged.Broadcast(NowDay);
@@ -151,8 +155,15 @@ int32 UTimeSubsystem::GetNowScheduleAp()
 	return NowSchedule.ActionPoint;
 }
 
+// [skydodo] 2026-10-13 버그 수정: 시간표가 비어 있으면 SpendSchedule이 바로 return해 무한 루프
 void UTimeSubsystem::ResetSchedule()
 {
+	// 시간표가 비어 있으면 SpendSchedule이 아무것도 하지 않아 아래 루프가 끝나지 않는다.
+	if (GetScheduleDefs().Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Time] ResetSchedule: 시간표가 비어 있어 건너뜀"));
+		return;
+	}
 	int32 Day = GetAbsoluteDay();
 	while (AbsoluteDay == Day)
 	{

@@ -89,9 +89,10 @@ void USoundSubsystem::SetBGMVolume(float Volume)
 {
 }
 
+// [skydodo] 2026-10-13 버그 수정: 없는 채널이면 Find() 결과(nullptr)를 역참조해 크래시 -> FindRef
 void USoundSubsystem::SetSEVolume(FName ChannelTag, float Volume)
 {
-	if (UAudioComponent* NowChannel = *SEChannels.Find(ChannelTag))
+	if (UAudioComponent* NowChannel = SEChannels.FindRef(ChannelTag))
 	{
 		NowChannel->SetVolumeMultiplier(Volume);
 	}
