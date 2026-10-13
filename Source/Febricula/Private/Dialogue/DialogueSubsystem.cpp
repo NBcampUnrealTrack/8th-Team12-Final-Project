@@ -112,6 +112,7 @@ void UDialogueSubsystem::Tick(float DeltaTime)
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
+			CurrentSpeakerNpcId = NAME_None;
 			BroadcastDialogueLine(SimpleLineSpeaker, Next);
 		}
 		else
@@ -399,6 +400,7 @@ bool UDialogueSubsystem::StartSimpleLines(const FText& Speaker, const TArray<FTe
 
 	const FText First = SimpleLineQueue[0];
 	SimpleLineQueue.RemoveAt(0);
+	CurrentSpeakerNpcId = NAME_None;
 	BroadcastDialogueLine(SimpleLineSpeaker, First);
 	return true;
 }
@@ -433,6 +435,7 @@ void UDialogueSubsystem::Advance()
 		{
 			const FText Next = SimpleLineQueue[0];
 			SimpleLineQueue.RemoveAt(0);
+			CurrentSpeakerNpcId = NAME_None;
 			BroadcastDialogueLine(SimpleLineSpeaker, Next);
 		}
 		else
@@ -548,6 +551,7 @@ void UDialogueSubsystem::FinishDialogue()
 	bWaitingForChoice = false;
 	bRunningSimpleLines = false;
 	CurrentNodeId = NAME_None;
+	CurrentSpeakerNpcId = NAME_None;
 	ActiveEventId = NAME_None;
 	PendingAutoAdvance = EDialogueAutoAdvance::None;
 	AutoAdvanceNpcId = NAME_None;
@@ -680,6 +684,7 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 	HoldingSpeaker = Row->SpeakerName;
 	HoldingDialogue = Row->Text;
 
+	CurrentSpeakerNpcId = Row->SpeakerNpcId;
 	BroadcastDialogueLine(Row->SpeakerName, Row->Text);
 
 	// 선택지가 있는 노드는 질문 대사와 선택지를 "동시에" 띄운다.
@@ -701,6 +706,7 @@ void UDialogueSubsystem::ActivityDialoguePrint(const FDialogueNodeRow& Row)
 		HoldingSpeaker = Row.SpeakerName;
 		HoldingDialogue = Row.Text;
 		bDialogueActive = true;
+		CurrentSpeakerNpcId = NAME_None;
 		BroadcastDialogueLine(Row.SpeakerName, Row.Text);
 		UE_LOG(LogTemp, Error, TEXT("IsBound=%d"), OnDialogueLine.IsBound());
 
