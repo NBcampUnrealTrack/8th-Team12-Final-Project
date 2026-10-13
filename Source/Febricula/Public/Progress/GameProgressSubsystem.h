@@ -149,6 +149,9 @@ public:
 	{
 		this->MoveHistory.Add(LevelName);
 	}
+
+	/** 세이브에서 불러온 기록으로 통째로 교체한다 (이어 붙이면 불러올 때마다 중복으로 쌓인다) */
+	void SetMoveHistory(const TArray<FName>& InMoveHistory) { MoveHistory = InMoveHistory; }
 	
 	UFUNCTION(BlueprintCallable, Category = "Progress|MoveHistory")
 	const TArray<FName>& GetMoveHistory() const { return MoveHistory; };

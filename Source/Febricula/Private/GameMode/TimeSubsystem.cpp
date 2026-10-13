@@ -174,58 +174,44 @@ void UTimeSubsystem::ResetSchedule()
 	}
 }
 
+// [skydodo] 2026-10-13 버그 수정: 범위를 맞춘 ScheduleIndex 대신 NowScheduleIndex로 인덱싱했고,
+// 하루의 마지막 시간대에서는 내일 시간표가 아니라 오늘 시간표의 0번을 돌려줘 평일<->주말 경계에서 틀렸다.
+// SpendSchedule과 같은 규칙으로 다음 칸을 계산하되 상태는 건드리지 않는다.
 FName UTimeSubsystem::GetNextScheduleName()
 {
-	if (GetScheduleDefs().Num() <= 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("UTimeSubsystem::SpendSchedule: 오늘 쓸 ScheduleDefs가 비어 있습니다."));
-		return NAME_None;
-	}
-
 	const TArray<FScheduleDef>& Defs = GetScheduleDefs();
-	int32 ScheduleIndex = FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1);
-	FScheduleDef Schedule = Defs[NowScheduleIndex];
-	int32 RepeatCount = NowRepeatCount;
-
-	
+	if (Defs.Num() <= 0)
 	{
-
-		if (Schedule.BackTo > 0)
-		{
-			if (RepeatCount + 1 < NowSchedule.RepeatCount)
-			{
-				ScheduleIndex -= NowSchedule.BackTo;
-			}
-			else
-			{
-				RepeatCount = 0;
-				++ScheduleIndex;
-			}
-		}
-		else
-		{
-			++ScheduleIndex;
-		}
-
-		ScheduleIndex = FMath::Max(ScheduleIndex, 0);
-
-		if (ScheduleIndex >= Defs.Num())
-		{
-			ScheduleIndex = 0;
-			RepeatCount = 0;
-		}
+		UE_LOG(LogTemp, Warning, TEXT("UTimeSubsystem::GetNextScheduleName: 오늘 쓸 ScheduleDefs가 비어 있습니다."));
+		return NAME_None;
 	}
 
-	// [변경] SpendDay가 평일<->주말을 바꿀 수 있어서 위에서 잡아둔 Defs 참조는 이 시점에 다른 배열을 가리킬 수 있다.
-	// 그래서 하루가 넘어간 뒤에는 반드시 다시 가져와야 한다. (원본은 예전 배열로 인덱싱하고 있었다)
-	const TArray<FScheduleDef>& NewDefs = GetScheduleDefs();
-	if (NewDefs.Num() <= 0)
+	int32 ScheduleIndex = FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1);
+	const FScheduleDef& Schedule = Defs[ScheduleIndex];
+
+	if (Schedule.BackTo > 0 && NowRepeatCount + 1 < Schedule.RepeatCount)
+	{
+		ScheduleIndex -= Schedule.BackTo;
+	}
+	else
+	{
+		++ScheduleIndex;
+	}
+	ScheduleIndex = FMath::Max(ScheduleIndex, 0);
+
+	if (ScheduleIndex < Defs.Num())
+	{
+		return FName(Defs[ScheduleIndex].ScheduleName.ToString());
+	}
+
+	// 시간표 끝 -> 내일 시간표의 첫 칸. 내일이 주말인지는 IsWeekend()와 같은 식을 누적 일차 + 1로 계산한다.
+	const bool bTomorrowWeekend = (AbsoluteDay % 7) >= 5;
+	const UDayScheduleAsset* Tomorrow = bTomorrowWeekend ? WeekEndSchedule : WeekDaySchedule;
+	if (!Tomorrow || Tomorrow->ScheduleDefs.Num() <= 0)
 	{
 		return NAME_None;
 	}
-	ScheduleIndex = FMath::Clamp(ScheduleIndex, 0, NewDefs.Num() - 1);
-	FName ScheduleName = FName(NewDefs[ScheduleIndex].ScheduleName.ToString());
-	return ScheduleName;
+	return FName(Tomorrow->ScheduleDefs[0].ScheduleName.ToString());
 }
 
 // [skydodo] 2026-08-26 추가: 누적 일차 기준 주말 판정
@@ -282,21 +268,23 @@ FGameplayTag UTimeSubsystem::GetNowDayTypeTag() const
 	return Asset ? Asset->DayTypeTag : FGameplayTag();
 }
 
+// [skydodo] 2026-10-13 버그 수정: 시간표 애셋이 없으면 null 역참조 크래시, 등록 안 된 태그 이름이면 RequestGameplayTag가 ensure를 터뜨렸다
 int32 UTimeSubsystem::GetTargetScheduleIndex(FName Target)
 {
-	const UDayScheduleAsset* Asset = GetTodaySchedule();
-	FGameplayTag TargetTag = FGameplayTag::RequestGameplayTag(Target);
+	const FGameplayTag TargetTag = FGameplayTag::RequestGameplayTag(Target, /*ErrorIfNotFound=*/false);
 	if (!TargetTag.IsValid())
 	{
 		UE_LOG(LogTemp, Log, TEXT("TimeSubsystem: 존재하지 않는 태그 %s"), *Target.ToString());
 		return -1;
 	}
-	for (int i = 0; i < Asset->ScheduleDefs.Num(); i++)
+	// GetScheduleDefs()는 애셋이 없으면 빈 배열을 준다
+	const TArray<FScheduleDef>& Defs = GetScheduleDefs();
+	for (int32 i = 0; i < Defs.Num(); i++)
 	{
-		if (Asset->ScheduleDefs[i].ScheduleName == TargetTag)
+		if (Defs[i].ScheduleName == TargetTag)
 		{
 			return i;
-		}	
+		}
 	}
 	return -1;
 }

@@ -49,6 +49,15 @@ void UFixedViewComponent::HandleOverlapEnd(AActor* OverlappedActor, AActor* Othe
 void UFixedViewComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	// [skydodo] 2026-10-13 버그 수정: null 검사가 빠져 트리거 박스를 안 붙이면 AddDynamic에서 크래시였고,
+	// 아래 경고가 항상 찍혔으며 CameraYaw 초기화도 사라져 GetYaw()가 쓰레기 값을 줬다
+	CameraYaw = GetOwner()->GetActorRotation().Yaw;
+	if (!ConnectedTriggerBox)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fixed View Component: 트리거 박스가 연결되지 않음"));
+		return;
+	}
+
 	ConnectedTriggerBox->OnActorBeginOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapBegin);
 	ConnectedTriggerBox->OnActorEndOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapEnd);
 	
@@ -62,9 +71,6 @@ void UFixedViewComponent::BeginPlay()
 			HandleOverlapBegin(ConnectedTriggerBox, Pawn);
 		}
 	});
-
-	UE_LOG(LogTemp, Warning, TEXT("Fixed View Component: 트리거 박스가 연결되지 않음"));
-	
 }
 
 

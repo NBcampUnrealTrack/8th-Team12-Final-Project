@@ -1048,14 +1048,21 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 	case EGameActionType::TimeSetSchedule:
 		if (UTimeSubsystem* Time = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
 		{
-			FName Now = Time->GetNowScheduleName();
-			int32 TargetIndex = Time->GetTargetScheduleIndex(Action.Key);
+			// [skydodo] 2026-10-13 버그 수정: 넘기다 하루가 지나 평일<->주말 시간표가 바뀌고 그쪽에 목표 시간대가 없으면
+			// while이 끝나지 않았다 -> 이틀치 시간표 길이만큼만 넘기고, 그래도 못 만나면 경고 후 멈춘다
+			const int32 TargetIndex = Time->GetTargetScheduleIndex(Action.Key);
 			if (TargetIndex > -1)
 			{
-				while (Now != Action.Key)
+				const int32 MaxSteps = FMath::Max(Time->GetScheduleDefs().Num(), 1) * 2;
+				int32 Steps = 0;
+				while (Time->GetNowScheduleName() != Action.Key && Steps++ < MaxSteps)
 				{
 					Time->SpendSchedule();
-					Now = Time->GetNowScheduleName();
+				}
+				if (Time->GetNowScheduleName() != Action.Key)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("시간대 변경 액션: %d칸을 넘겨도 '%s'에 도달하지 못해 멈췄습니다."),
+						MaxSteps, *Action.Key.ToString());
 				}
 			}
 		}
@@ -1518,11 +1525,13 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 	case EGameActionType::FinishActivity:
 		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 		{
-			// if (Action.Value == 0)
-			// {
-			// 	ActivitySubsystem->ActivityFinished(Action.Key, 1);
-			// 	break;
-			// }
+			// [skydodo] 2026-10-13 버그 수정: Value 0(고정 액티비티) 분기가 주석 처리돼 "Key_0" NPC 이벤트로 처리됐다.
+			// 고정 액티비티는 레벨 이름으로 태그를 만드는 ActivityFinished(FName)으로 끝내야 NowPlayedActivity와 맞는다
+			if (Action.Value == 0)
+			{
+				ActivitySubsystem->ActivityFinished(Action.Key);
+				break;
+			}
 			ActivitySubsystem->ActivityFinished(Action.Key, Action.Value);
 		}
 		break;

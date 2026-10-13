@@ -11,6 +11,7 @@
 #include "Dialogue/DialogueLogSubsystem.h"
 #include "Dialogue/DialogueSubsystem.h"
 #include "NPC/MainNpc/MainNpcSpawner.h"
+#include "EngineUtils.h"
 
 // ---------------------------------------------------------------------------
 // 내부 헬퍼
@@ -168,6 +169,14 @@ bool USaveGameSubsystem::LoadFromSlot(int32 SlotIndex)
 	// 1) 레벨과 무관한 값은 지금 바로 반영한다.
 	ApplyGameInstanceData(Save);
 
+	// [skydodo] 2026-10-13 버그 수정: 기존 기록을 비우지 않고 이어 붙여 불러올 때마다 이동 기록이 중복으로 쌓였다 -> 통째로 교체.
+	// 시드도 새 레벨의 스포너 BeginPlay보다 먼저 들어가 있어야 하므로 레벨 이동 전에 넣는다.
+	if (UGameProgressSubsystem* GameProgress = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		GameProgress->SetSpawnerSeed(Save->LevelSeed);
+		GameProgress->SetMoveHistory(Save->MoveHistory);
+	}
+
 	// 2) 레벨이 있어야 적용 가능한 값은 대기시킨다.
 	PendingPlayerLocation = Save->PlayerLocation;
 	PendingPlayerRotation = Save->PlayerRotation;
@@ -189,25 +198,12 @@ bool USaveGameSubsystem::LoadFromSlot(int32 SlotIndex)
 	{
 		// 이미 같은 레벨이면 레벨 전환이 없으니 여기서 바로 마저 적용한다.
 		ApplyPendingLoadIfAny();
-	}
-	
-	if (UGameProgressSubsystem* GameProgress = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
-	{
-		GameProgress->SetSpawnerSeed(Save->LevelSeed);
-		for (FName History : Save->MoveHistory)
-		{
-			GameProgress->AddMoveHistory(History);
-		}
-	}
 
-	TArray<AActor*> Spawners;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AMainNpcSpawner::StaticClass(), Spawners);
-	if (Spawners.Num() > 0)
-	{
-		if (AMainNpcSpawner* Spawner = Cast<AMainNpcSpawner>(Spawners[0]))
+		// [skydodo] 2026-10-13 버그 수정: OpenLevel 직후에도 불러 곧 사라질 이전 레벨의 스포너를 갱신했고, 그것도 첫 번째 하나만 갱신했다.
+		// 레벨을 옮기면 새 레벨 스포너가 BeginPlay에서 알아서 세우므로 같은 레벨일 때만 전부 다시 세운다.
+		for (TActorIterator<AMainNpcSpawner> It(GetWorld()); It; ++It)
 		{
-				
-			Spawner->RequestRefresh();
+			It->RequestRefresh();
 		}
 	}
 

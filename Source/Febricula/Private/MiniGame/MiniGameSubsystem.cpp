@@ -169,7 +169,8 @@ void UMiniGameSubsystem::TryStart()
 		UE_LOG(LogMiniGame, Warning, TEXT("플레이어 컨트롤러가 없어 미니게임을 시작하지 못했다."));
 		return;
 	}
-	//StartMiniGame(PC);
+	// [skydodo] 2026-10-13 버그 수정: 이 호출이 주석 처리돼 미니게임 레벨에 들어가도 위젯이 뜨지 않았다
+	StartMiniGame(PC);
 }
 
 void UMiniGameSubsystem::TryRestoreReturnPoint()

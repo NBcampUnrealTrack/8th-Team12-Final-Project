@@ -16,7 +16,8 @@
 
 FRandomStream UGameProgressSubsystem::MakeRandomStream(const FMainNpcSpawnRow& NowRow, uint32 Salt) const
 {
-	uint32 Hash = GetTypeHash(SpawnerSeed);
+	// [skydodo] 2026-10-13 버그 수정: Salt를 섞지 않아 스폰 확률 판정(Salt 0)과 자리 섞기(Salt 1)가 같은 난수열이었다
+	uint32 Hash = HashCombine(GetTypeHash(SpawnerSeed), GetTypeHash(Salt));
 	Hash = HashCombine(Hash, GetTypeHash(GetCurrentDay()));
 	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.NpcId.ToString()));
 	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.Level.ToSoftObjectPath().ToString()));
