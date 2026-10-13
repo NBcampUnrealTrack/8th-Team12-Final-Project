@@ -88,7 +88,20 @@ void AMiniGameDoor::Interact_Implementation(AActor* Interactor)
 
 	// [skydodo] 2026-10-13 버그 수정: 레벨 이동이 주석 처리되고 지금 월드의 TryStart만 불러 문을 눌러도 아무 일이 없었다.
 	// 미니게임은 미니게임 레벨의 UMiniGameSubsystem이 열릴 때 스스로 시작하므로 원래대로 레벨만 연다.
-	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
+	
+	FString Current = Travel->GetLevelPath(*GetWorld());
+	if (UMiniGameSubsystem* MiniGame = GetWorld()->GetSubsystem<UMiniGameSubsystem>())
+	{
+		if (Current == TargetLevel.ToSoftObjectPath().GetLongPackageName())
+		{
+			MiniGame->TryStart();
+		}
+		else
+		{
+			Travel->SetMinigameBooking(true);
+			UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
+		}
+	}
 }
 
 FText AMiniGameDoor::GetInteractionPrompt_Implementation(AActor* Interactor) const

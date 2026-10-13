@@ -48,6 +48,10 @@ public:
 	bool ConsumeReturnPoint(const UWorld& World, FTransform& OutTransform);
 
 	static FString GetLevelPath(const UWorld& World);
+	
+	bool GetMinigameBooking() const { return MinigameBooking; }
+	void SetMinigameBooking(bool State) { MinigameBooking = State; }
+
 
 private:
 	/** 긴 패키지 경로 (PIE 접두사 제거). 예: /Game/MiniGame/Maps/L_MiniGameTest */
@@ -57,6 +61,8 @@ private:
 	FString ReturnPointLevel;
 	FTransform ReturnPoint;
 	bool bHasReturnPoint = false;
+	bool MinigameBooking = false;
+
 };
 
 UCLASS()
@@ -72,6 +78,7 @@ public:
 	//~ End UWorldSubsystem
 
 	bool IsMiniGameActive() const { return ActiveWidget != nullptr; }
+	
 	void TryStart();
 
 	/**
@@ -86,9 +93,11 @@ public:
 	/** 보상을 지급한다. 한 판에 한 번만 지급하고, 두 번째부터는 지급했던 값을 그대로 돌려준다 */
 	FMiniGameReward GrantReward(const FMiniGameResult& Result);
 
+	
 	/** 위젯을 닫고 입력을 돌려준 뒤 원래 레벨로 이동 */
 	void EndMiniGame();
-
+	
+	
 private:
 	/** 플레이어 폰이 생길 때까지 잠깐 기다렸다가 시작한다 */
 
@@ -124,4 +133,6 @@ private:
 
 	bool bRewardGranted = false;
 	FMiniGameReward GrantedReward;
+	
+
 };

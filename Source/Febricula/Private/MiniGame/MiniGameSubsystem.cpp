@@ -130,8 +130,23 @@ void UMiniGameSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	bHasEntry = true;
 	StartAttempts = 0;
 
-	// BeginPlay 시점에 폰이 이미 있는 게 보통이지만, 게임모드에 따라 한 틱 늦게 생기기도 한다.
-	InWorld.GetTimerManager().SetTimer(StartTimer, this, &UMiniGameSubsystem::TryStart, MiniGameStart::RetryInterval, true, 0.f);
+	if (UMiniGameTravelSubsystem* TravelSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UMiniGameTravelSubsystem>())
+	{
+		if (TravelSubsystem->GetMinigameBooking())
+		{
+			// BeginPlay 시점에 폰이 이미 있는 게 보통이지만, 게임모드에 따라 한 틱 늦게 생기기도 한다.
+			InWorld.GetTimerManager().SetTimer(StartTimer, this, &UMiniGameSubsystem::TryStart, MiniGameStart::RetryInterval, true, 0.f);
+			TravelSubsystem->SetMinigameBooking(false);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("MiniGame Subsystem: 미니게임이 예약되지 않음"))
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("MiniGame Subsystem: MiniGameTravelSubsystem이 존재하지 않음"))
+	}
 }
 
 void UMiniGameSubsystem::Deinitialize()
