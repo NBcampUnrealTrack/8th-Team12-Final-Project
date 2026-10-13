@@ -12,6 +12,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "MiniGame/MiniGameSubsystem.h"
+#include "Progress/GameProgressSubsystem.h"
 
 AMiniGameDoor::AMiniGameDoor()
 {
@@ -53,7 +54,14 @@ void AMiniGameDoor::OnConstruction(const FTransform& Transform)
 
 bool AMiniGameDoor::CanInteract_Implementation(AActor* Interactor) const
 {
-	return !TargetLevel.IsNull() && !bTraveling;
+	if (UGameProgressSubsystem* GameProgressSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		if (GameProgressSubsystem->EvaluateConditions(InteractConditions))
+		{
+			return !TargetLevel.IsNull() && !bTraveling;		
+		}
+	}
+	return false;
 }
 
 void AMiniGameDoor::Interact_Implementation(AActor* Interactor)
@@ -76,9 +84,9 @@ void AMiniGameDoor::Interact_Implementation(AActor* Interactor)
 	if (Pawn && Travel && GetWorld())
 	{
 		Travel->SetReturnPoint(*GetWorld(), Pawn->GetActorTransform());
+		Travel->TryStart();
 	}
-
-	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
+	//UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
 }
 
 FText AMiniGameDoor::GetInteractionPrompt_Implementation(AActor* Interactor) const

@@ -493,6 +493,7 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 		UE_LOG(LogMainNpcSpawner, Warning,
 			TEXT("%s: 테이블 NpcId(%s)와 블루프린트 NpcId(%s)가 다릅니다."),
 			*GetNameSafe(this), *Row.NpcId.ToString(), *Npc->GetNpcId().ToString());
+
 	}
 
 	// 애니메이션 컴포넌트가 BeginPlay에서 DefaultAnimation을 읽으므로 FinishSpawning 전에 넣는다.

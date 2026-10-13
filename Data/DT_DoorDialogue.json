@@ -830,6 +830,344 @@
     }
   },
   {
+    "Name": "MiddleBus_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "집으로 돌아갈까?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "MiddleBus_Root_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "MiddleBus_Root_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 네 -> GoHome",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "MiddleBus_Root_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "MiddleBus_Root_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 아니요 -> Cancle_Root",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어디로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "Mall_Root_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 햄버거 가게",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "Mall_Root_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 꽃가게",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "Mall_Root_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 그만둔다 -> Cancel_Root",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoBugger",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "BuggerHouse",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoFlower",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "FlowerHouse",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
     "Name": "GoClassroom",
     "SpeakerName": "",
     "SpeakerNpcId": "None",

@@ -119,6 +119,34 @@
 - 돌아간다 -> GoRoomFirst
 - 그만둔다 -> Cancle_Root
 
+@label MiddleBus_Root
+집으로 돌아갈까?
+- 네 -> GoHome
+- 아니요 -> Cancle_Root
+@end
+
+@label Mall_Root
+어디로 갈까?
+- 햄버거 가게
+- 꽃가게
+- 그만둔다 -> Cancel_Root
+@end
+
+@label GoBugger
+@ChangeLevel BuggerHouse true
+@hide 
+@wait .1
+@end
+
+@label GoFlower
+@ChangeLevel FlowerHouse true
+@hide
+@wait .1
+@end
+
+
+
+
 @label GoClassroom
 @ChangeLevel Classroom true
 @hide

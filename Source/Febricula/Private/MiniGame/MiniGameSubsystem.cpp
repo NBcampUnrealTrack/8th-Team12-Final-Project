@@ -169,7 +169,7 @@ void UMiniGameSubsystem::TryStart()
 		UE_LOG(LogMiniGame, Warning, TEXT("플레이어 컨트롤러가 없어 미니게임을 시작하지 못했다."));
 		return;
 	}
-	StartMiniGame(PC);
+	//StartMiniGame(PC);
 }
 
 void UMiniGameSubsystem::TryRestoreReturnPoint()

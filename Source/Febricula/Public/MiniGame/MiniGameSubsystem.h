@@ -47,6 +47,9 @@ public:
 	/** 이 레벨에 쓸 돌아올 자리가 있으면 꺼낸다 (한 번 쓰면 지운다) */
 	bool ConsumeReturnPoint(const UWorld& World, FTransform& OutTransform);
 
+	
+	void TryStart();
+
 	static FString GetLevelPath(const UWorld& World);
 
 private:
@@ -90,7 +93,6 @@ public:
 
 private:
 	/** 플레이어 폰이 생길 때까지 잠깐 기다렸다가 시작한다 */
-	void TryStart();
 
 	/** 미니게임에서 돌아온 레벨: 들어간 자리로 되돌리고 키보드 포커스를 게임 화면으로 돌려준다 */
 	void TryRestoreReturnPoint();
