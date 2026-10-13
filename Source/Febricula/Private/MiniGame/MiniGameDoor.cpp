@@ -84,7 +84,11 @@ void AMiniGameDoor::Interact_Implementation(AActor* Interactor)
 	if (Pawn && Travel && GetWorld())
 	{
 		Travel->SetReturnPoint(*GetWorld(), Pawn->GetActorTransform());
-		Travel->TryStart();
+		//Travel->TryStart();
+	}
+	if (UMiniGameSubsystem* GameSubsystem = GetWorld()->GetSubsystem<UMiniGameSubsystem>())
+	{
+		GameSubsystem->TryStart();
 	}
 	//UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel);
 }
