@@ -73,23 +73,36 @@ int32 UGameProgressSubsystem::AddCounter(FName CounterId, int32 Delta)
 	return Value;
 }
 
+// [skydodo] 2026-10-13 버그 수정: 범위 검사가 'Value < -1 || Value > Max'라 -1(없는 이름)과 Max가 통과해 Stats[] 범위 밖을 읽고 썼다. Get/Set/AddStat이 이 함수 하나로 검사한다
+bool UGameProgressSubsystem::TryGetStatIndex(FName StatId, int32& OutIndex)
+{
+	// GetValueByName은 없는 이름이면 INDEX_NONE(-1)을 준다. Max는 배열 크기라 유효한 스탯이 아니다.
+	const int64 Value = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
+	if (Value < 0 || Value >= static_cast<int64>(EPlayerStat::Max))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
+		return false;
+	}
+	OutIndex = static_cast<int32>(Value);
+	return true;
+}
+
 int32 UGameProgressSubsystem::GetStat(FName StatId) const
 {
-	int64 Value = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
-	if (Value < -1 || Value > static_cast<int64>(EPlayerStat::Max))
+	int32 Index;
+	if (!TryGetStatIndex(StatId, Index))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
 		return 0;
 	}
-	return Stats[Value];
+	return Stats[Index];
 }
 
 int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
 {
-	int64 Index = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
-	if (Index < -1 || Index > static_cast<int64>(EPlayerStat::Max))
+	int32 Index;
+	if (!TryGetStatIndex(StatId, Index))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
 		return 0;
 	}
  	Stats[Index] += Delta;
@@ -102,6 +115,7 @@ bool UGameProgressSubsystem::IsEventCompleted(FName EventId) const
 	return Temp;
 }
 
+// [skydodo] 2026-10-13 버그 수정: APAtLeat/APAtMost가 ActivitySubsystem이 없으면 다음 case로 떨어졌다 -> return false. ScheduleAfter에 TimeSubsystem null 검사 추가
 bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) const
 {
 	switch (Condition.Type)
@@ -150,10 +164,12 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	case EGameConditionType::ScheduleAfter:
 	{
 		const UTimeSubsystem* TimeSubsystem = GetTime();
-			
+		if (!TimeSubsystem) return false;
+
 		int32 NowIndex = TimeSubsystem->GetScheduleIndex();
 		int32 TargetIndex = TimeSubsystem->GetScheduleIndex(Condition.Key);
-		
+			
+			
 		if (TargetIndex == -1) return false;
 		if (TargetIndex < NowIndex) return true;
 		return false;
@@ -267,12 +283,14 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		{
 			return Condition.Value <= ActivitySubsystem->GetCurrentAP();
 		}
-		
+		return false;
+
 	case EGameConditionType::APAtMost:
 		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 		{
 			return Condition.Value >= ActivitySubsystem->GetCurrentAP();
 		}
+		return false;
 
 		
 	case EGameConditionType::StatAtLeast:

@@ -91,7 +91,13 @@ void AMainNpcCharacter::Interact_Implementation(AActor* Interactor)
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 테이블 '%s'의 기본 Dialogue Table '%s'을(를) 찾지 못했습니다."), *GetNameSafe(ConnectedEventTable), *DefaultDialogueTable.GetAssetName());	
+		UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 테이블 '%s'의 기본 Dialogue Table '%s'을(를) 찾지 못했습니다."), *GetNameSafe(ConnectedEventTable), *DefaultDialogueTable.GetAssetName());
+		// [skydodo] 2026-10-13 버그 수정: StartTalk 뒤에 그냥 return해서 NPC가 Talk 상태로 굳었다
+		// 블루프린트 쪽에서 이미 대화(Activity 등)를 시작했으면 그 대화가 끝날 때 풀어주므로 건드리지 않는다.
+		if (!Dialogue->IsDialogueActive())
+		{
+			EndTalk();
+		}
 		return;
 	}
 	bool bStarted = Dialogue->TryStartEventForNpc(GetNpcId(), this);
@@ -172,11 +178,18 @@ void AMainNpcCharacter::StartTalk(AActor* Talker)
 	OnTalkStarted(Talker);
 }
 
+// [skydodo] 2026-10-13 버그 수정: 본문이 통째로 주석 처리돼 대화가 끝나도 Talk 상태와 BT 정지가 풀리지 않았다(스포너 IsNpcBusy가 계속 true)
 void AMainNpcCharacter::EndTalk()
 {
 	CurrentTalker = nullptr;
-	SetMovementState(ENpcMovementState::Idle);
-	SetBehaviorTreePaused(false);
+
+	// StartTalk가 걸어 둔 Talk 상태일 때만 되돌린다.
+	// 대화 중 액션으로 동행/연출 상태로 바뀌었으면 그 상태와 BT 정지를 덮어쓰지 않는다.
+	if (GetMovementState() == ENpcMovementState::Talk)
+	{
+		SetMovementState(ENpcMovementState::Idle);
+		SetBehaviorTreePaused(false);
+	}
 	OnNpcTalkStateChanged.Broadcast(false);
 	OnTalkEnded();
 }

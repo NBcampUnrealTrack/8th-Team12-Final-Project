@@ -707,7 +707,7 @@ void UFlowerMiniGameWidget::Drop()
 {
 	using namespace FlowerGame;
 
-	if (Cooldown > 0.f || !World || World->Count >= FlowerPhysics::MaxBodies)
+	if (Cooldown > 0.f || !World || World->GetCount() >= FlowerPhysics::MaxBodies)
 	{
 		return;
 	}
@@ -717,7 +717,7 @@ void UFlowerMiniGameWidget::Drop()
 		return;
 	}
 
-	const FlowerPhysics::FTierShape& Shape = World->Shapes[NextTier];
+	const FlowerPhysics::FTierShape& Shape = World->GetShape(NextTier);
 	const float X = FMath::Clamp(Cursor, Left + Shape.HalfWidth, Right - Shape.HalfWidth);
 	const int32 Id = World->Add(NextTier, X, DropY, FMath::FRandRange(-0.3f, 0.3f), 0.f);
 	if (FlowerPhysics::FBody* Body = World->FindById(Id))
@@ -771,9 +771,9 @@ void UFlowerMiniGameWidget::Fulfill()
 	TArray<int32, TInlineAllocator<MaxOrderFlowers>> Picks;
 	for (int32 w = 0; w < Want.Num(); ++w)
 	{
-		for (int32 i = 0; i < World->Count; ++i)
+		for (int32 i = 0; i < World->GetCount(); ++i)
 		{
-			const FlowerPhysics::FBody& Body = World->Bodies[i];
+			const FlowerPhysics::FBody& Body = World->GetBody(i);
 			if (Body.Tier == Want[w] && !ReadyIds.Contains(Body.Id))
 			{
 				WantReady[w] = true;
@@ -792,8 +792,8 @@ void UFlowerMiniGameWidget::Fulfill()
 	Picks.Sort([](const int32& A, const int32& B) { return A > B; });
 	for (const int32 Index : Picks)
 	{
-		const FlowerPhysics::FBody Body = World->Bodies[Index];
-		const float R = World->Shapes[Body.Tier].EquivR;
+		const FlowerPhysics::FBody Body = World->GetBody(Index);
+		const float R = World->GetShape(Body.Tier).EquivR;
 		Spray(Body.Tier, Body.X, Body.Y, 24, 320.f, 200.f);
 		AddRing(Body.X, Body.Y, R * 0.5f, 700.f, 0.25f, 0.f, Hex(TEXT("fff3c4")), true);
 		AddPop(Body.X, Body.Y, TEXT("포장!"), Hex(TEXT("ffd18d")));
@@ -810,9 +810,9 @@ void UFlowerMiniGameWidget::ProcessEvents()
 {
 	using namespace FlowerGame;
 
-	for (int32 e = 0; e < World->NumEvents; ++e)
+	for (int32 e = 0; e < World->GetNumEvents(); ++e)
 	{
-		const FlowerPhysics::FEvent Event = World->Events[e];
+		const FlowerPhysics::FEvent Event = World->GetEvent(e);
 		if (Event.Type == FlowerPhysics::EEventType::Landed)
 		{
 			if (FlowerPhysics::FBody* Body = World->FindById(Event.Id))
@@ -863,14 +863,14 @@ void UFlowerMiniGameWidget::ProcessEvents()
 		}
 		PlaySfx(TEXT("merge"));
 	}
-	World->NumEvents = 0;
+	World->ClearEvents();
 }
 
 void UFlowerMiniGameWidget::UpdateBodyFx(float Dt)
 {
-	for (int32 i = 0; i < World->Count; ++i)
+	for (int32 i = 0; i < World->GetCount(); ++i)
 	{
-		FlowerPhysics::FBody& Body = World->Bodies[i];
+		FlowerPhysics::FBody& Body = World->GetBody(i);
 		Body.Pop = FMath::Max(0.f, Body.Pop - Dt);
 		Body.Squash = FMath::Max(0.f, Body.Squash - Dt);
 		Body.Wobble = FMath::Max(0.f, Body.Wobble - Dt);
@@ -890,7 +890,7 @@ void UFlowerMiniGameWidget::OnLanded(FlowerPhysics::FBody& Body, float Impact)
 	using namespace FlowerGame;
 
 	const int32 Tier = Body.Tier;
-	const float R = World->Shapes[Tier].EquivR;
+	const float R = World->GetShape(Tier).EquivR;
 	const float Strength = FMath::Clamp(Impact / 1000.f, 0.3f, 1.f);
 	Body.Squash = SquashSeconds * Strength;
 
@@ -931,7 +931,7 @@ void UFlowerMiniGameWidget::OnBorn(const FlowerPhysics::FBody& Body)
 
 	const int32 Tier = Body.Tier;
 	const FTierFx& Fx = TierFx[Tier];
-	const float R = World->Shapes[Tier].EquivR;
+	const float R = World->GetShape(Tier).EquivR;
 
 	// 번쩍 + 단계 색 고리 + 조각
 	AddRing(Body.X, Body.Y, R * 0.4f, 900.f + Tier * 120.f, 0.22f, 0.f, FLinearColor::White, true);
@@ -970,7 +970,7 @@ void UFlowerMiniGameWidget::EmitTrail(FlowerPhysics::FBody& Body, float Dt)
 		return;
 	}
 	Body.TrailTimer = TrailInterval;
-	const float R = World->Shapes[Body.Tier].EquivR;
+	const float R = World->GetShape(Body.Tier).EquivR;
 	const float Ox = FMath::FRandRange(-0.6f, 0.6f) * R;
 	Spray(Body.Tier, Body.X + Ox, Body.Y - R * 0.7f, 2, 50.f, -Body.VY * 0.15f);
 }
@@ -1034,9 +1034,9 @@ void UFlowerMiniGameWidget::UpdateDanger(float Dt)
 
 	// 방금 놓은 꽃은 1.3초 동안 위험선 위에 있어도 봐준다
 	bool bBad = false;
-	for (int32 i = 0; i < World->Count && !bBad; ++i)
+	for (int32 i = 0; i < World->GetCount() && !bBad; ++i)
 	{
-		const FlowerPhysics::FBody& Body = World->Bodies[i];
+		const FlowerPhysics::FBody& Body = World->GetBody(i);
 		bBad = Body.Age > DangerGrace && World->TopY(Body) < DangerLine;
 	}
 	Over = bBad ? Over + Dt : FMath::Max(0.f, Over - Dt * 2.f);
@@ -1454,7 +1454,7 @@ void UFlowerMiniGameWidget::PaintFlower(FFlowerPainter& P, float InX, float InY,
 	using namespace FlowerGame;
 
 	// 무게중심 → 그림 가운데 (돌린 만큼 같이 돈다)
-	const FlowerPhysics::FTierShape& Shape = World->Shapes[FMath::Clamp(Tier, 0, MaxTier)];
+	const FlowerPhysics::FTierShape& Shape = World->GetShape(FMath::Clamp(Tier, 0, MaxTier));
 	const float Cs = FMath::Cos(Angle);
 	const float Sn = FMath::Sin(Angle);
 	const float Size = Shape.Size * Scale;
@@ -1535,7 +1535,7 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 	}
 
 	// 놓을 위치 안내선과 손에 든 꽃
-	const float HalfW = World->Shapes[NextTier].HalfWidth;
+	const float HalfW = World->GetShape(NextTier).HalfWidth;
 	const float AimX = FMath::Clamp(Cursor, Left + HalfW, Right - HalfW);
 	if (Mode != EMode::Result)
 	{
@@ -1560,9 +1560,9 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 		P.Box(X0 + W - Edge, WorkTop, Edge, H, Alarm);
 	}
 
-	for (int32 i = 0; i < World->Count; ++i)
+	for (int32 i = 0; i < World->GetCount(); ++i)
 	{
-		const FlowerPhysics::FBody& Body = World->Bodies[i];
+		const FlowerPhysics::FBody& Body = World->GetBody(i);
 		// 착지 직후엔 납작하게, 빠르게 떨어지는 중엔 길쭉하게. 새싹은 흔들흔들. 피어날 땐 크게 부풀었다 돌아온다.
 		float Squash = 0.f;
 		if (Body.Squash > 0.f)
@@ -1582,12 +1582,12 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 	if (ReadyIds.Num() > 0 && Mode != EMode::Result)
 	{
 		const float Pulse = 0.55f + 0.35f * FMath::Sin(T * 5.f);
-		for (int32 i = 0; i < World->Count; ++i)
+		for (int32 i = 0; i < World->GetCount(); ++i)
 		{
-			const FlowerPhysics::FBody& Body = World->Bodies[i];
+			const FlowerPhysics::FBody& Body = World->GetBody(i);
 			if (ReadyIds.Contains(Body.Id))
 			{
-				const float Size = World->Shapes[Body.Tier].EquivR * 2.3f + 16.f;
+				const float Size = World->GetShape(Body.Tier).EquivR * 2.3f + 16.f;
 				P.Brush(&HighlightBrush, Body.X - Size * 0.5f, Body.Y - Size * 0.5f, Size, Size, WithAlpha(FLinearColor::White, Pulse));
 			}
 		}
@@ -1968,12 +1968,12 @@ void UFlowerMiniGameWidget::PaintPractice(FFlowerPainter& P) const
 	// 합칠 짝이 되는 꽃(지금 손에 든 꽃과 같은 단계)을 둥근 테두리로 표시
 	if (Step >= PracticeMergeStep && Step <= PracticeOrderStep)
 	{
-		for (int32 i = 0; i < World->Count; ++i)
+		for (int32 i = 0; i < World->GetCount(); ++i)
 		{
-			const FlowerPhysics::FBody& Body = World->Bodies[i];
+			const FlowerPhysics::FBody& Body = World->GetBody(i);
 			if (Body.Tier == NextTier)
 			{
-				const float Size = World->Shapes[Body.Tier].EquivR * 2.4f + 30.f;
+				const float Size = World->GetShape(Body.Tier).EquivR * 2.4f + 30.f;
 				P.Brush(&HighlightBrush, Body.X - Size * 0.5f, Body.Y - Size * 0.5f, Size, Size, WithAlpha(FLinearColor::White, Pulse));
 			}
 		}

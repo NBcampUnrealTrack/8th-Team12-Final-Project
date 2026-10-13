@@ -545,9 +545,6 @@ public:
 	/** 경로를 갈아탈 때 생긴 위치 어긋남 (진단용). 몸이 따라가는 목표점 = 경로 위치 + 이 값 */
 	FVector GetPathHandoffOffset() const { return PathHandoffOffset; }
 
-	/** 일행 리더 (없으면 nullptr) */
-	const ASubNpcCharacter* GetGroupLeaderNpc() const { return GroupLeader.Get(); }
-
 	bool IsReversedOnPath() const { return bReversedOnPath; }
 
 	/**
@@ -651,8 +648,6 @@ public:
 
 	/** 추월 중인가. 추월하는 동안에는 방향을 바꾸지 않아야 좌우로 떨지 않는다 */
 	bool IsPassing() const;
-
-	float GetPassLaneTarget() const { return PassLaneTarget; }
 
 	/** 회수 예약 여부. 순회 중에 배열이 바뀌지 않도록 Director가 나중에 처리한다 */
 	bool IsPendingRecycle() const { return bPendingRecycle; }
@@ -918,10 +913,10 @@ public:
 	FVector2D GetMeasuredVelocity() const { return MeasuredVelocity; }
 	void SampleMeasuredVelocity(float Now);
 
-	/** 길 밖 걸음에서 직전에 고른 방향 (수평 단위 벡터). 매 프레임 방향을 새로 골라 좌우로 흔들리지 않게 이어 쓴다 */
-	mutable FVector2D SteerHoldDir = FVector2D::ZeroVector;
-
 private:
+	/** 길 밖 걸음에서 직전에 고른 방향 (수평 단위 벡터). 매 프레임 방향을 새로 골라 좌우로 흔들리지 않게 이어 쓴다 */
+	FVector2D SteerHoldDir = FVector2D::ZeroVector;
+
 	/**
 	 * 줄 반응 지연. 앞자리가 비어도(앞사람이 칸으로 들어감·한 칸 당김) 바로 따라 움직이지 않고 잠깐 뒤에 움직인다.
 	 * 줄 전체가 동시에 움직이면 기계처럼 보였다. -1이면 타이머 없음.

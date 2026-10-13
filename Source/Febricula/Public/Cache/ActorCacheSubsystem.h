@@ -41,6 +41,8 @@ public:
 
 	
 protected:
-	TMap<FName, TObjectPtr<ATargetPoint>> CachedTargetPoints;
+	// [skydodo] 2026-10-13 버그 수정: UPROPERTY 없는 TObjectPtr라 GC가 몰랐고, 파괴된 TargetPoint가 댕글링으로 남았다 -> 약참조
+	UPROPERTY()
+	TMap<FName, TWeakObjectPtr<ATargetPoint>> CachedTargetPoints;
 	
 };

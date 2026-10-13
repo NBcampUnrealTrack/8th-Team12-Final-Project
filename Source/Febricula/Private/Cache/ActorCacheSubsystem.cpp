@@ -14,7 +14,7 @@ void UActorCacheSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 FTransform UActorCacheSubsystem::GetTargetTransform(FName TargetTag, ETargetTypeRole TargetTypeRole)
 {
-	if (TObjectPtr<ATargetPoint> NowTarget = CachedTargetPoints.FindRef(TargetTag))
+	if (ATargetPoint* NowTarget = CachedTargetPoints.FindRef(TargetTag).Get())
 	{
 		if (UTargetTypeComponent* TargetTypeComponent = NowTarget->GetComponentByClass<UTargetTypeComponent>())
 		{
@@ -34,7 +34,7 @@ FTransform UActorCacheSubsystem::GetTargetTransform(FName TargetTag, ETargetType
 
 FVector UActorCacheSubsystem::GetTargetLocation(FName TargetTag, ETargetTypeRole TargetTypeRole)
 {
-	if (TObjectPtr<ATargetPoint> NowTarget = CachedTargetPoints.FindRef(TargetTag))
+	if (ATargetPoint* NowTarget = CachedTargetPoints.FindRef(TargetTag).Get())
 	{
 		if (UTargetTypeComponent* TargetTypeComponent = NowTarget->GetComponentByClass<UTargetTypeComponent>())
 		{
@@ -52,6 +52,7 @@ FVector UActorCacheSubsystem::GetTargetLocation(FName TargetTag, ETargetTypeRole
 	return FVector::Zero();
 }
 
+// [skydodo] 2026-10-13 버그 수정: 태그가 없을 때 경고 후 '존재하지 않는 액터' 경고까지 이어서 찍던 것 수정
 bool UActorCacheSubsystem::AddActorToCache(ATargetPoint* Actor)
 {
 	if (Actor)
@@ -62,6 +63,7 @@ bool UActorCacheSubsystem::AddActorToCache(ATargetPoint* Actor)
 			return true;
 		}
 		UE_LOG(LogTemp, Warning, TEXT("액터에 태그가 할당되지 않음"));
+		return false;
 	}
 	UE_LOG(LogTemp, Warning, TEXT("존재하지 않는 액터"));
 	return false;
@@ -80,7 +82,7 @@ bool UActorCacheSubsystem::RemoveActorFromCache(FName TargetTag)
 
 UTargetTypeComponent* UActorCacheSubsystem::GetTargetTypeComponent(FName TargetTag)
 {
-	if (ATargetPoint* Target = CachedTargetPoints.FindRef(TargetTag))
+	if (ATargetPoint* Target = CachedTargetPoints.FindRef(TargetTag).Get())
 	{
 		if (UTargetTypeComponent* TargetTypeComponent = Target->GetComponentByClass<UTargetTypeComponent>())
 		{
@@ -90,11 +92,21 @@ UTargetTypeComponent* UActorCacheSubsystem::GetTargetTypeComponent(FName TargetT
 	return nullptr;
 }
 
+// [skydodo] 2026-10-13 버그 수정: 헤더만 Shipping 가드가 있고 정의는 없어 Shipping 빌드가 깨졌다. 캐시가 약참조로 바뀌어 파괴된 액터도 확인
+#if !UE_BUILD_SHIPPING
 void UActorCacheSubsystem::PrintAllCachedTarget() const
 {
 	UE_LOG(LogTemp, Warning, TEXT("PrintAllCachedTarget"));
-	for (TPair<FName, TObjectPtr<ATargetPoint>> Pair : CachedTargetPoints)
+	for (const TPair<FName, TWeakObjectPtr<ATargetPoint>>& Pair : CachedTargetPoints)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s : %s : %s"), *Pair.Key.ToString(), *Pair.Value->GetActorLocation().ToString(), *Pair.Value->GetActorRotation().ToString());
+		if (const ATargetPoint* Target = Pair.Value.Get())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s : %s : %s"), *Pair.Key.ToString(), *Target->GetActorLocation().ToString(), *Target->GetActorRotation().ToString());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s : (파괴됨)"), *Pair.Key.ToString());
+		}
 	}
 }
+#endif

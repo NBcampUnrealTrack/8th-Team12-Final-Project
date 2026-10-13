@@ -72,10 +72,7 @@ void UDialogueSubsystem::Deinitialize()
 void UDialogueSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, .0f, FColor::Red, FString::Printf(TEXT("%d"), CachedCharacter.Num()));
-	}
+	// [skydodo] 2026-10-13 수정: 캐시된 캐릭터 수를 매 프레임 화면에 찍던 디버그 출력 제거 (확인은 GetCachedCharacter 치트로)
 
 	// 빠른 넘기기(Ctrl 홀드 등) 중이면 일정 간격마다 Advance()를 대신 호출해준다.
 	// Advance() 자체가 선택지/자동진행 대기 중엔 아무것도 안 하고 리턴하므로,
@@ -202,6 +199,7 @@ void UDialogueSubsystem::SetDataTables(UDataTable* InEventTable, UDataTable* InD
 
 
 
+// [skydodo] 2026-10-13 버그 수정: DialogueNodeId로 고른 경우 BestRowName이 비어 이벤트 완료 기록이 빠졌다. Row가 null이면 역참조하던 것도 막음
 bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, FName DialogueNodeId)
 {
  	if (bDialogueActive || !EventTable)
@@ -224,14 +222,15 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, 
 	for (const TPair<FName, uint8*>& Pair : EventTable->GetRowMap())
 	{
 		const FNpcEventRow* Row = reinterpret_cast<const FNpcEventRow*>(Pair.Value);
-		if (Row)
+		if (!Row)
 		{
-			if (Row->NpcId != NpcId)
+			continue;
+		}
+		if (Row->NpcId != NpcId)
+		{
+			if (!Row->NpcId.IsNone())
 			{
-				if (!Row->NpcId.IsNone())
-				{
-					continue;		
-				}
+				continue;
 			}
 		}
 
@@ -251,6 +250,7 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, 
 			if (Row->RootNodeId == DialogueNodeId)
 			{
 				BestRow = Row;
+				BestRowName = Pair.Key;	// 비워 두면 끝날 때 이벤트 완료 기록이 빠진다
 				break;
 			}
 		}
@@ -850,6 +850,7 @@ void UDialogueSubsystem::ResolveNodeExit()
 // 액션 실행
 // ---------------------------------------------------------------------------
 
+// [skydodo] 2026-10-13 버그 수정: AddStat case에 break가 없어 CompleteEvent까지 실행돼 스탯 키가 완료 이벤트로 기록됐다
 void UDialogueSubsystem::ExecuteActions(const TArray<FGameAction>& Actions)
 {
 	for (const FGameAction& Action : Actions)
@@ -1003,6 +1004,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		
 	case EGameActionType::AddStat:
 		if (Progress) { Progress->AddStat(Action.Key, Action.Value); }
+		break;
 
 	case EGameActionType::CompleteEvent:
 		if (Progress) { Progress->MarkEventCompleted(Action.Key); }

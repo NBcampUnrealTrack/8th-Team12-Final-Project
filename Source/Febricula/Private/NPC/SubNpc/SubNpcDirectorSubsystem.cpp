@@ -671,7 +671,7 @@ namespace SubNpcOverlapCheck
 						const ANpcCrowdPath* Path = Me.Npc->GetCurrentPath();
 						const float OffTarget = Path ? FVector::Dist2D(Me.Loc,
 							Path->GetLocationAtDistance(Me.Npc->GetPathDistance(), Me.Npc->GetLaneOffset()) + Me.Npc->GetPathHandoffOffset()) : -1.f;
-						const ASubNpcCharacter* Leader = Me.Npc->GetGroupLeaderNpc();
+						const ASubNpcCharacter* Leader = Me.Npc->GetGroupLeader();
 						const FString LeaderInfo = Leader
 							? FString::Printf(TEXT(" 리더%s(경로%s 진행%.0f 몸거리%.0f)"), *GetNameSafe(Leader).RightChop(13),
 								*GetNameSafe(Leader->GetCurrentPath()).Right(4), Leader->GetPathDistance(), FVector::Dist2D(Me.Loc, Leader->GetActorLocation()))
@@ -1736,7 +1736,7 @@ namespace SubNpcPathDebug
 		GroupTags.Reset();
 		for (const ASubNpcCharacter* Npc : Npcs)
 		{
-			if (const ASubNpcCharacter* Leader = IsValid(Npc) ? Npc->GetGroupLeaderNpc() : nullptr)
+			if (const ASubNpcCharacter* Leader = IsValid(Npc) ? Npc->GetGroupLeader() : nullptr)
 			{
 				TPair<TCHAR, int32>& Tag = GroupTags.FindOrAdd(Leader, TPair<TCHAR, int32>(TEXT('?'), 1));
 				++Tag.Value;
@@ -1765,7 +1765,7 @@ namespace SubNpcPathDebug
 				: Role.Contains(TEXT("반응")) ? FColor::Magenta
 				: FColor::Cyan;   // 길로 복귀
 		}
-		const ASubNpcCharacter* Leader = Npc->GetGroupLeaderNpc();
+		const ASubNpcCharacter* Leader = Npc->GetGroupLeader();
 		const TPair<TCHAR, int32>* Tag = GroupTags.Find(Leader ? Leader : Npc);
 		if (Tag)
 		{

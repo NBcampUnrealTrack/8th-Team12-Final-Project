@@ -80,9 +80,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
 	void SetStat(FName StatId, int32 NewValue)
 	{
-		const int32 Val = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
-		if (Val == INDEX_NONE) return;
-		Stats[Val] = NewValue;
+		int32 Index;
+		if (!TryGetStatIndex(StatId, Index)) return;
+		Stats[Index] = NewValue;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
@@ -166,6 +166,7 @@ protected:
 protected:
 	/** 시간 조건 판정에 쓰는 UTimeSubsystem 접근자. 없으면 nullptr */
 	const UTimeSubsystem* GetTime() const;
+
 public:
 
 protected:
@@ -190,4 +191,7 @@ protected:
 	
 	UPROPERTY()
 	int32 SpawnerSeed;
+
+	/** 스탯 이름을 Stats 배열 인덱스로 바꾼다. 없는 이름이면 경고를 남기고 false */
+	static bool TryGetStatIndex(FName StatId, int32& OutIndex);
 };

@@ -27,16 +27,21 @@ bool UFixedViewComponent::HasTriggerBox()
 	
 }
 
+// [skydodo] 2026-10-13 버그 수정: 태그가 없는 컴포넌트면 ComponentTags[0]에서 크래시
 void UFixedViewComponent::HandleOverlapBegin(AActor* OverlappedActor, AActor* OtherActor)
 {
-	if (!ComponentTags.IsValidIndex(0)) return;
-	OnOverlapBegin.Broadcast(ComponentTags[0], true);
+	if (!ComponentTags.IsEmpty())
+	{
+		OnOverlapBegin.Broadcast(ComponentTags[0], true);
+	}
 }
 
 void UFixedViewComponent::HandleOverlapEnd(AActor* OverlappedActor, AActor* OtherActor)
 {
-	if (!ComponentTags.IsValidIndex(0)) return;
-	OnOverlapBegin.Broadcast(ComponentTags[0], false);
+	if (!ComponentTags.IsEmpty())
+	{
+		OnOverlapBegin.Broadcast(ComponentTags[0], false);
+	}
 }
 
 
