@@ -15,7 +15,7 @@
 #include "Animation/CharacterAnimationComponent.h"
 #include "Cache/ActorCacheSubsystem.h"
 #include "Components/CapsuleComponent.h"
-#include "Dialogue/NpcCrowdManager.h"
+#include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/FebriculaGameMode.h"
@@ -1094,31 +1094,18 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		break;
 		
 	case EGameActionType::StartCrowdSpawn:
-		if (!Action.Key.IsNone())
+		// 레벨에 하나뿐인 행인 스포너가 Key2 이름의 행렬을 내보낸다. Key는 쓰지 않는다.
+		if (Action.Key2.IsNone())
 		{
-			TArray<AActor*> Founds;
-			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
-			if (Founds.Num() > 0)
-			{
-				if (IsValid(Founds[0]))
-				{
-					if (ANpcCrowdManager* CrowdManager = Cast<ANpcCrowdManager>(Founds[0]))
-					{
-						if (!Action.Key2.IsNone())
-						{
-							CrowdManager->Play(Action.Key2);
-						}
-						else
-						{
-							UE_LOG(LogTemp, Warning, TEXT("Path 식별자가 지정되지 않음"))
-						}
-					}
-				}
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("CrowdManager를 찾을 수 없음"))
-			}
+			UE_LOG(LogTemp, Warning, TEXT("StartCrowdSpawn: 행렬 이름(Key2)이 지정되지 않음"));
+		}
+		else if (ANpcCrowdSpawner* Spawner = Cast<ANpcCrowdSpawner>(UGameplayStatics::GetActorOfClass(this, ANpcCrowdSpawner::StaticClass())))
+		{
+			Spawner->PlayEventCrowd(Action.Key2);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("StartCrowdSpawn: NpcCrowdSpawner를 찾을 수 없음"));
 		}
 		break;
 		
