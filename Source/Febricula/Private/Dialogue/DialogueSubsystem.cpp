@@ -71,10 +71,7 @@ void UDialogueSubsystem::Deinitialize()
 void UDialogueSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, .0f, FColor::Red, FString::Printf(TEXT("%d"), CachedCharacter.Num()));
-	}
+	// [skydodo] 2026-10-13 수정: 캐시된 캐릭터 수를 매 프레임 화면에 찍던 디버그 출력 제거 (확인은 GetCachedCharacter 치트로)
 
 	// 빠른 넘기기(Ctrl 홀드 등) 중이면 일정 간격마다 Advance()를 대신 호출해준다.
 	// Advance() 자체가 선택지/자동진행 대기 중엔 아무것도 안 하고 리턴하므로,

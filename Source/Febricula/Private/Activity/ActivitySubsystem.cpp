@@ -92,13 +92,10 @@ void UActivitySubsystem::FindRunnableActivities()
 		}
 	}
 	SortRunnableActivity();
-	if (GEngine)
+	// [skydodo] 2026-10-13 수정: 화면 출력 대신 Output Log로 (확인은 GetRunnableActivities 치트로)
+	for (const auto& Pair : RunnableActivities)
 	{
-		for (const auto& Pair : RunnableActivities)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, FString::Printf(TEXT("%s"), *Pair.Key.GetTagName().ToString()));
-		}
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, TEXT("Founded Activities"));
+		UE_LOG(LogTemp, Log, TEXT("ActivitySubsystem: Runnable %s"), *Pair.Key.GetTagName().ToString());
 	}
 }
 
