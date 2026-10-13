@@ -29,11 +29,13 @@ bool UFixedViewComponent::HasTriggerBox()
 
 void UFixedViewComponent::HandleOverlapBegin(AActor* OverlappedActor, AActor* OtherActor)
 {
+	if (!ComponentTags.IsValidIndex(0)) return;
 	OnOverlapBegin.Broadcast(ComponentTags[0], true);
 }
 
 void UFixedViewComponent::HandleOverlapEnd(AActor* OverlappedActor, AActor* OtherActor)
 {
+	if (!ComponentTags.IsValidIndex(0)) return;
 	OnOverlapBegin.Broadcast(ComponentTags[0], false);
 }
 
@@ -42,22 +44,20 @@ void UFixedViewComponent::HandleOverlapEnd(AActor* OverlappedActor, AActor* Othe
 void UFixedViewComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	if (ConnectedTriggerBox)
+	ConnectedTriggerBox->OnActorBeginOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapBegin);
+	ConnectedTriggerBox->OnActorEndOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapEnd);
+	
+	GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
 	{
-		ConnectedTriggerBox->OnActorBeginOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapBegin);
-		ConnectedTriggerBox->OnActorEndOverlap.AddDynamic(this, &UFixedViewComponent::HandleOverlapEnd);
-		
-		if (APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0))
+		if (!ConnectedTriggerBox) return;
+		ConnectedTriggerBox->UpdateOverlaps(false); // 이벤트 없이 오버랩 목록만 갱신
+		APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0);
+		if (Pawn && ConnectedTriggerBox->IsOverlappingActor(Pawn))
 		{
-			if (ConnectedTriggerBox->IsOverlappingActor(Pawn))
-			{
-				HandleOverlapBegin(ConnectedTriggerBox, Pawn);
-			}
+			HandleOverlapBegin(ConnectedTriggerBox, Pawn);
 		}
-		CameraYaw = GetOwner()->GetActorRotation().Yaw;
+	});
 
-		return;
-	}
 	UE_LOG(LogTemp, Warning, TEXT("Fixed View Component: 트리거 박스가 연결되지 않음"));
 	
 }

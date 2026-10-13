@@ -30,5 +30,6 @@ public:
 	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Schedule Default")
 	TSoftObjectPtr<UDayScheduleAsset> WeekEndSchedule;
 	
-	
+	UPROPERTY(EditAnywhere, Config, BlueprintReadOnly, Category="Schedule Default")
+	TMap<FName, FGameplayTagContainer> ScheduleGroupMap;
 };

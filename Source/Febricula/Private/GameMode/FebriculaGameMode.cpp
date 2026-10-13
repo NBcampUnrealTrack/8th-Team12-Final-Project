@@ -85,6 +85,19 @@ void AFebriculaGameMode::BeginPlay()
 	{
 		DialogueSubsystem->BlockPlayerInput(false);
 	}
+	
+	// if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	// {
+	// 	int32 NowMaxAp = ActivitySubsystem->GetMaxAP();
+	// 	
+	// 	if (NowMaxAp > 0 && ActivitySubsystem->GetCurrentAP() <= 0)
+	// 	{
+	// 		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	// 		{
+	// 			TimeSubsystem->SpendSchedule();
+	// 		}
+	// 	}
+	// }
 
 	
 	// ���̺� �ε�� ������ �̵��� �� ���, ��� ���̴� �÷��̾� ��ġ/��ȭ ��α׸� ���⼭ ���� �����Ѵ�.

@@ -211,6 +211,17 @@ void UActivitySubsystem::SortRunnableActivity()
 	});
 }
 
+void UActivitySubsystem::CheckCurrentAP()
+{
+	if (MaxAP > 0 && CurrentAP <= 0)
+	{
+		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+		{
+			TimeSubsystem->SpendSchedule();
+		}
+	}
+}
+
 int32 UActivitySubsystem::GetRunnableLength()
 {
 	return RunnableActivities.Num();
@@ -233,6 +244,7 @@ bool UActivitySubsystem::TryConsumeAP(int32 Cost)
 
 	CurrentAP -= Cost;
 	UE_LOG(LogTemp, Log, TEXT("TryConsumeAP: Consumed %d AP (Remaining: %d)"), Cost, CurrentAP);
+	CheckCurrentAP();
 	return true;
 }
 
@@ -261,7 +273,6 @@ void UActivitySubsystem::ActivityFinished(FName ActivityName)
 	bFreeActivity = false;
 	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
 	OnActivityFinished.Broadcast(FName("Fixed"), ActivityName);
-
 }
 
 void UActivitySubsystem::ActivityFinished(FName NpcName, int32 EventNumber)
@@ -273,10 +284,11 @@ void UActivitySubsystem::ActivityFinished(FName NpcName, int32 EventNumber)
 			FName ActivityName = FName(FString::Printf(TEXT("%s_%d"), *NpcName.ToString(), EventNumber));
 			UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished: %s"), *ActivityName.ToString());
 			
-			OnActivityFinished.Broadcast(NpcName, ActivityName);
-			
 			GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
 			bFreeActivity = false;
+			CheckCurrentAP();
+			OnActivityFinished.Broadcast(NpcName, ActivityName);
+
 		}	
 		else
 		{

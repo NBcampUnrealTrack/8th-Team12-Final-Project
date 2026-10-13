@@ -10,6 +10,8 @@
 #include "GameplayTagContainer.h"
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
+#include "GameMode/TimeSettings.h"
+#include "Net/Core/PushModel/PushModel.h"
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"
 
 FRandomStream UGameProgressSubsystem::MakeRandomStream(const FMainNpcSpawnRow& NowRow, uint32 Salt) const
@@ -148,22 +150,38 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	case EGameConditionType::ScheduleAfter:
 	{
 		const UTimeSubsystem* TimeSubsystem = GetTime();
-		TArray<FScheduleDef> ScheduleDef = TimeSubsystem->GetScheduleDefs();
-		if (ScheduleDef.IsEmpty())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("GameProcess Subsystem: ScheduleDef가 비어있음"));
-			return false;
-		}
-		for (FScheduleDef Def : ScheduleDef)
-		{
-			if (Def.ScheduleName == FGameplayTag::RequestGameplayTag(Condition.Key))
-			{
-				return true;
-			}
-		}
+			
+		int32 NowIndex = TimeSubsystem->GetScheduleIndex();
+		int32 TargetIndex = TimeSubsystem->GetScheduleIndex(Condition.Key);
+		
+		if (TargetIndex == -1) return false;
+		if (TargetIndex < NowIndex) return true;
 		return false;
 	}
 
+	case EGameConditionType::NextScheduleIs:
+	{
+		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+		{
+			TArray<FScheduleDef> ScheduleDefs = TimeSubsystem->GetScheduleDefs();
+			if (ScheduleDefs.IsEmpty())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("GameProcess Subsystem: ScheduleDef가 비어있음"));
+				return false;
+			}
+			
+			FName NextScheduleName = TimeSubsystem->GetNextScheduleName();
+			
+			if (NextScheduleName == NAME_None)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("GameProgress Subsystem: NextScheduleName이 비어있음"));
+				return false;
+			}
+			return NextScheduleName == Condition.Key;
+		}
+		return false;
+	}
+		
 	case EGameConditionType::ScheduleIsChildOf:
 	{
 		const UTimeSubsystem* Time = GetTime();
@@ -171,9 +189,16 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		{
 			return false;
 		}
-		const FGameplayTag Parent =
-			FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
-		return Parent.IsValid() && Time->GetNowScheduleTag().MatchesTag(Parent);
+		FGameplayTagContainer Block = Time->GetScheduleBlock(Condition.Key);
+		if (Block == FGameplayTagContainer::EmptyContainer)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GameProgress Subsystem: 존재하지 않는 스케쥴 블록 %s"), *Condition.Key.ToString());
+			return false;
+		}
+		return Block.HasTagExact(Time->GetNowSchedule().ScheduleName);
+		// const FGameplayTag Parent =
+		// 	FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
+		// return Parent.IsValid() && Time->GetNowScheduleTag().MatchesTag(Parent);
 	}
 
 	case EGameConditionType::DayTypeIs:

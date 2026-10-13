@@ -25,6 +25,8 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	WeekDaySchedule = S->WeekDaySchedule.LoadSynchronous();
 	WeekEndSchedule = S->WeekEndSchedule.LoadSynchronous();
+	
+	ScheduleGroupMap = S->ScheduleGroupMap;
 
 	// [변경] 원래는 WeekDaySchedule->ScheduleDefs[0] 을 바로 읽었는데,
 	// 프로젝트 세팅에서 애셋을 아직 안 지정했거나 배열이 비어 있으면 게임 시작과 동시에 크래시가 난다.
@@ -159,6 +161,60 @@ void UTimeSubsystem::ResetSchedule()
 	{
 		SpendSchedule();
 	}
+}
+
+FName UTimeSubsystem::GetNextScheduleName()
+{
+	if (GetScheduleDefs().Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UTimeSubsystem::SpendSchedule: 오늘 쓸 ScheduleDefs가 비어 있습니다."));
+		return NAME_None;
+	}
+
+	const TArray<FScheduleDef>& Defs = GetScheduleDefs();
+	int32 ScheduleIndex = FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1);
+	FScheduleDef Schedule = Defs[NowScheduleIndex];
+	int32 RepeatCount = NowRepeatCount;
+
+	
+	{
+
+		if (Schedule.BackTo > 0)
+		{
+			if (RepeatCount + 1 < NowSchedule.RepeatCount)
+			{
+				ScheduleIndex -= NowSchedule.BackTo;
+			}
+			else
+			{
+				RepeatCount = 0;
+				++ScheduleIndex;
+			}
+		}
+		else
+		{
+			++ScheduleIndex;
+		}
+
+		ScheduleIndex = FMath::Max(ScheduleIndex, 0);
+
+		if (ScheduleIndex >= Defs.Num())
+		{
+			ScheduleIndex = 0;
+			RepeatCount = 0;
+		}
+	}
+
+	// [변경] SpendDay가 평일<->주말을 바꿀 수 있어서 위에서 잡아둔 Defs 참조는 이 시점에 다른 배열을 가리킬 수 있다.
+	// 그래서 하루가 넘어간 뒤에는 반드시 다시 가져와야 한다. (원본은 예전 배열로 인덱싱하고 있었다)
+	const TArray<FScheduleDef>& NewDefs = GetScheduleDefs();
+	if (NewDefs.Num() <= 0)
+	{
+		return NAME_None;
+	}
+	ScheduleIndex = FMath::Clamp(ScheduleIndex, 0, NewDefs.Num() - 1);
+	FName ScheduleName = FName(NewDefs[ScheduleIndex].ScheduleName.ToString());
+	return ScheduleName;
 }
 
 // [skydodo] 2026-08-26 추가: 누적 일차 기준 주말 판정

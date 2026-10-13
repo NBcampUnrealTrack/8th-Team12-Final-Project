@@ -3,9 +3,18 @@
 @menu YesNo
 - 복도로 -> GoSchoolHallway
 - 교실로 -> GoClassroom
+- 급식실로 -> GoFood
+@if ScheduleIsChildOf FoodTime
 - 그만둔다 -> Cancle_Root
 
 @end
+
+@label SchoolOutside_Block
+학교 밖으로 나갈까?
+@menu YesNo
+- 네 -> GoMiddleBusDirect
+@if ScheduleAfter Schedule.FreeTime3
+- 아니오 -> Cancle_Root
 
 @label SchoolOutside_LibrarySide
 어디로 갈까?
@@ -67,9 +76,8 @@
 어디로 갈까?
 @menu YesNo
 - 운동장으로 -> GoPlaygroundDirect
-- 학교 밖으로 -> GoMiddleBusDirect
-@if ScheduleIs Schedule.AfterSchool   
 - 도서관으로 -> GoLibraryDirect
+- 체육관으로 -> GoGymDirect
 - 그만둔다 -> Cancle_Root
 @end
 
@@ -122,6 +130,13 @@
 @menu YesNo
 - 네 -> GoMiddleBus 
 - 아니요 -> Cancle_Root
+@end
+
+@label GoFood
+@ChangeLevel Food true
+@hide
+@wait .1
+@end
 
 @label GoRoom
 @ChangeLevel Room true
@@ -179,7 +194,7 @@
 @end
 
 @label GoMiddleBusDirect
-@ChangeLevel SchoolOutside false
+@ChangeLevel MiddleBus false
 
 
 @hide
@@ -204,6 +219,14 @@
 
 @label GoGym
 @ChangeLevel Gym true
+
+
+@hide
+@wait .1
+@end 
+
+@label GoGymDirect
+@ChangeLevel Gym false
 
 
 @hide

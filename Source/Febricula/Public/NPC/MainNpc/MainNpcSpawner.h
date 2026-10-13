@@ -47,6 +47,9 @@ struct FMainNpcSpawnRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc|Behavior")
+	bool bSeated = false;
+	
 	/** 메인 NPC 고유 ID (예: NPC_HanSeoYun). 스폰한 NPC에도 이 ID를 넣는다 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MainNpc")
 	FName NpcId;
@@ -138,6 +141,14 @@ struct FMainNpcSpawnRow : public FTableRowBase
 	TSoftObjectPtr<UDataTable> DialogueTable;
 };
 
+USTRUCT()
+struct FMainNpcSpawnPointList
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere)
+	TArray<TObjectPtr<AMainNpcSpawnPoint>> Points;
+};
 
 UCLASS()
 class FEBRICULA_API AMainNpcSpawner : public AActor
@@ -214,6 +225,8 @@ protected:
 	UFUNCTION()
 	void HandleNpcMovementStateChanged(ENpcMovementState OldState, ENpcMovementState NewState);
 
+	void CollectSpawnPoints();
+	
 	/**
 	 * 메인 NPC 스케줄 테이블 (FMainNpcSpawnRow).
 	 * 모든 레벨의 스포너가 같은 테이블을 가리켜야 "한 NPC는 한 곳에만" 이 보장된다.
@@ -238,7 +251,12 @@ protected:
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MainNpc|Spawner|Debug")
 	TMap<FName, TObjectPtr<AMainNpcSpawnPoint>> SpawnedPoints;
+	
+	UPROPERTY(VisibleAnywhere, Transient, Category = "MainNpc|Spawner|Debug")
+	TMap<FName, FMainNpcSpawnPointList> AllSpawnPoints;
 
+	
+	
 	FTimerHandle RefreshTimerHandle;
 
 	/** 바쁜 NPC 때문에 미룬 갱신을 다시 시도하는 타이머 */

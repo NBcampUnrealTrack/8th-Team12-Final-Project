@@ -551,6 +551,7 @@ void UDialogueSubsystem::FinishDialogue()
 	CurrentNodeId = NAME_None;
 	ActiveEventId = NAME_None;
 	PendingAutoAdvance = EDialogueAutoAdvance::None;
+	RoutingHopCount = 0;
 	AutoAdvanceNpcId = NAME_None;
 	AutoAdvanceElapsed = 0.f;
 	PendingChoices.Reset();
@@ -569,6 +570,21 @@ void UDialogueSubsystem::FinishDialogue()
 		// 	MainNpc->SetActorEnableCollision(true);
 		// }
 	}
+	
+	// if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	// {
+	// 	int32 NowMaxAp = ActivitySubsystem->GetMaxAP();
+	// 	
+	// 	if (NowMaxAp > 0 && ActivitySubsystem->GetCurrentAP() <= 0)
+	// 	{
+	// 		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	// 		{
+	// 			TimeSubsystem->SpendSchedule();
+	// 		}
+	// 	}
+	// }
+
+	
 	CurrentInstigator = nullptr;
 	BlockPlayerInput(false);
 	OnDialogueFinished.Broadcast();
@@ -654,6 +670,21 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 		
 	ExecuteActions(Row->OnEnterActions);
 
+	if (Row->Text.IsEmpty() && Row->Choices.Num() == 0
+	&& Row->AutoAdvance == EDialogueAutoAdvance::None)
+	{
+		if (++RoutingHopCount > MaxRoutingHops)
+		{
+			UE_LOG(LogTemp, Error, TEXT("UDialogueSubsystem: 분기 노드 순환 의심 (%s)"), *NodeId.ToString());
+			FinishDialogue();
+			return;
+		}
+		PendingAutoAdvance = EDialogueAutoAdvance::None;
+		ResolveNodeExit();   // CurrentNodeId는 위에서 이미 설정됨
+		return;
+	}
+	RoutingHopCount = 0;
+	
 	// 선택지가 있는 노드는 반드시 골라야 하므로 자동 진행을 걸지 않는다.
 	// if (Row->Choices.Num() > 0)
 	// {

@@ -35,6 +35,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	bool TryConsumeAP(int32 Cost);
 
+	UFUNCTION(BlueprintCallable)
+	void CheckCurrentAP();
+	
 	// ---- 세이브/로드 ----
 	
 	UFUNCTION(BlueprintCallable, Category = "ActivitySubsystem | Save")
@@ -45,6 +48,9 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
 	int32 GetCurrentAP() const;
+	
+	UFUNCTION(BlueprintCallable, Category = ActivitySubsystem)
+	int32 GetMaxAP() const { return MaxAP; };
 	
 	void ActivityFinished(FName ActivityName);
 	
@@ -83,6 +89,7 @@ protected:
 	void OnLevelLoaded(UWorld* LoadedWorld);
 	
 	void SortRunnableActivity();
+	
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Activity")

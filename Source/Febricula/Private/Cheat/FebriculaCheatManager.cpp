@@ -149,3 +149,37 @@ void UFebriculaCheatManager::GetMoveHistory()
 	}
 }
 
+void UFebriculaCheatManager::GetNextScheduleName()
+{
+	if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("다음 스케쥴: %s"), *TimeSubsystem->GetNextScheduleName().ToString());
+	}
+}
+
+void UFebriculaCheatManager::InScheduleBlock(FName BlockName)
+{
+	if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		FGameplayTagContainer Container = TimeSubsystem->GetScheduleBlock(BlockName);
+		UE_LOG(LogTemp, Warning, TEXT("현재 스케쥴: %s"), *TimeSubsystem->GetNowScheduleName().ToString());	
+		if (Container.IsEmpty())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("존재하지 않는 스케쥴 블록: %s"), *BlockName.ToString());
+			return;
+		}
+		if (Container.HasTagExact(TimeSubsystem->GetNowScheduleTag()))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s 블록에 포함됨"), *BlockName.ToString());
+			return;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("%s 블록에 포함되지 않음"), *BlockName.ToString());
+		return;
+	}
+}
+
+void UFebriculaCheatManager::SetSchedule(FName ScheduleName)
+{
+
+}
+

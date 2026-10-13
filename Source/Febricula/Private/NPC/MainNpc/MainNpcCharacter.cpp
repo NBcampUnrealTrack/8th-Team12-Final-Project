@@ -174,11 +174,11 @@ void AMainNpcCharacter::StartTalk(AActor* Talker)
 
 void AMainNpcCharacter::EndTalk()
 {
-	// CurrentTalker = nullptr;
-	// SetMovementState(ENpcMovementState::Idle);
-	// //SetBehaviorTreePaused(false);
-	// OnNpcTalkStateChanged.Broadcast(false);
-	// OnTalkEnded();
+	CurrentTalker = nullptr;
+	SetMovementState(ENpcMovementState::Idle);
+	SetBehaviorTreePaused(false);
+	OnNpcTalkStateChanged.Broadcast(false);
+	OnTalkEnded();
 }
 
 ANpcRoute* AMainNpcCharacter::GetRoute(FName RouteId) const

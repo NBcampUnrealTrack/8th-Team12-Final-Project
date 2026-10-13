@@ -16,6 +16,7 @@
 #include "NPC/MainNpc/NpcRoute.h"
 #include "Progress/GameProgressSubsystem.h"
 #include "TimerManager.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogMainNpcSpawner, Log, All);
 
@@ -36,6 +37,21 @@ namespace MainNpcSpawnerPrivate
 			&& A.RouteId == B.RouteId
 			&& A.EventTable == B.EventTable
 			&& A.DialogueTable == B.DialogueTable;
+	}
+	
+	void ApplySeated(AMainNpcCharacter* Npc)
+	{
+		if (UCharacterMovementComponent* Move = Npc->GetCharacterMovement())
+		{
+			Move->StopMovementImmediately();
+			Move->SetMovementMode(MOVE_None);   // 중력·바닥 검사 정지
+		}
+		if (UCapsuleComponent* Capsule = Npc->GetCapsuleComponent())
+		{
+			// 콜리전 자체는 켜 둔다 → 상호작용 트레이스에는 계속 잡힘
+			Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Ignore);
+			Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);
+		}
 	}
 }
 
@@ -63,6 +79,9 @@ void AMainNpcSpawner::BeginPlay()
 		return;
 	}
 
+	CollectSpawnPoints();
+
+	
 	if (bValidateOnBeginPlay)
 	{
 		ValidateSchedule();
@@ -129,6 +148,51 @@ void AMainNpcSpawner::HandleNpcMovementStateChanged(ENpcMovementState OldState, 
 	{
 		RequestRefresh();
 	}
+}
+
+void AMainNpcSpawner::CollectSpawnPoints()
+{
+	AllSpawnPoints.Reset();
+
+	for (TActorIterator<AMainNpcSpawnPoint> It(GetWorld()); It; ++It)
+	{
+		AMainNpcSpawnPoint* Point = *It;
+		if (!IsValid(Point))
+		{
+			continue;
+		}
+
+		// MultiByRandom은 ID와 무관하게 전부 None 키에 모은다.
+		FName Key = NAME_None;
+		if (Point->GetSpawnPointType() != ESpawnPointType::MultiByRandom)
+		{
+			Key = Point->GetSpawnPointId();
+			if (Key.IsNone())
+			{
+				// None 키는 랜덤 풀이므로 ID 없는 OneByOne이 섞이면 안 된다.
+				UE_LOG(LogMainNpcSpawner, Warning,
+					TEXT("%s: SpawnPointId가 비어 있어 제외합니다."), *GetNameSafe(Point));
+				continue;
+			}
+		}
+
+		AllSpawnPoints.FindOrAdd(Key).Points.Add(Point);
+	}
+
+	// 한 레벨 안에서 자리 이름이 겹치면 어느 쪽에 설지 알 수 없다.
+	if (bValidateOnBeginPlay)
+	{
+		for (const TPair<FName, FMainNpcSpawnPointList>& Pair : AllSpawnPoints)
+		{
+			if (!Pair.Key.IsNone() && Pair.Value.Points.Num() > 1)
+			{
+				UE_LOG(LogMainNpcSpawner, Warning,
+					TEXT("%s: SpawnPointId '%s'가 이 레벨에 %d개 있습니다."),
+					*GetNameSafe(this), *Pair.Key.ToString(), Pair.Value.Points.Num());
+			}
+		}
+	}
+
 }
 
 void AMainNpcSpawner::RequestRefresh()
@@ -336,6 +400,7 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 	}
 
 	TArray<AMainNpcSpawnPoint*> SpawnPoints = FindSpawnPoint(Row.SpawnPointId, Row.SpawnPointType);
+
 	if (SpawnPoints.Num() == 0)
 	{
 		UE_LOG(LogMainNpcSpawner, Warning,
@@ -402,9 +467,14 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 	SpawnTransform.SetScale3D(FVector::OneVector);
 
 	// NpcId를 BeginPlay 전에 넣어야 하므로 지연 스폰한다.
+	
+	const ESpawnActorCollisionHandlingMethod CollisionMethod = Row.bSeated
+	? ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+	: ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
 	AMainNpcCharacter* Npc = World->SpawnActorDeferred<AMainNpcCharacter>(
 		NpcClass, SpawnTransform, this, nullptr,
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+		CollisionMethod);
 	if (!Npc)
 	{
 		UE_LOG(LogMainNpcSpawner, Warning,
@@ -436,6 +506,12 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 
 	Npc->FinishSpawning(SpawnTransform);
 
+	if (Row.bSeated)
+	{
+		MainNpcSpawnerPrivate::ApplySeated(Npc);
+	}
+
+	
 	// FinishSpawning 안에서 AIController 빙의와 BehaviorTree 기동까지 끝나 있다.
 	ApplyStartAIState(Npc, Row);
 

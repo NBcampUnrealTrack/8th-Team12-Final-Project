@@ -161,6 +161,7 @@ namespace MainNpcDebug
 			for (int32 i = Lines.Num() - 1; i >= 0; --i)
 			{
 				GEngine->AddOnScreenDebugMessage(-1, 8.f, FColor::Yellow, Lines[i]);
+				UE_LOG(LogTemp, Warning, TEXT("%s"), *Lines[i]);
 			}
 		}
 	}
