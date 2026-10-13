@@ -1,4 +1,4 @@
-// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-13)
 // 요약: 행인 스포너 구현 - 풀 예열, 시작 인원 분산 배치, 시간대별 인원 보충
 // Fill out your copyright notice in the Description page of Project Settings.
 
@@ -528,6 +528,39 @@ void ANpcCrowdSpawner::FillImmediately()
 		const float StartDistance = FMath::FRandRange(0.f, Entry->GetPathLength());
 		if (!Director->SpawnOnPath(Entry, StartDistance, /*bReversed=*/false))
 		{
+			return;
+		}
+	}
+}
+
+void ANpcCrowdSpawner::PlayEventCrowd(FName Name)
+{
+	const FCrowdSequence* Sequence = EventCrowds.Find(Name);
+	if (!Sequence)
+	{
+		SUBNPC_LOG(Warning, TEXT("[Crowd] %s 이름의 이벤트 행렬이 없습니다."), *Name.ToString());
+		return;
+	}
+	if (!IsValid(Sequence->CrowdPath))
+	{
+		SUBNPC_LOG(Warning, TEXT("[Crowd] %s 이벤트 행렬의 경로가 지정되지 않았습니다."), *Name.ToString());
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	USubNpcDirectorSubsystem* Director = World ? World->GetSubsystem<USubNpcDirectorSubsystem>() : nullptr;
+	if (!Director)
+	{
+		return;
+	}
+
+	for (int32 i = 0; i < Sequence->SpawnCount; ++i)
+	{
+		const int32 Row = i / Sequence->NpcPerRow;
+		const float Distance = Sequence->StartOffset + Row * Sequence->NpcGap;
+		if (!Director->SpawnOnPath(Sequence->CrowdPath, Distance, /*bReversed=*/false))
+		{
+			SUBNPC_LOG(Warning, TEXT("[Crowd] %s 이벤트 행렬 스폰 실패 (%d/%d)"), *Name.ToString(), i, Sequence->SpawnCount);
 			return;
 		}
 	}
