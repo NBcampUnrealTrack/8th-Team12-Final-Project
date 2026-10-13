@@ -7,6 +7,39 @@
 #include "GameMode/ScheduleBlockRow.h"
 #include "GameMode/TimeSettings.h"
 
+// [skydodo] 2026-10-13 리팩토링: SpendSchedule과 GetNextScheduleName이 "다음 칸" 규칙을 각자 복사해 들고 있어
+// 한쪽만 고치면 미리보기와 실제 진행이 어긋났다 -> 한 곳에서 계산한다
+namespace TimeScheduleStep
+{
+	struct FStep
+	{
+		/** 다음 칸 인덱스. Defs.Num() 이상이면 오늘 시간표가 끝났다는 뜻 (호출하는 쪽이 하루를 넘긴다) */
+		int32 Index = 0;
+		int32 RepeatCount = 0;
+	};
+
+	/** Index 칸 다음 칸. BackTo가 있으면 RepeatCount번 될 때까지 BackTo칸 앞으로 되돌아간다 */
+	static FStep Next(const TArray<FScheduleDef>& Defs, int32 Index, int32 RepeatCount)
+	{
+		const FScheduleDef& Def = Defs[Index];
+		FStep Step{ Index, RepeatCount };
+		if (Def.BackTo > 0 && ++Step.RepeatCount < Def.RepeatCount)
+		{
+			Step.Index -= Def.BackTo;
+		}
+		else
+		{
+			if (Def.BackTo > 0)
+			{
+				Step.RepeatCount = 0;
+			}
+			++Step.Index;
+		}
+		Step.Index = FMath::Max(Step.Index, 0);
+		return Step;
+	}
+}
+
 // [skydodo] 2026-08-26 수정: 누적 일차(AbsoluteDay) 초기화, 시간표 애셋이 비었을 때 크래시 방어
 void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -109,24 +142,9 @@ void UTimeSubsystem::SpendSchedule()
 		NowScheduleIndex = FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1);
 		NowSchedule = Defs[NowScheduleIndex];
 
-		if (NowSchedule.BackTo > 0)
-		{
-			if (++NowRepeatCount < NowSchedule.RepeatCount)
-			{
-				NowScheduleIndex -= NowSchedule.BackTo;
-			}
-			else
-			{
-				NowRepeatCount = 0;
-				++NowScheduleIndex;
-			}
-		}
-		else
-		{
-			++NowScheduleIndex;
-		}
-
-		NowScheduleIndex = FMath::Max(NowScheduleIndex, 0);
+		const TimeScheduleStep::FStep Step = TimeScheduleStep::Next(Defs, NowScheduleIndex, NowRepeatCount);
+		NowScheduleIndex = Step.Index;
+		NowRepeatCount = Step.RepeatCount;
 
 		if (NowScheduleIndex >= Defs.Num())
 		{
@@ -186,22 +204,10 @@ FName UTimeSubsystem::GetNextScheduleName()
 		return NAME_None;
 	}
 
-	int32 ScheduleIndex = FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1);
-	const FScheduleDef& Schedule = Defs[ScheduleIndex];
-
-	if (Schedule.BackTo > 0 && NowRepeatCount + 1 < Schedule.RepeatCount)
+	const TimeScheduleStep::FStep Step = TimeScheduleStep::Next(Defs, FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1), NowRepeatCount);
+	if (Step.Index < Defs.Num())
 	{
-		ScheduleIndex -= Schedule.BackTo;
-	}
-	else
-	{
-		++ScheduleIndex;
-	}
-	ScheduleIndex = FMath::Max(ScheduleIndex, 0);
-
-	if (ScheduleIndex < Defs.Num())
-	{
-		return FName(Defs[ScheduleIndex].ScheduleName.ToString());
+		return FName(Defs[Step.Index].ScheduleName.ToString());
 	}
 
 	// 시간표 끝 -> 내일 시간표의 첫 칸. 내일이 주말인지는 IsWeekend()와 같은 식을 누적 일차 + 1로 계산한다.

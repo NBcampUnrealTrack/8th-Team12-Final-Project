@@ -91,9 +91,9 @@ bool UGameProgressSubsystem::TryGetStatIndex(FName StatId, int32& OutIndex)
 int32 UGameProgressSubsystem::GetStat(FName StatId) const
 {
 	int32 Index;
+	// [skydodo] 2026-10-13 리팩토링: TryGetStatIndex가 이미 경고를 남기므로 같은 경고를 두 번 찍지 않는다
 	if (!TryGetStatIndex(StatId, Index))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
 		return 0;
 	}
 	return Stats[Index];

@@ -86,18 +86,21 @@ void ANpcCrowdPath::Tick(float DeltaSeconds)
 #endif
 }
 
-bool ANpcCrowdPath::IsOpen()
+// [skydodo] 2026-10-13 리팩토링: 상태를 안 바꾸므로 const (const인 PickNextPath 안에서 부른다).
+// 에디터 프리뷰처럼 GameInstance가 없을 때 GetGameInstance() null 역참조하던 것도 막고, 시간을 모르면 열린 것으로 본다
+bool ANpcCrowdPath::IsOpen() const
 {
 	if (ClosedSchedules.IsEmpty())
 	{
 		return true;
 	}
-	if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	const UGameInstance* GameInstance = GetGameInstance();
+	const UTimeSubsystem* TimeSubsystem = GameInstance ? GameInstance->GetSubsystem<UTimeSubsystem>() : nullptr;
+	if (!TimeSubsystem)
 	{
-		FGameplayTag NowSchedule = TimeSubsystem->GetNowScheduleTag();
-		return !ClosedSchedules.HasTagExact(NowSchedule);
+		return true;
 	}
-	return false;
+	return !ClosedSchedules.HasTagExact(TimeSubsystem->GetNowScheduleTag());
 }
 
 void ANpcCrowdPath::DrawLaneDebug(float SqueezeOverflow, float Lifetime) const

@@ -141,15 +141,6 @@ struct FMainNpcSpawnRow : public FTableRowBase
 	TSoftObjectPtr<UDataTable> DialogueTable;
 };
 
-USTRUCT()
-struct FMainNpcSpawnPointList
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere)
-	TArray<TObjectPtr<AMainNpcSpawnPoint>> Points;
-};
-
 UCLASS()
 class FEBRICULA_API AMainNpcSpawner : public AActor
 {
@@ -186,9 +177,8 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	/** 확률 기반 스폰용 Seed */
-	FRandomStream RandomStream;
-	
+	// [skydodo] 2026-10-13 리팩토링: 쓰이지 않던 RandomStream 멤버 제거 (확률 판정은 UGameProgressSubsystem::MakeRandomStream이 매번 만든다)
+
 	/** NPC마다 지금 쓸 행을 고르고, 이 레벨 몫을 스폰/이동/제거한다 */
 	void RefreshNpcs();
 
@@ -225,8 +215,6 @@ protected:
 	UFUNCTION()
 	void HandleNpcMovementStateChanged(ENpcMovementState OldState, ENpcMovementState NewState);
 
-	void CollectSpawnPoints();
-	
 	/**
 	 * 메인 NPC 스케줄 테이블 (FMainNpcSpawnRow).
 	 * 모든 레벨의 스포너가 같은 테이블을 가리켜야 "한 NPC는 한 곳에만" 이 보장된다.
@@ -249,14 +237,10 @@ protected:
 	/** 이지민 수정(2026. 10. 10)
 	 * 레벨에 같은 Type을 가진 여러 개의 Point 중 랜덤하게 하나 골라 스폰하기 위해 추가
 	 */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MainNpc|Spawner|Debug")
+	// [skydodo] 2026-10-13 리팩토링: 런타임 기록이라 Transient (SpawnedNpcs와 같게). 채우기만 하고 안 읽던 AllSpawnPoints는 제거
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Transient, Category = "MainNpc|Spawner|Debug")
 	TMap<FName, TObjectPtr<AMainNpcSpawnPoint>> SpawnedPoints;
-	
-	UPROPERTY(VisibleAnywhere, Transient, Category = "MainNpc|Spawner|Debug")
-	TMap<FName, FMainNpcSpawnPointList> AllSpawnPoints;
 
-	
-	
 	FTimerHandle RefreshTimerHandle;
 
 	/** 바쁜 NPC 때문에 미룬 갱신을 다시 시도하는 타이머 */

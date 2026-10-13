@@ -101,7 +101,7 @@ public:
 	 * 특정 시간대에만 활성화 되는 경로 구현을 위해 추가
 	 */
 	UFUNCTION(BlueprintPure, Category = "Crowd|Path")
-	bool IsOpen();
+	bool IsOpen() const;
 	
 	/**
 	 * 중심선·걷는 폭·추월 최대 폭·방향·퇴장구를 디버그 선으로 그린다.
