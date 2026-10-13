@@ -1546,6 +1546,20 @@ void UFlowerMiniGameWidget::PaintGame(FFlowerPainter& P) const
 		PaintFlower(P, AimX, DropY, 0.f, NextTier, 1.f, Cooldown > 0.f ? 0.4f : 1.f);
 	}
 
+	// 넘치기 직전에는 작업대 테두리를 붉게 깜빡인다 (패널 게이지 대신)
+	if (Over > 0.f && Mode != EMode::Result)
+	{
+		const FLinearColor Alarm = WithAlpha(Rose(), 0.45f + 0.35f * FMath::Sin(T * 14.f));
+		constexpr float Edge = 8.f;
+		const float X0 = Left - 7.f;
+		const float W = Right - Left + 14.f;
+		const float H = Floor - WorkTop + 10.f;
+		P.Box(X0, WorkTop, W, Edge, Alarm);
+		P.Box(X0, WorkTop + H - Edge, W, Edge, Alarm);
+		P.Box(X0, WorkTop, Edge, H, Alarm);
+		P.Box(X0 + W - Edge, WorkTop, Edge, H, Alarm);
+	}
+
 	for (int32 i = 0; i < World->Count; ++i)
 	{
 		const FlowerPhysics::FBody& Body = World->Bodies[i];
@@ -1608,28 +1622,18 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 	const bool bRush = Mode != EMode::Practice && T >= Duration - WarningSeconds;
 	const FLinearColor Line = Hex(TEXT("cfd3bb"));
 
-	// ---- 왼쪽: 시간 · 주문 · 놓을 꽃 · 조작 ----
+	// 패널은 "주문표"와 "시간 · 점수" 두 가지만 담는다. 가짓수를 줄인 대신 남는 자리는 그 정보를 크게 키워 채운다.
+	// 나머지는 필요한 순간에만 보인다 (위험선 · 연쇄 → 작업대 안, 조작 → 일시정지, 기록 → 결과).
+
+	// ---- 왼쪽: 주문표 + 놓을 꽃 ----
 	{
 		const float L = LeftPanelX + 44.f;
 		const float LeftEdge = LeftPanelX + PanelW - 44.f;
 		P.Brush(&PanelBrush, LeftPanelX, 40.f, PanelW, 1160.f);
-		P.Text(TEXT("PART-TIME / LITTLE FLOWER SHOP"), L, 100.f, 20.f, Tag());
-		P.Text(TEXT("꽃이 피는 오후"), L, 150.f, 44.f, Hex(TEXT("4d684b")), EFlowerAlign::Left, true);
-
-		P.Text(TEXT("남은 시간"), L, 240.f, 22.f, Muted());
-		if (Mode == EMode::Practice)
-		{
-			P.Text(TEXT("연습"), L, 310.f, 88.f, Leaf(), EFlowerAlign::Left, true);
-		}
-		else
-		{
-			P.Text(FString::Printf(TEXT("%d초"), FMath::CeilToInt(Duration - T)), L, 310.f, 88.f, bRush ? Rose() : Ink(), EFlowerAlign::Left, true);
-		}
-		P.Text(FString::Printf(TEXT("주문 %d건  ·  합성 %s점"), Orders, *FString::FormatAsNumber(MergeScore)), L, 400.f, 30.f, Ink());
 
 		// 주문판 (원본 792×176 비율)
-		P.Brush(FindBrush(TEXT("order-panel")), LeftPanelX + 24.f, 455.f, 552.f, 123.f);
-		P.Text(TEXT("오늘의 주문"), L, 492.f, 20.f, Muted());
+		P.Brush(FindBrush(TEXT("order-panel")), LeftPanelX + 24.f, 70.f, 552.f, 123.f);
+		P.Text(TEXT("오늘의 주문"), L, 107.f, 20.f, Muted());
 		// 주문 이름: 같은 꽃은 묶어서 "튤립 ×2 + 장미"
 		FString OrderName;
 		TArray<int32> Listed;
@@ -1655,103 +1659,89 @@ void UFlowerMiniGameWidget::PaintSidePanels(FFlowerPainter& P) const
 		{
 			OrderName = Mode == EMode::Practice ? TEXT("연습 중 - 주문 없음") : TEXT("다음 주문 준비 중");
 		}
-		P.Text(OrderName, L, 535.f, 34.f, Ink(), EFlowerAlign::Left, true);
+		P.Text(OrderName, L, 150.f, 34.f, Ink(), EFlowerAlign::Left, true);
 
-		// 칸마다 지금 작업대에 있는지 실시간으로 (합쳐져 사라지면 다시 빈칸)
+		// 칸마다 지금 작업대에 있는지 실시간으로 (합쳐져 사라지면 다시 빈칸). 패널 폭을 다 쓰게 크게.
 		for (int32 j = 0; j < Want.Num(); ++j)
 		{
 			const bool bReady = WantReady.IsValidIndex(j) && WantReady[j];
-			const float X = L + j * 168.f;
-			P.Brush(bReady ? &SlotDoneBrush : &SlotWaitBrush, X, 605.f, 152.f, 125.f);
-			P.ArtCentered(FlowerBrush(Want[j]), X + 76.f, 650.f, 80.f, bReady ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.45f));
-			P.Text(bReady ? TEXT("있어요!") : Tiers[Want[j]].Name, X + 76.f, 708.f, 20.f, bReady ? Leaf() : Hex(TEXT("6c6952")), EFlowerAlign::Center, bReady);
+			const float X = L + j * 176.f;
+			P.Brush(bReady ? &SlotDoneBrush : &SlotWaitBrush, X, 225.f, 160.f, 215.f);
+			P.ArtCentered(FlowerBrush(Want[j]), X + 80.f, 310.f, 120.f, bReady ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.45f));
+			P.Text(bReady ? TEXT("있어요!") : Tiers[Want[j]].Name, X + 80.f, 405.f, 24.f, bReady ? Leaf() : Hex(TEXT("6c6952")), EFlowerAlign::Center, bReady);
 		}
-		P.Text(TEXT("작업대에 모두 함께 있으면 한꺼번에 포장돼요"), L, 760.f, 20.f, Muted());
-		P.Text(TEXT("같은 꽃끼리 닿으면 합쳐지니 떨어뜨려 두세요"), L, 790.f, 18.f, Rose());
+		P.Text(TEXT("모두 작업대에 있으면 한꺼번에 포장돼요"), L, 485.f, 20.f, Muted());
+		P.Text(TEXT("같은 꽃끼리 닿으면 합쳐지니 떨어뜨려 두세요"), L, 517.f, 18.f, Rose());
 
-		// 놓을 꽃 · 다음 꽃
-		P.Text(TEXT("놓을 꽃"), L, 850.f, 22.f, Ink(), EFlowerAlign::Left, true);
-		P.ArtCentered(FlowerBrush(NextTier), L + 150.f, 850.f, 60.f);
-		P.Text(TEXT("다음"), L + 250.f, 850.f, 22.f, Muted());
-		P.ArtCentered(FlowerBrush(QueueTier), L + 330.f, 850.f, 52.f);
+		// 놓을 꽃 · 다음 꽃 - 크게
+		P.Box(L, 575.f, LeftEdge - L, 2.f, Line);
+		const float NowX = L + 130.f;
+		const float QueueX = LeftEdge - 120.f;
+		P.Text(TEXT("지금 놓을 꽃"), NowX, 630.f, 24.f, Ink(), EFlowerAlign::Center, true);
+		P.Text(TEXT("다음"), QueueX, 630.f, 22.f, Muted(), EFlowerAlign::Center);
+		P.ArtCentered(FlowerBrush(NextTier), NowX, 790.f, 190.f);
+		P.Text(TEXT("›"), (NowX + QueueX) * 0.5f + 20.f, 790.f, 60.f, Muted(), EFlowerAlign::Center);
+		P.ArtCentered(FlowerBrush(QueueTier), QueueX, 790.f, 130.f, FLinearColor(1.f, 1.f, 1.f, 0.8f));
+		P.Text(Tiers[NextTier].Name, NowX, 945.f, 28.f, Ink(), EFlowerAlign::Center, true);
+		P.Text(Tiers[QueueTier].Name, QueueX, 945.f, 22.f, Muted(), EFlowerAlign::Center);
 
-		P.Box(L, 890.f, LeftEdge - L, 2.f, Line);
-		P.Text(TEXT("조작"), L, 930.f, 24.f, Ink(), EFlowerAlign::Left, true);
-		P.Text(TEXT("마우스 이동 / ← → · A D"), L, 980.f, 22.f, Ink());
-		P.Text(TEXT("위치 고르기"), LeftEdge, 980.f, 22.f, Muted(), EFlowerAlign::Right);
-		P.Text(TEXT("클릭 / Space"), L, 1025.f, 22.f, Ink());
-		P.Text(TEXT("떨어뜨리기"), LeftEdge, 1025.f, 22.f, Muted(), EFlowerAlign::Right);
-		P.Text(TEXT("P / Esc"), L, 1070.f, 22.f, Ink());
-		P.Text(TEXT("일시정지"), LeftEdge, 1070.f, 22.f, Muted(), EFlowerAlign::Right);
+		P.Box(L, 1030.f, LeftEdge - L, 2.f, Line);
+		P.Text(TEXT("마우스 / ← →  위치    클릭 / Space  놓기"), L, 1085.f, 20.f, Muted());
+		P.Text(TEXT("P / Esc  일시정지"), L, 1125.f, 20.f, Muted());
 	}
 
-	// ---- 오른쪽: 상태 · 보상 · 위험도 · 기록 · 꽃 단계표 ----
+	// ---- 오른쪽: 시간 · 점수 (+ 꽃 단계표) ----
 	{
 		const float R = RightPanelX + 44.f;
 		const float RightEdge = RightPanelX + PanelW - 44.f;
+		const float Mid = RightPanelX + PanelW * 0.5f + 10.f;
 		P.Brush(&PanelBrush, RightPanelX, 40.f, PanelW, 1160.f);
-		P.Text(TEXT("오늘의 근무"), R, 110.f, 30.f, Ink(), EFlowerAlign::Left, true);
 
-		// 상태판 (원본 800×100 비율)
-		P.Brush(FindBrush(TEXT("status-panel")), RightPanelX + 24.f, 160.f, 552.f, 69.f);
-		const FString Status = Mode == EMode::Practice ? TEXT("연습 중 - 시간 제한 없어요")
-			: Mode != EMode::Play ? TEXT("근무 준비 중")
-			: Over > 0.f ? TEXT("넘치기 직전! 합치거나 포장해서 비워요")
-			: ChainTimer > 0.f && Chain > 1 ? FString::Printf(TEXT("%d연쇄 중!"), Chain)
-			: TEXT("같은 꽃을 붙여 주문 꽃을 피워요");
-		P.Text(Status, RightPanelX + PanelW * 0.5f, 194.f, 22.f, Ink(), EFlowerAlign::Center);
+		P.Text(TEXT("남은 시간"), R, 110.f, 24.f, Muted());
+		if (Mode == EMode::Practice)
+		{
+			P.Text(TEXT("연습"), R, 215.f, 104.f, Leaf(), EFlowerAlign::Left, true);
+		}
+		else
+		{
+			P.Text(FString::Printf(TEXT("%d초"), FMath::CeilToInt(Duration - T)), R, 215.f, 104.f, bRush ? Rose() : Ink(), EFlowerAlign::Left, true);
+		}
+		P.Text(TEXT("완료한 주문"), Mid, 110.f, 24.f, Muted());
+		P.Text(FString::Printf(TEXT("%d건"), Orders), Mid, 215.f, 104.f, Ink(), EFlowerAlign::Left, true);
 
-		// 예상 보상 + 다음 단계까지 몇 건 남았는지
+		// 예상 보상: 지금 받을 스탯 + 다음 단계까지 남은 건수
 		const FMiniGameReward Preview = PreviewReward(Orders);
-		const FString Stat = StatLabel(Preview.Stat);
-		P.Text(TEXT("예상 보상"), R, 300.f, 22.f, Muted());
-		P.Text(FString::Printf(TEXT("%s +%d"), *Stat, Preview.StatAmount), R, 362.f, 48.f, Leaf(), EFlowerAlign::Left, true);
-		P.Text(FString::Printf(TEXT("급여 %s원 (고정)"), *FString::FormatAsNumber(Preview.Money)), R, 428.f, 26.f, Ink());
+		P.Box(R, 320.f, RightEdge - R, 2.f, Line);
+		P.Text(TEXT("예상 보상"), R, 370.f, 22.f, Muted());
+		P.Text(FString::Printf(TEXT("급여 %s원"), *FString::FormatAsNumber(Preview.Money)), RightEdge, 370.f, 22.f, Muted(), EFlowerAlign::Right);
+		P.Text(FString::Printf(TEXT("%s +%d"), *StatLabel(Preview.Stat), Preview.StatAmount), R, 430.f, 48.f, Leaf(), EFlowerAlign::Left, true);
 		for (int32 More = 1; More <= 20; ++More)
 		{
 			if (PreviewReward(Orders + More).StatAmount > Preview.StatAmount)
 			{
-				P.Text(FString::Printf(TEXT("주문 %d건 더 채우면 +%d"), More, Preview.StatAmount + 1), R, 470.f, 22.f, Muted());
+				P.Text(FString::Printf(TEXT("주문 %d건 더 채우면 +%d"), More, Preview.StatAmount + 1), RightEdge, 435.f, 22.f, Muted(), EFlowerAlign::Right);
 				break;
 			}
 		}
 
-		// 위험선 게이지
-		const float Danger = FMath::Clamp(Over / OverflowSeconds, 0.f, 1.f);
-		P.Text(TEXT("위험선"), R, 560.f, 24.f, Ink(), EFlowerAlign::Left, true);
-		P.Text(Danger > 0.f ? FString::Printf(TEXT("넘치기까지 %.1f초"), OverflowSeconds - Over) : FString(TEXT("여유 있어요")),
-			RightEdge, 560.f, 22.f, Danger > 0.f ? Rose() : Muted(), EFlowerAlign::Right);
-		P.Brush(&BarBackBrush, R, 592.f, RightEdge - R, 24.f);
-		if (Danger > 0.f)
-		{
-			P.Brush(&DangerFillBrush, R, 592.f, (RightEdge - R) * Danger, 24.f);
-		}
-		P.Text(TEXT("방금 놓은 꽃은 1.3초 동안 봐줘요"), R, 650.f, 22.f, Muted());
-
-		// 기록
-		P.Box(R, 710.f, RightEdge - R, 2.f, Line);
-		P.Text(TEXT("최고 단계"), R, 755.f, 24.f, Ink());
-		P.ArtCentered(FlowerBrush(BestTier), RightEdge - 150.f, 755.f, 44.f);
-		P.Text(Tiers[BestTier].Name, RightEdge, 755.f, 24.f, Ink(), EFlowerAlign::Right, true);
-		P.Text(TEXT("최고 연쇄"), R, 805.f, 24.f, Ink());
-		P.Text(FString::Printf(TEXT("%d연쇄"), BestChain), RightEdge, 805.f, 24.f, Ink(), EFlowerAlign::Right, true);
-		P.Text(TEXT("특대 꽃다발"), R, 855.f, 24.f, Ink());
-		P.Text(FString::Printf(TEXT("%d개"), Bouquets), RightEdge, 855.f, 24.f, Ink(), EFlowerAlign::Right, true);
-
-		// 꽃 단계표 (HTML 맨 아래 줄을 4개씩 두 줄로)
-		P.Box(R, 905.f, RightEdge - R, 2.f, Line);
-		P.Text(TEXT("같은 꽃 둘 → 다음 단계"), R, 945.f, 22.f, Ink(), EFlowerAlign::Left, true);
+		// 꽃 단계표 - 합치는 게임의 목표라 크게. 아직 못 피운 단계는 흐리게
+		P.Box(R, 510.f, RightEdge - R, 2.f, Line);
+		P.Text(TEXT("같은 꽃 둘 → 다음 단계"), R, 560.f, 24.f, Ink(), EFlowerAlign::Left, true);
 		for (int32 i = 0; i < NumTiers; ++i)
 		{
 			const float X = R + 56.f + (i % 4) * 128.f;
-			const float Y = 1010.f + (i / 4) * 100.f;
-			P.ArtCentered(FlowerBrush(i), X, Y, 58.f, i <= BestTier ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.45f));
-			P.Text(Tiers[i].Name, X, Y + 42.f, 16.f, Hex(TEXT("6c755b")), EFlowerAlign::Center);
+			const float Y = 680.f + (i / 4) * 200.f;
+			P.ArtCentered(FlowerBrush(i), X, Y, 96.f, i <= BestTier ? FLinearColor::White : FLinearColor(1.f, 1.f, 1.f, 0.4f));
+			P.Text(Tiers[i].Name, X, Y + 72.f, 19.f, i <= BestTier ? Ink() : Hex(TEXT("8b927c")), EFlowerAlign::Center, i == BestTier);
 			if (i % 4 != 3)
 			{
-				P.Text(TEXT("›"), X + 64.f, Y, 26.f, Muted(), EFlowerAlign::Center);
+				P.Text(TEXT("›"), X + 64.f, Y, 30.f, Muted(), EFlowerAlign::Center);
 			}
 		}
+		P.Box(R, 1030.f, RightEdge - R, 2.f, Line);
+		P.Text(TEXT("오늘 피운 최고 단계"), R, 1100.f, 22.f, Muted());
+		P.ArtCentered(FlowerBrush(BestTier), RightEdge - 170.f, 1100.f, 56.f);
+		P.Text(Tiers[BestTier].Name, RightEdge, 1100.f, 26.f, Ink(), EFlowerAlign::Right, true);
 	}
 }
 
@@ -1792,6 +1782,12 @@ void UFlowerMiniGameWidget::PaintOverlay(FFlowerPainter& P) const
 		P.Text(TEXT("PART-TIME ARCADE"), 420.f, 470.f, 19.f, Tag(), EFlowerAlign::Center);
 		P.Text(TEXT("잠깐, 쉬는 시간"), 420.f, 540.f, 42.f, Ink(), EFlowerAlign::Center, true);
 		P.Text(TEXT("시간이 멈췄습니다."), 420.f, 610.f, 26.f, Ink(), EFlowerAlign::Center);
+
+		// 조작법은 늘 띄우지 않고 여기서만
+		P.Text(TEXT("조작"), 420.f, 800.f, 24.f, Ink(), EFlowerAlign::Center, true);
+		P.Text(TEXT("마우스 이동 / ← → · A D  -  위치 고르기"), 420.f, 850.f, 22.f, Ink(), EFlowerAlign::Center);
+		P.Text(TEXT("클릭 / Space  -  떨어뜨리기"), 420.f, 892.f, 22.f, Ink(), EFlowerAlign::Center);
+		P.Text(TEXT("P / Esc  -  일시정지"), 420.f, 934.f, 22.f, Ink(), EFlowerAlign::Center);
 	}
 	else if (Mode == EMode::Result)
 	{
@@ -1806,7 +1802,7 @@ void UFlowerMiniGameWidget::PaintOverlay(FFlowerPainter& P) const
 		{
 			P.Text(bOverflowed ? TEXT("작업대가 가득 찼어요.") : TEXT("꽃집 마감! 오늘도 향긋하게."), 420.f, 340.f, 42.f, Ink(), EFlowerAlign::Center, true);
 			P.Text(FString::Printf(TEXT("주문 %d건 · 합성 %s점"), Orders, *FString::FormatAsNumber(MergeScore)), 420.f, 420.f, 26.f, Ink(), EFlowerAlign::Center);
-			P.Text(FString::Printf(TEXT("최고 단계 %s · 최고 연쇄 %d"), Tiers[BestTier].Name, BestChain), 420.f, 470.f, 26.f, Ink(), EFlowerAlign::Center);
+			P.Text(FString::Printf(TEXT("최고 단계 %s · 최고 연쇄 %d · 특대 꽃다발 %d"), Tiers[BestTier].Name, BestChain, Bouquets), 420.f, 470.f, 24.f, Ink(), EFlowerAlign::Center);
 		}
 
 		// 영수증
