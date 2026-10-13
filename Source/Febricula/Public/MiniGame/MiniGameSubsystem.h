@@ -82,13 +82,16 @@ public:
 	/** 점수로 받을 보상 계산만 한다 (지급 X). 플레이 중 "예상 보상" 표시용 */
 	FMiniGameReward PreviewReward(int32 Score) const;
 
+private:
+	// 보상 지급과 종료는 미니게임 위젯만 부른다 (결과 화면 / 닫기 버튼)
+	friend class UMiniGameWidget;
+
 	/** 보상을 지급한다. 한 판에 한 번만 지급하고, 두 번째부터는 지급했던 값을 그대로 돌려준다 */
 	FMiniGameReward GrantReward(const FMiniGameResult& Result);
 
 	/** 위젯을 닫고 입력을 돌려준 뒤 원래 레벨로 이동 */
 	void EndMiniGame();
 
-private:
 	/** 플레이어 폰이 생길 때까지 잠깐 기다렸다가 시작한다 */
 	void TryStart();
 

@@ -165,7 +165,20 @@ namespace FlowerPhysics
 	class FWorld
 	{
 	public:
+		/** 벽 · 바닥 · 마찰 등 시뮬레이션 설정. 위젯이 시작할 때 채운다 */
 		FParams P;
+
+		int GetCount() const { return Count; }
+		FBody& GetBody(int Index) { return Bodies[Index]; }
+		const FBody& GetBody(int Index) const { return Bodies[Index]; }
+		const FTierShape& GetShape(int Tier) const { return Shapes[Tier]; }
+
+		/** 지난 Step 이후 쌓인 착지 · 합체 이벤트. 처리한 뒤 ClearEvents로 비운다 */
+		int GetNumEvents() const { return NumEvents; }
+		const FEvent& GetEvent(int Index) const { return Events[Index]; }
+		void ClearEvents() { NumEvents = 0; }
+
+	private:
 		FTierShape Shapes[NumTiers];
 		FBody Bodies[MaxBodies];
 		int Count = 0;
@@ -173,6 +186,7 @@ namespace FlowerPhysics
 		FEvent Events[MaxEvents];
 		int NumEvents = 0;
 
+	public:
 		FWorld()
 		{
 			BuildShapes();

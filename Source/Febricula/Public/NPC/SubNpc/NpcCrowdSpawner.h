@@ -232,9 +232,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Behavior")
 	TSoftObjectPtr<UStateTree> CrowdStateTree;
 
-public:
-
-protected:
 	/**
 	 * 멀리 있는 행인을 그릴 인스턴스드 메시 애니메이션 데이터 (AnimToTexture).
 	 *
