@@ -332,7 +332,13 @@
     "Choices": [
       {
         "Text": "네",
-        "Conditions": [],
+        "Conditions": [
+          {
+            "Type": "APAtLeat",
+            "Key": "None",
+            "Value": 1
+          }
+        ],
         "Actions": [],
         "YesNo": false,
         "NextNodeId": "BurgerChief_First_02"

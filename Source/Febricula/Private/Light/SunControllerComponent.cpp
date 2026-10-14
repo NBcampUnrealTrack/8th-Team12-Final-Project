@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Dialogue/DialogueSubsystem.h"
 #include "GameMode/TimeSubsystem.h" // 실제 경로에 맞출 것
 
 USunControllerComponent::USunControllerComponent()
@@ -28,6 +29,11 @@ void USunControllerComponent::BeginPlay()
 	{
 		Time->OnScheduleChanged.AddDynamic(this, &USunControllerComponent::HandleScheduleChanged);
 	}
+	
+	if (UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>())
+	{
+		Dialogue->OnDialogueFinished.AddDynamic(this, &USunControllerComponent::HandleDialogueFinished);
+	}
 
 	// 레벨 시작 시에는 보간 없이 바로 맞춘다
 	ApplySchedule(/*bInstant=*/true);
@@ -35,6 +41,11 @@ void USunControllerComponent::BeginPlay()
 
 void USunControllerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (UDialogueSubsystem* Dialogue = GetWorld() ? GetWorld()->GetSubsystem<UDialogueSubsystem>() : nullptr)
+	{
+		Dialogue->OnDialogueFinished.RemoveDynamic(this, &USunControllerComponent::HandleDialogueFinished);
+	}
+
 	if (UTimeSubsystem* Time = GetTimeSubsystem())
 	{
 		Time->OnScheduleChanged.RemoveDynamic(this, &USunControllerComponent::HandleScheduleChanged);
@@ -46,8 +57,23 @@ void USunControllerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+void USunControllerComponent::HandleDialogueFinished()
+{
+	if (!bPendingApply) return;
+	bPendingApply = false;
+	ApplySchedule(/*bInstant=*/false);
+
+}
+
 void USunControllerComponent::HandleScheduleChanged(FGameplayTag ChangedScheduleName)
 {
+	const UDialogueSubsystem* Dialogue = GetWorld()->GetSubsystem<UDialogueSubsystem>();
+	if (Dialogue && Dialogue->IsDialogueActive())
+	{
+		bPendingApply = true;   // 대화 끝나면 적용
+		return;
+	}
+
 	ApplySchedule(/*bInstant=*/false);
 }
 

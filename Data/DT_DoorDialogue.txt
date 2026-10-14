@@ -186,12 +186,22 @@
 @end
 
 @label GoBurgger
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label GoBugger_01
 @ChangeLevel BurgerHouse true
 @hide 
 @wait .1
 @end
 
 @label GoFlower
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label GoFlower_01
 @ChangeLevel FlowerHouse true
 @hide
 @wait .1
@@ -201,6 +211,11 @@
 
 
 @label GoClassroom
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label GoClassroom_01
 @ChangeLevel Classroom true
 @hide
 @wait .1
@@ -245,6 +260,8 @@
 @hide
 @wait .1
 @end
+
+
 
 @label GoRoomDirect_Second
 @ChangeLevel Room false
@@ -297,7 +314,7 @@
 
 @label GoMiddleBusDirect
 @if NowLevel SchoolOutside
-@if ScheduleBefore Schedule.Dinner
+@if ScheduleBefore Schedule.AfterSchool
 @branch GoMiddleBusDirect_Inner_01
 @if None
 @branch GoMiddleBusDirect_Inner_02

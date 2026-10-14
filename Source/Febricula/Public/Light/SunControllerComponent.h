@@ -51,6 +51,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
+	UFUNCTION()
+	void HandleDialogueFinished();
 
 	UFUNCTION()
 	void HandleScheduleChanged(FGameplayTag ChangedScheduleName);
@@ -90,4 +93,5 @@ private:
 	bool bRampInstant = false;
 
 	static constexpr float RampStep = 1.f / 30.f;
+	bool bPendingApply = false;
 };

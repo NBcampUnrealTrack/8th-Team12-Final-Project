@@ -113,6 +113,8 @@ enum class EGameConditionType : uint8
 	/** 현재 레벨이 N인가 */
 	NowLevel				UMETA(DisplayName = "현재 레벨이 N"),
 	
+	NotNowLevel				UMETA(DisplayName = "현재 레벨이 N이 아니면"),
+	
 	PreviousLevelIs			UMETA(DisplayName = "이전 레벨이 N")
 
 };

@@ -353,6 +353,24 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		return false;
 	}
 		
+	case EGameConditionType::NotNowLevel:
+	{
+		const UActivitySetting* ActivitySetting = GetDefault<UActivitySetting>();
+		if (!ActivitySetting) return false;
+
+		if (const TSoftObjectPtr<UWorld>* TargetLevel = ActivitySetting->Levels.Find(Condition.Key))
+		{
+			if (TargetLevel->IsNull()) return false;
+			if (const UWorld* NowLevel = GetWorld())
+			{
+				const FString NowName = UWorld::RemovePIEPrefix(NowLevel->GetOutermost()->GetName());
+				return NowName != TargetLevel->ToSoftObjectPath().GetLongPackageName();
+			}
+		}
+		return false;
+
+	}
+		
 	case EGameConditionType::PreviousLevelIs:
 	{
 		if (MoveHistory.Num() < 2 ) return false;
