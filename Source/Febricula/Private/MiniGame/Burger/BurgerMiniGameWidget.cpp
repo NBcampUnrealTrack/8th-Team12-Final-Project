@@ -88,6 +88,8 @@ namespace BurgerGame
 	constexpr float SpawnY = 120.f;
 	constexpr float OriginalSpawnY = 290.f;
 	constexpr float FallSpeedScale = (CatchTop - SpawnY) / (CatchTop - OriginalSpawnY);
+	/** 본 근무 낙하 속도 배율 (2026-10-14 플레이 피드백: 조금 더 빠르게). 연습 판은 그대로 */
+	constexpr float FallSpeedBoost = 1.15f;
 	constexpr float SpawnInterval = 0.65f;
 	constexpr float RushSpawnInterval = 0.43f;
 	constexpr float RushSeconds = 10.f;
@@ -656,7 +658,7 @@ void UBurgerMiniGameWidget::Spawn()
 	{
 		Id = FMath::FRand() < 0.13f ? SpoiledId : FMath::RandRange(0, NumIngredients - 1);
 	}
-	Items.Add({ Id, 55.f + FMath::FRand() * 730.f, SpawnY, (270.f + T * 3.4f) * FallSpeedScale });
+	Items.Add({ Id, 55.f + FMath::FRand() * 730.f, SpawnY, (270.f + T * 3.4f) * FallSpeedScale * FallSpeedBoost });
 }
 
 void UBurgerMiniGameWidget::CatchItem(int32 Id)
