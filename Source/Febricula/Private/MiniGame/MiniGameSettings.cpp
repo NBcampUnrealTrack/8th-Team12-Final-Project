@@ -23,7 +23,7 @@ UMiniGameSettings::UMiniGameSettings()
 	Burger.CameraFOV = 90.f;
 	Burger.BGM = TSoftObjectPtr<USoundBase>(FSoftObjectPath(TEXT("/Game/MiniGame/Burger/Audio/S_Burger_BGM.S_Burger_BGM")));
 	Burger.BGMVolume = 0.6f;
-	Burger.FallbackReturnLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/MiniGame/Maps/L_MiniGameTest.L_MiniGameTest")));
+	Burger.FallbackReturnLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/BurgerHouse/Maps/L_BurgerHouse.L_BurgerHouse")));
 	Burger.MoneyReward = 40000;
 	Burger.RewardStat = TEXT("HandWork");
 	Burger.StatThresholds = { 3, 5, 7, 9 };
@@ -35,7 +35,7 @@ UMiniGameSettings::UMiniGameSettings()
 	Flower.WidgetClass = TSoftClassPtr<UMiniGameWidget>(FSoftObjectPath(TEXT("/Script/Febricula.FlowerMiniGameWidget")));
 	Flower.bMovePlayer = false;
 	Flower.bUseFixedCamera = false;
-	Flower.FallbackReturnLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/MiniGame/Maps/L_MiniGameTest.L_MiniGameTest")));
+	Flower.FallbackReturnLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Levels/FlowerHouse/FlowerHouse.FlowerHouse")));
 	Flower.MoneyReward = 30000;
 	Flower.RewardStat = TEXT("Health");
 	// 완료 주문 수 0~6건 +1, 7~9건 +2, 10~11건 +3, 12~13건 +4, 14건 이상 +5.

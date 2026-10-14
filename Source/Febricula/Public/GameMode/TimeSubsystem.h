@@ -24,6 +24,18 @@ enum class EDaySchedule : uint8;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDayChangedDelegate, int32, ChangedDay);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FScheduleChangedDelegate, FGameplayTag, ChangedScheduleName);
 
+UENUM(BlueprintType)
+enum class EDateName : uint8
+{
+	Mon UMETA(DisplayName="월"),
+	Tue UMETA(DisplayName="화"),
+	Wed UMETA(DisplayName="수"),
+	Thu UMETA(DisplayName="목"),
+	Fri UMETA(DisplayName="금"),
+	Sat UMETA(DisplayName="토"),
+	Sun UMETA(DisplayName="일"),
+};
+
 /** UTimeSubsystem의 상태를 세이브 파일에 담기 위한 스냅샷 */
 USTRUCT(BlueprintType)
 struct FTimeSaveData
@@ -113,6 +125,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	bool IsWeekend() const;
 
+	UFUNCTION(BlueprintPure)
+	FText GetDayName() const;
+	
+	UFUNCTION(BlueprintPure)
+	FString GetNowSchedulePoint() const;
+
 	/**
 	 * 현재 시간대(기상/오전수업/점심 ...)를 나타내는 GameplayTag.
 	 * 시간대 이름만 들어 있다 - 평일/주말 구분은 GetNowDayTypeTag()로 따로 물어본다.
@@ -177,7 +195,10 @@ public:
 
 	const TArray<FScheduleDef>& GetScheduleDefs() const;
 
-
+	/** [디버그] 이번 달의 TargetDay일로 건너뛴다. 앞으로만 가고, 그 달의 마지막 날을 넘기면 마지막 날에서 멈춘다 */
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Debug", meta = (DevelopmentOnly))
+	void Debug_JumpToDay(int32 TargetDay);
+	
 protected:
 	
 	// [skydodo] 2026-08-26 추가

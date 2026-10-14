@@ -55,4 +55,7 @@ public:
 	
 	UFUNCTION(Exec)
 	void SetSchedule(FName ScheduleName);
+	
+	UFUNCTION(Exec)
+	void TeleportDay(int32 Day);
 };

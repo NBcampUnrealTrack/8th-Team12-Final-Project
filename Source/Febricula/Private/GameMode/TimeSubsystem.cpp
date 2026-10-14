@@ -6,6 +6,7 @@
 #include "GameMode/DayScheduleAsset.h"
 #include "GameMode/ScheduleBlockRow.h"
 #include "GameMode/TimeSettings.h"
+#include "Progress/GameProgressSubsystem.h"
 
 // [skydodo] 2026-10-13 리팩토링: SpendSchedule과 GetNextScheduleName이 "다음 칸" 규칙을 각자 복사해 들고 있어
 // 한쪽만 고치면 미리보기와 실제 진행이 어긋났다 -> 한 곳에서 계산한다
@@ -228,6 +229,46 @@ bool UTimeSubsystem::IsWeekend() const
 	return ((AbsoluteDay - 1) % 7) >= 5;
 }
 
+FText UTimeSubsystem::GetDayName() const
+{
+	const UEnum* E = StaticEnum<EDateName>();
+	const int32 Count = E->NumEnums() - 1;    
+	int32 Index = 0;
+	Index = (AbsoluteDay-1) / 7;
+
+	if (Index >= 0 && Index < Count)
+	{
+		return E->GetDisplayNameTextByIndex(Index);        // 식별자 이름
+	}
+
+	return FText::GetEmpty();
+}
+
+// 시간대에 따른 태양각 조절을 위한 임시 로직
+// 최종발표회 후에라도 수정할 것
+
+FString UTimeSubsystem::GetNowSchedulePoint() const
+{
+	FString Text;
+	if (UGameProgressSubsystem* Progress = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		if (Progress->EvaluateCondition(FGameCondition(EGameConditionType::ScheduleIsChildOf, TEXT("MorningTime"), 0)))
+		{
+			Text = TEXT("MorningTime"); 
+		}
+		else if (Progress->EvaluateCondition(FGameCondition(EGameConditionType::ScheduleIsChildOf, TEXT("AfternoonTime"), 0)))
+		{
+			Text = TEXT("AfternoonTime");
+		}
+		else
+		{
+			Text = TEXT("DinnerTime");
+		}
+		
+	}
+	return Text;
+}
+
 // [skydodo] 2026-08-26 수정: 참조 반환 -> 포인터 반환 (범위 밖이면 nullptr)
 const FScheduleDef* UTimeSubsystem::GetScheduleByIndex(int32 Index) const
 {
@@ -262,6 +303,46 @@ const TArray<FScheduleDef>& UTimeSubsystem::GetScheduleDefs() const
 
 	const UDayScheduleAsset* Asset = GetTodaySchedule();
 	return Asset ? Asset->ScheduleDefs : EmptyDefs;
+}
+
+void UTimeSubsystem::Debug_JumpToDay(int32 TargetDay)
+{
+#if !UE_BUILD_SHIPPING
+	const int32 Clamped = FMath::Min(TargetDay, MaxDay);
+	if (Clamped != TargetDay)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Time] JumpToDay: %d월은 %d일까지 — %d일에서 멈춤"),
+			NowMonth, MaxDay, Clamped);
+	}
+	if (Clamped <= NowDay)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Time] JumpToDay: 앞으로만 갈 수 있음 (현재 %d일, 요청 %d일)"),
+			NowDay, TargetDay);
+		return;
+	}
+
+	const int32 Delta = Clamped - NowDay;
+	NowDay = Clamped;
+	AbsoluteDay += Delta;
+
+	// 새 날의 첫 시간대부터 시작.
+	// ⚠ AbsoluteDay를 바꾼 **뒤에** 읽어야 평일/주말이 바뀐 경우 맞는 시간표를 고른다
+	NowScheduleIndex = 0;
+	NowRepeatCount = 0;
+	const TArray<FScheduleDef>& Defs = GetScheduleDefs();
+	if (Defs.Num() > 0)
+	{
+		NowSchedule = Defs[0];
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Time] JumpToDay: %d월 %d일 (Absolute %d, +%d일) / %s"),
+		NowMonth, NowDay, AbsoluteDay, Delta, *NowSchedule.ScheduleName.ToString());
+
+	// LoadSaveData와 같은 순서로 동기화
+	OnScheduleChanged.Broadcast(NowSchedule.ScheduleName);
+	OnDayChanged.Broadcast(NowDay);
+#endif
+
 }
 
 // [skydodo] 2026-08-26 추가: 오늘의 날 종류 태그

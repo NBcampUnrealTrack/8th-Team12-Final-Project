@@ -20,6 +20,7 @@
 #include "Misc/PackageName.h"
 #include "Progress/GameProgressSubsystem.h"
 #include "TimerManager.h"
+#include "Activity/ActivitySubsystem.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogMiniGame, Log, All);
 
@@ -37,11 +38,8 @@ namespace MiniGameStart
 void UMiniGameTravelSubsystem::NotifyLevelStarted(const UWorld& World)
 {
 	const FString Path = UWorld::RemovePIEPrefix(World.GetOutermost()->GetName());
-	if (Path != CurrentLevel)
-	{
-		PreviousLevel = CurrentLevel;
-		CurrentLevel = Path;
-	}
+	PreviousLevel = CurrentLevel;
+	CurrentLevel = Path;
 }
 
 FString UMiniGameTravelSubsystem::GetLevelPath(const UWorld& World)
@@ -184,8 +182,26 @@ void UMiniGameSubsystem::TryStart()
 		UE_LOG(LogMiniGame, Warning, TEXT("플레이어 컨트롤러가 없어 미니게임을 시작하지 못했다."));
 		return;
 	}
+	
 	// [skydodo] 2026-10-13 버그 수정: 이 호출이 주석 처리돼 미니게임 레벨에 들어가도 위젯이 뜨지 않았다
-	StartMiniGame(PC);
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	{
+		if (ActivitySubsystem->GetCurrentAP() > 0)
+		{
+			if (UGameProgressSubsystem* ProgressSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+			{
+				if (ProgressSubsystem->HasTag("State.DirectWork"))
+				{
+					ProgressSubsystem->RemoveTag("State.DirectWork");
+				}
+			}
+			StartMiniGame(PC);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("MiniGame Subsystem: 행동력 부족"));
+		}
+	}
 }
 
 void UMiniGameSubsystem::TryRestoreReturnPoint()
@@ -223,67 +239,74 @@ void UMiniGameSubsystem::TryRestoreReturnPoint()
 
 void UMiniGameSubsystem::StartMiniGame(APlayerController* PC)
 {
-	UClass* WidgetClass = ActiveEntry.WidgetClass.LoadSynchronous();
-	if (!WidgetClass)
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
-		UE_LOG(LogMiniGame, Warning, TEXT("위젯 클래스를 불러오지 못했다: %s"), *ActiveEntry.WidgetClass.ToString());
-		return;
-	}
-
-	if (ActiveEntry.bMovePlayer)
-	{
-		if (APawn* Pawn = PC->GetPawn())
+		if (ActivitySubsystem->TryConsumeAP(1))
 		{
-			const FRotator Facing(0.f, ActiveEntry.PlayerYaw, 0.f);
-			Pawn->TeleportTo(ActiveEntry.PlayerLocation, Facing);
-			PC->SetControlRotation(FRotator(-10.f, ActiveEntry.PlayerYaw, 0.f));
+			UClass* WidgetClass = ActiveEntry.WidgetClass.LoadSynchronous();
+			if (!WidgetClass)
+			{
+				UE_LOG(LogMiniGame, Warning, TEXT("위젯 클래스를 불러오지 못했다: %s"), *ActiveEntry.WidgetClass.ToString());
+				return;
+			}
+
+			if (ActiveEntry.bMovePlayer)
+			{
+				if (APawn* Pawn = PC->GetPawn())
+				{
+					const FRotator Facing(0.f, ActiveEntry.PlayerYaw, 0.f);
+					Pawn->TeleportTo(ActiveEntry.PlayerLocation, Facing);
+					PC->SetControlRotation(FRotator(-10.f, ActiveEntry.PlayerYaw, 0.f));
+				}
+			}
+
+			if (ActiveEntry.bUseFixedCamera)
+			{
+				FActorSpawnParameters Params;
+				Params.ObjectFlags |= RF_Transient;
+				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				if (ACameraActor* Camera = PC->GetWorld()->SpawnActor<ACameraActor>(ActiveEntry.CameraLocation, ActiveEntry.CameraRotation, Params))
+				{
+					Camera->GetCameraComponent()->SetFieldOfView(ActiveEntry.CameraFOV);
+					// 화면 비율대로 그린다 (기본값은 검은 레터박스를 씌운다)
+					Camera->GetCameraComponent()->SetConstraintAspectRatio(false);
+					PC->SetViewTargetWithBlend(Camera, 0.f);
+					FixedCamera = Camera;
+				}
+			}
+
+			// 게임 중에는 캐릭터가 움직이지 않게 막고, 키 입력은 전부 위젯이 받는다.
+			PC->SetIgnoreMoveInput(true);
+			PC->SetIgnoreLookInput(true);
+
+			ActiveWidget = CreateWidget<UMiniGameWidget>(PC, WidgetClass);
+			if (!ActiveWidget)
+			{
+				return;
+			}
+			ActiveWidget->AddToViewport(50);
+
+			FInputModeUIOnly InputMode;
+			InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			PC->SetInputMode(InputMode);
+			PC->SetShowMouseCursor(true);
+
+			if (USoundBase* Music = ActiveEntry.BGM.LoadSynchronous())
+			{
+				// 레벨을 넘어가면 같이 사라지게 (복귀한 레벨에서 계속 나오지 않도록)
+				BGMComponent = UGameplayStatics::SpawnSound2D(this, Music, ActiveEntry.BGMVolume, 1.f, 0.f, nullptr, false, true);
+			}
+			else if (!ActiveEntry.BGM.IsNull())
+			{
+				UE_LOG(LogMiniGame, Warning, TEXT("BGM을 불러오지 못했다: %s"), *ActiveEntry.BGM.ToString());
+			}
+
+			bRewardGranted = false;
+			UE_LOG(LogMiniGame, Log, TEXT("미니게임 시작: %s"), *WidgetClass->GetName());
+
 		}
 	}
-
-	if (ActiveEntry.bUseFixedCamera)
-	{
-		FActorSpawnParameters Params;
-		Params.ObjectFlags |= RF_Transient;
-		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		if (ACameraActor* Camera = PC->GetWorld()->SpawnActor<ACameraActor>(ActiveEntry.CameraLocation, ActiveEntry.CameraRotation, Params))
-		{
-			Camera->GetCameraComponent()->SetFieldOfView(ActiveEntry.CameraFOV);
-			// 화면 비율대로 그린다 (기본값은 검은 레터박스를 씌운다)
-			Camera->GetCameraComponent()->SetConstraintAspectRatio(false);
-			PC->SetViewTargetWithBlend(Camera, 0.f);
-			FixedCamera = Camera;
-		}
-	}
-
-	// 게임 중에는 캐릭터가 움직이지 않게 막고, 키 입력은 전부 위젯이 받는다.
-	PC->SetIgnoreMoveInput(true);
-	PC->SetIgnoreLookInput(true);
-
-	ActiveWidget = CreateWidget<UMiniGameWidget>(PC, WidgetClass);
-	if (!ActiveWidget)
-	{
-		return;
-	}
-	ActiveWidget->AddToViewport(50);
-
-	FInputModeUIOnly InputMode;
-	InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
-	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	PC->SetInputMode(InputMode);
-	PC->SetShowMouseCursor(true);
-
-	if (USoundBase* Music = ActiveEntry.BGM.LoadSynchronous())
-	{
-		// 레벨을 넘어가면 같이 사라지게 (복귀한 레벨에서 계속 나오지 않도록)
-		BGMComponent = UGameplayStatics::SpawnSound2D(this, Music, ActiveEntry.BGMVolume, 1.f, 0.f, nullptr, false, true);
-	}
-	else if (!ActiveEntry.BGM.IsNull())
-	{
-		UE_LOG(LogMiniGame, Warning, TEXT("BGM을 불러오지 못했다: %s"), *ActiveEntry.BGM.ToString());
-	}
-
-	bRewardGranted = false;
-	UE_LOG(LogMiniGame, Log, TEXT("미니게임 시작: %s"), *WidgetClass->GetName());
 }
 
 FName UMiniGameSubsystem::GetPlayCounterId() const

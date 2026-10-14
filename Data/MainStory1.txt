@@ -146,7 +146,7 @@ AI의 끊임없는 발전.
 @label D1_102
 @CompleteEvent MainStory3
 @wait_near 100 NPC_Suyun
-@TimeAdvanceSchedule 1
+@TimeSetSchedule Schedule.MorningClass 
 @hide
 
 @label D1_103
@@ -627,12 +627,6 @@ AI의 끊임없는 발전.
 
 //수업
 @label Lesson_Default
-@if APAtMost 0
-@if NextScheduleIs Schedule.MorningClass
-@branch Lesson_Start1_1
-@if APAtMost 0
-@if NextScheduleIs Schedule.AfternoonClass
-@branch Lesson_Start1_1
 @if ScheduleIs Schedule.MorningClass
 @branch Lesson_Start2_1
 @if ScheduleIs Schedule.AfternoonClass
@@ -672,11 +666,24 @@ AI의 끊임없는 발전.
 // 밥
 
 @label EatFood
-@cam Loc 87.0 -133.0 93.0 Rot 0 5.0 135.7 .1 400
+@FadeOut Black .1
+@hide
+@wait .1
+
+@label EatFood_02
 @PlaySE Looping crowd_buzz
 @Teleport Player FoodCheon
 @PlayAnim Player Food 1
+@cam Loc 87.0 -133.0 93.0 Rot 0 5.0 135.7 .1 400
+@hide
+@wait .1
 
+@label EatFood_3
+@FadeIn 3
+@hide
+@wait .3
+
+@label EatFood_04
 밥을 먹었다.
 @hide
 @wait .3

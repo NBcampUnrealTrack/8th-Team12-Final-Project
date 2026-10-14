@@ -53,8 +53,8 @@ void UActivitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	// 레벨 로드 완료 시 활동 목록 재검사
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UActivitySubsystem::OnLevelLoaded);
 	
-	CurrentAP = 1;
-	MaxAP = 1;
+	CurrentAP = 0;
+	MaxAP = 0;
 }
 
 
@@ -222,6 +222,21 @@ void UActivitySubsystem::CheckCurrentAP()
 	}
 }
 
+FString UActivitySubsystem::FindLevelKey(const UWorld* World, const TMap<FName, TSoftObjectPtr<UWorld>>& Levels)
+{
+	if (!World) return FString();
+
+	const FString Current = UWorld::RemovePIEPrefix(World->GetPackage()->GetName());
+	for (const TPair<FName, TSoftObjectPtr<UWorld>>& Pair : Levels)
+	{
+		if (Pair.Value.ToSoftObjectPath().GetLongPackageName() == Current)
+		{
+			return Pair.Key.ToString();
+		}
+	}
+	return FString();
+}
+
 int32 UActivitySubsystem::GetRunnableLength()
 {
 	return RunnableActivities.Num();
@@ -263,8 +278,12 @@ int32 UActivitySubsystem::GetCurrentAP() const
 }
 
 void UActivitySubsystem::ActivityFinished(FName ActivityName)
-{
-	FString LevelName = UGameplayStatics::GetCurrentLevelName(this);
+{	
+	FString LevelName = FindLevelKey(GetWorld(), GetDefault<UActivitySetting>()->Levels);
+	if (LevelName.IsEmpty())
+	{
+		  LevelName = UGameplayStatics::GetCurrentLevelName(this);
+	}
 	ActivityName = FName("Activity." + LevelName + "." + ActivityName.ToString());
 	FGameplayTag ActivityTag = FGameplayTag::RequestGameplayTag(ActivityName);
 	UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished\n%s\n%s"), *ActivityName.ToString(), *ActivityTag.ToString());

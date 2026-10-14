@@ -2293,10 +2293,10 @@
         "Value": 0
       },
       {
-        "Type": "TimeAdvanceSchedule",
-        "Key": "None",
+        "Type": "TimeSetSchedule",
+        "Key": "Schedule.MorningClass",
         "Key2": "None",
-        "Value": 1
+        "Value": 0
       }
     ],
     "Choices": [],
@@ -10602,7 +10602,7 @@
     "Name": "D3_03_001",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "(버스정류장과 상호작용 하면 아르바이트 장소 / 집으로 향할 수 있습니다.)",
+    "Text": "(건물 문과 상호작용 하면 아르바이트 장소 / 집으로 향할 수 있습니다.)",
     "OnEnterActions": [],
     "Choices": [],
     "bYesNo": false,
@@ -10643,36 +10643,6 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [
-      {
-        "Conditions": [
-          {
-            "Type": "APAtMost",
-            "Key": "None",
-            "Value": 0
-          },
-          {
-            "Type": "NextScheduleIs",
-            "Key": "Schedule.MorningClass",
-            "Value": 0
-          }
-        ],
-        "NextNodeId": "Lesson_Start1_1"
-      },
-      {
-        "Conditions": [
-          {
-            "Type": "APAtMost",
-            "Key": "None",
-            "Value": 0
-          },
-          {
-            "Type": "NextScheduleIs",
-            "Key": "Schedule.AfternoonClass",
-            "Value": 0
-          }
-        ],
-        "NextNodeId": "Lesson_Start1_1"
-      },
       {
         "Conditions": [
           {
@@ -10987,7 +10957,50 @@
     "Name": "EatFood",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "밥을 먹었다.",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": ".1",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "EatFood_02",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "EatFood_02",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
     "OnEnterActions": [
       {
         "Type": "PlaySE",
@@ -11011,11 +11024,11 @@
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "EatFood_001",
-    "AutoAdvance": "None",
-    "AutoAdvanceValue": 0.0,
+    "NextNodeId": "EatFood_3",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
     "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": false,
+    "bHideBoxWhileWaiting": true,
     "Camera": {
       "CameraType": "Cinematic",
       "Location": {
@@ -11039,7 +11052,86 @@
     }
   },
   {
-    "Name": "EatFood_001",
+    "Name": "EatFood_3",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "EatFood_04",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "EatFood_04",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "밥을 먹었다.",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "EatFood_04_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "EatFood_04_001",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",

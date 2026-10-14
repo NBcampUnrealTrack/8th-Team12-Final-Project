@@ -37,6 +37,7 @@ public:
 	bool ReturnToPreviousLevel(const TSoftObjectPtr<UWorld>& Fallback);
 
 	const FString& GetPreviousLevel() const { return PreviousLevel; }
+	void SetPreviousLevel(const FString& NewPreviousLevel) { PreviousLevel = NewPreviousLevel; }
 
 	/**
 	 * 문으로 미니게임에 들어갈 때 플레이어가 서 있던 자리. 돌아오면 PlayerStart 대신 이 자리에 세운다.

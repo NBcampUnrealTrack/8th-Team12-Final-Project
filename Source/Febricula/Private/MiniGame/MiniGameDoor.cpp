@@ -4,6 +4,7 @@
 
 #include "MiniGame/MiniGameDoor.h"
 
+#include "Activity/ActivitySubsystem.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -54,6 +55,14 @@ void AMiniGameDoor::OnConstruction(const FTransform& Transform)
 
 bool AMiniGameDoor::CanInteract_Implementation(AActor* Interactor) const
 {
+	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	{
+		if (ActivitySubsystem->GetCurrentAP() <= 0)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("잔여 AP 없음"));
+			return false;
+		};
+	}
 	if (UGameProgressSubsystem* GameProgressSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
 	{
 		if (GameProgressSubsystem->EvaluateConditions(InteractConditions))
@@ -66,32 +75,33 @@ bool AMiniGameDoor::CanInteract_Implementation(AActor* Interactor) const
 
 void AMiniGameDoor::Interact_Implementation(AActor* Interactor)
 {
-	if (TargetLevel.IsNull() || bTraveling)
-	{
-		return;
-	}
-	bTraveling = true;
-
-	// 돌아오면 PlayerStart가 아니라 지금 서 있는 자리로 (UMiniGameSubsystem이 되돌린다)
-	const APawn* Pawn = Cast<APawn>(Interactor);
-	if (!Pawn)
-	{
-		const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
-		Pawn = PC ? PC->GetPawn() : nullptr;
-	}
-	UGameInstance* GI = GetGameInstance();
-	UMiniGameTravelSubsystem* Travel = GI ? GI->GetSubsystem<UMiniGameTravelSubsystem>() : nullptr;
-	if (Pawn && Travel && GetWorld())
-	{
-		Travel->SetReturnPoint(*GetWorld(), Pawn->GetActorTransform());
-	}
-
-	// [skydodo] 2026-10-13 버그 수정: 레벨 이동이 주석 처리되고 지금 월드의 TryStart만 불러 문을 눌러도 아무 일이 없었다.
-	// 미니게임은 미니게임 레벨의 UMiniGameSubsystem이 열릴 때 스스로 시작하므로 원래대로 레벨만 연다.
-	
-	FString Current = Travel->GetLevelPath(*GetWorld());
 	if (UMiniGameSubsystem* MiniGame = GetWorld()->GetSubsystem<UMiniGameSubsystem>())
 	{
+
+		if (TargetLevel.IsNull() || bTraveling)
+		{
+			return;
+		}
+		bTraveling = true;
+
+		// 돌아오면 PlayerStart가 아니라 지금 서 있는 자리로 (UMiniGameSubsystem이 되돌린다)
+		const APawn* Pawn = Cast<APawn>(Interactor);
+		if (!Pawn)
+		{
+			const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+			Pawn = PC ? PC->GetPawn() : nullptr;
+		}
+		UGameInstance* GI = GetGameInstance();
+		UMiniGameTravelSubsystem* Travel = GI ? GI->GetSubsystem<UMiniGameTravelSubsystem>() : nullptr;
+		if (Pawn && Travel && GetWorld())
+		{
+			Travel->SetReturnPoint(*GetWorld(), Pawn->GetActorTransform());
+		}
+
+		// [skydodo] 2026-10-13 버그 수정: 레벨 이동이 주석 처리되고 지금 월드의 TryStart만 불러 문을 눌러도 아무 일이 없었다.
+		// 미니게임은 미니게임 레벨의 UMiniGameSubsystem이 열릴 때 스스로 시작하므로 원래대로 레벨만 연다.
+		
+		FString Current = Travel->GetLevelPath(*GetWorld());
 		if (Current == TargetLevel.ToSoftObjectPath().GetLongPackageName())
 		{
 			MiniGame->TryStart();

@@ -36,11 +36,12 @@
 
 @label RunningMachineGym1
 @FadeOut Black 3
-@Teleport Player RunningMachine
 @hide
 @wait .3
 
+
 @label RunningMachineGym2
+@Teleport Player RunningMachine
 @cam Loc -388.7 1659.0 67.4 Rot 0 6.4 -210.0
 @FadeIn 3
 @hide

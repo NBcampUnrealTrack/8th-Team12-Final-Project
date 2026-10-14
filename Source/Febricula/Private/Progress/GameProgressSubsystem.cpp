@@ -175,6 +175,21 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		if (TargetIndex < NowIndex) return true;
 		return false;
 	}
+		
+	case EGameConditionType::ScheduleBefore:
+	{
+		const UTimeSubsystem* TimeSubsystem = GetTime();
+		if (!TimeSubsystem) return false;
+
+		int32 NowIndex = TimeSubsystem->GetScheduleIndex();
+		int32 TargetIndex = TimeSubsystem->GetScheduleIndex(Condition.Key);
+		
+		
+		if (TargetIndex == -1) return false;
+		if (TargetIndex > NowIndex) return true;
+		return false;
+
+	}
 
 	case EGameConditionType::NextScheduleIs:
 	{
@@ -340,8 +355,8 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		
 	case EGameConditionType::PreviousLevelIs:
 	{
-		if (MoveHistory.IsEmpty()) return false;
-		FName LastHistory = MoveHistory.Last();
+		if (MoveHistory.Num() < 2 ) return false;
+		FName LastHistory = MoveHistory[MoveHistory.Num() - 2];
 		UE_LOG(LogTemp, Warning, TEXT("마지막 방문 레벨: %s"), *LastHistory.ToString());
 		if (Condition.Key == "Library")
 		{
@@ -351,6 +366,7 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 				return true;
 			}			
 		}
+		UE_LOG(LogTemp, Error, TEXT("%d"), Condition.Key == LastHistory);
 		if (LastHistory == Condition.Key)
 		{
 			return true;

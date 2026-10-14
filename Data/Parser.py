@@ -887,7 +887,7 @@ def main():
                     help="EGameActionType / EGameConditionType이 정의된 .h 경로 (여러 개 가능)")
     ap.add_argument("--check", action="store_true", help="검증만 하고 파일을 쓰지 않음")
     args = ap.parse_args()
- 
+
     def load(enum_name, fallback, label):
         for header in args.enum_header:
             found = extract_enum(header, enum_name)

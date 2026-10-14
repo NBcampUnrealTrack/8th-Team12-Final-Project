@@ -1285,7 +1285,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 					UGameplayStatics::OpenLevelBySoftObjectPtr(this, *Level);
 					if (Progress)
 					{
-						Progress->AddMoveHistory(FName(UGameplayStatics::GetCurrentLevelName(GetWorld(), true)));
+						Progress->AddMoveHistory(FName(Action.Key));
 					}
 					if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 					{

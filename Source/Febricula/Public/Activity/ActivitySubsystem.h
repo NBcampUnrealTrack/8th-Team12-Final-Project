@@ -38,6 +38,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void CheckCurrentAP();
 	
+	UFUNCTION(BlueprintCallable)
+	FString FindLevelKey(const UWorld* World, const TMap<FName, TSoftObjectPtr<UWorld>>& Levels);
+	
 	// ---- 세이브/로드 ----
 	
 	UFUNCTION(BlueprintCallable, Category = "ActivitySubsystem | Save")

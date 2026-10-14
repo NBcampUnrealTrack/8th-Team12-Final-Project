@@ -297,12 +297,6 @@
         "Key": "Black",
         "Key2": "None",
         "Value": 3
-      },
-      {
-        "Type": "Teleport",
-        "Key": "Player",
-        "Key2": "RunningMachine",
-        "Value": 0
       }
     ],
     "Choices": [],
@@ -341,6 +335,12 @@
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
+      {
+        "Type": "Teleport",
+        "Key": "Player",
+        "Key2": "RunningMachine",
+        "Value": 0
+      },
       {
         "Type": "FadeIn",
         "Key": "None",

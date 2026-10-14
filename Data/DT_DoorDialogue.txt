@@ -1,4 +1,11 @@
-﻿@label SchoolOutside_ClassRoomSide
+﻿@label TeacherOffice_Root
+복도로 돌아갈까?
+@menu YesNo
+- 네 -> GoSchoolHallway
+- 아니오 -> Cancle_Root
+@end
+
+@label SchoolOutside_ClassRoomSide
 어디로 갈까?
 @menu YesNo
 - 복도로 -> GoSchoolHallway
@@ -10,16 +17,41 @@
 @end
 
 @label SchoolOutside_Block
+@if DayEquals 1
+@branch SchoolOutside_Block_First
+@if IsWeekend 
+@branch SchoolOutside_Block_Third
+@if None
+@branch SchoolOutside_Block_Second
+@end
+
+@label SchoolOutside_Block_First
+학교 밖으로 나갈까?
+@menu YesNo
+- 네 -> GoRoomDirect
+- 아니오 -> Cancle_Root
+@end
+
+@label SchoolOutside_Block_Second
 학교 밖으로 나갈까?
 @menu YesNo
 - 네 -> GoMiddleBusDirect
 @if ScheduleAfter Schedule.FreeTime3
 - 아니오 -> Cancle_Root
+@end
+
+@label SchoolOutside_Block_Third
+학교 밖으로 나갈까?
+@menu YesNo
+- 네 -> GoMiddleBusDirect
+- 아니요 -> Cancle_Root
+@end
 
 @label SchoolOutside_LibrarySide
 어디로 갈까?
 @menu YesNo
 - 도서관으로 -> GoLibrary
+@if ScheduleBefore Schedule.Dinner
 - 그만둔다 -> Cancle_Root
 
 @end
@@ -28,16 +60,22 @@
 어디로 갈까?
 @menu YesNo
 - 체육관으로 -> GoGym
+@if ScheduleBefore Schedule.Dinner
 - 그만둔다 -> Cancle_Root
 
 @end
 
 @label Room_Root
-학교로 갈까?
+어디로 갈까?
 
 @menu YesNo
-- 예 -> GoSchoolFromHome1
-- 아니요 -> Cancle_Root
+- 학교 -> GoSchoolFromHome1
+@if ScheduleBefore Schedule.Dinner
+- 터미널 -> GoMiddleBus_Room
+@if ScheduleBefore Schedule.Dinner
+@if IsWeekend
+
+- 그만둔다 -> Cancle_Root
 
 @end
 
@@ -77,7 +115,9 @@
 @menu YesNo
 - 운동장으로 -> GoPlaygroundDirect
 - 도서관으로 -> GoLibraryDirect
+@if ScheduleBefore Schedule.Dinner
 - 체육관으로 -> GoGymDirect
+@if ScheduleBefore Schedule.Dinner
 - 그만둔다 -> Cancle_Root
 @end
 
@@ -120,20 +160,33 @@
 - 그만둔다 -> Cancle_Root
 
 @label MiddleBus_Root
-집으로 돌아갈까?
-- 네 -> GoHome
+집으로 돌아갈까? 
+| (※ 집으로 돌아가면 저녁 시간대가 됩니다. ※)
+@menu YesNo
+- 네 -> GoRoomMiddleBus
 - 아니요 -> Cancle_Root
 @end
 
 @label Mall_Root
 어디로 갈까?
-- 햄버거 가게
-- 꽃가게
-- 그만둔다 -> Cancel_Root
+@menu YesNo
+- 햄버거 가게 -> GoBurgger
+@if ScheduleBefore Schedule.Dinner
+- 꽃 가게 -> GoFlower
+@if ScheduleBefore Schedule.Dinner
+- 그만둔다 -> Cancle_Root
 @end
 
-@label GoBugger
-@ChangeLevel BuggerHouse true
+@label PartTime_Root
+정류장으로 돌아갈까?
+@menu YesNo
+- 네 -> GoMiddleBus
+@if NotHasTag State.DirectWork
+- 아니오 -> Cancle_Root
+@end
+
+@label GoBurgger
+@ChangeLevel BurgerHouse true
 @hide 
 @wait .1
 @end
@@ -180,12 +233,33 @@
 @end
 
 @label GoRoomDirect
+@if DayEquals 1
+@branch GoRoomDirect_First
+@if None
+@branch GoRoomDirect_Second
+@end
+
+@label GoRoomDirect_First
+@TimeSetSchedule Schedule.Night
 @ChangeLevel Room false
-
-
 @hide
 @wait .1
 @end
+
+@label GoRoomDirect_Second
+@ChangeLevel Room false
+@hide
+@wait .1
+@end
+
+@label GoRoomMiddleBus
+@TimeSetSchedule Schedule.Dinner
+@TimeAdvanceSchedule
+@ChangeLevel Room false
+@hide
+@wait .1
+@end
+
 
 
 @label GoSchoolHallway
@@ -222,8 +296,28 @@
 @end
 
 @label GoMiddleBusDirect
-@ChangeLevel MiddleBus false
+@if NowLevel SchoolOutside
+@if ScheduleBefore Schedule.Dinner
+@branch GoMiddleBusDirect_Inner_01
+@if None
+@branch GoMiddleBusDirect_Inner_02
+@end
 
+@label GoMiddleBusDirect_Inner_01
+@TimeAdvanceSchedule
+@wait .1
+@hide
+@jump GoMiddleBusDirect_Inner_02
+
+@label GoMiddleBusDirect_Inner_02
+@ChangeLevel MiddleBus false
+@hide
+@wait .1
+@end
+
+@label GoMiddleBus_Room
+@TimeAdvanceSchedule 2
+@ChangeLevel MiddleBus true
 
 @hide
 @wait .1

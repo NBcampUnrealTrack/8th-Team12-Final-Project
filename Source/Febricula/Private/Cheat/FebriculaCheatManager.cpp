@@ -187,6 +187,14 @@ void UFebriculaCheatManager::InScheduleBlock(FName BlockName)
 
 void UFebriculaCheatManager::SetSchedule(FName ScheduleName)
 {
+	
+}
 
+void UFebriculaCheatManager::TeleportDay(int32 Day)
+{
+	if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		TimeSubsystem->Debug_JumpToDay(Day);
+	}
 }
 

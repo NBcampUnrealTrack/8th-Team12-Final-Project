@@ -88,6 +88,8 @@ enum class EGameConditionType : uint8
 
 	ScheduleAfter			UMETA(DisplayName = "현재 시간대가 O 이후"),
 	
+	ScheduleBefore			UMETA(DisplayName = "현재 시간대가 O 이전"),
+	
 	NextScheduleIs			UMETA(DisplayName = "다음 시간대가 0"),
 	
 	/** 현재 시간대가 Key 태그의 하위인가 (예: Key=Schedule.FreeTime 이면 FreeTime.1/2/3 전부 통과) */

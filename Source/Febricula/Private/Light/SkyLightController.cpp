@@ -1,36 +1,60 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿#include "Light/SkyLightController.h"
 
+#include "Components/SkyLightComponent.h"
+#include "Engine/GameInstance.h"
+#include "Engine/World.h"
+#include "GameMode/TimeSubsystem.h" // 실제 경로에 맞출 것
 
-#include "SkyLightController.h"
-
-
-// Sets default values for this component's properties
 USkyLightController::USkyLightController()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
-
-// Called when the game starts
-void USkyLightController::BeginPlay()
+bool USkyLightController::GetTargetIntensity(float& OutIntensity) const
 {
-	Super::BeginPlay();
+	const UWorld* World = GetWorld();
+	const UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
+	UTimeSubsystem* Time = GI ? GI->GetSubsystem<UTimeSubsystem>() : nullptr;
+	if (!Time)
+	{
+		return false;
+	}
 
-	// ...
-	
+	const FString Point = Time->GetNowSchedulePoint();
+	if (Point.IsEmpty())
+	{
+		return false;
+	}
+
+	if (Point.Equals(TEXT("MorningTime")))
+	{
+		OutIntensity = IntensityBlock.MorningTime;
+	}
+	else if (Point.Equals(TEXT("AfternoonTime")))
+	{
+		OutIntensity = IntensityBlock.AfternoonTime;
+	}
+	else
+	{
+		OutIntensity = IntensityBlock.DinnerTime;
+	}
+	return true;
 }
 
-
-// Called every frame
-void USkyLightController::TickComponent(float DeltaTime, ELevelTick TickType,
-                                        FActorComponentTickFunction* ThisTickFunction)
+bool USkyLightController::SetIntensity()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
+	USkyLightComponent* Sky = GetSkyLightComponent();
+	float Target = 0.f;
+	if (!Sky || !GetTargetIntensity(Target))
+	{
+		return false;
+	}
+	Sky->SetIntensity(Target);
+	return true;
 }
 
+USkyLightComponent* USkyLightController::GetSkyLightComponent() const
+{
+	const AActor* Owner = GetOwner();
+	return Owner ? Owner->FindComponentByClass<USkyLightComponent>() : nullptr;
+}
