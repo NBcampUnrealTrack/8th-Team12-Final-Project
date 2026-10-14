@@ -89,7 +89,7 @@ namespace BurgerGame
 	constexpr float OriginalSpawnY = 290.f;
 	constexpr float FallSpeedScale = (CatchTop - SpawnY) / (CatchTop - OriginalSpawnY);
 	/** 본 근무 낙하 속도 배율 (2026-10-14 플레이 피드백: 조금 더 빠르게). 연습 판은 그대로 */
-	constexpr float FallSpeedBoost = 1.15f;
+	constexpr float FallSpeedBoost = 1.5f;
 	constexpr float SpawnInterval = 0.65f;
 	constexpr float RushSpawnInterval = 0.43f;
 	constexpr float RushSeconds = 10.f;
