@@ -29,7 +29,10 @@ class FEBRICULA_API USoundSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 	
-protected:	
+protected:
+	float MasterBGMVolume = 1.0f;
+	float MasterSEVolume  = 1.0f;
+
 	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<UAudioComponent> BGMChannel;
 	
@@ -54,7 +57,9 @@ public:
 	void StopSE(FName ChannelName, float FadeTime = .5f);
 	void SetBGMVolume(float Volume);
 	void SetSEVolume(FName ChannelTag, float Volume);
-	
+	/** 모든 SE 채널 볼륨을 한 번에 변경하고, 이후 재생될 SE에도 적용 */
+	void SetMasterSEVolume(float Volume);
+
 	USoundBase* FoundSoundBase(FName SoundName);
 	
 	void RegisterSoundLoc(FName Tag, FVector Location);

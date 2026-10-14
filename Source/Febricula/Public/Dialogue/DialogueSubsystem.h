@@ -110,6 +110,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsDialogueActive() const { return bDialogueActive; }
 
+	/** 현재 대사 중인 NPC의 ID. 나레이션/SimpleLines면 NAME_None */
+	UFUNCTION(BlueprintPure, Category = "Dialogue")
+	FName GetCurrentSpeakerNpcId() const { return CurrentSpeakerNpcId; }
+
 	/** 선택지 표시 중인가 (이 상태에선 Advance를 무시해야 한다) */
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsWaitingForChoice() const { return bWaitingForChoice; }
@@ -236,6 +240,7 @@ protected:
 	bool IsAutoAdvanceSatisfied(float DeltaTime);
 
 	FName CurrentNodeId;
+	FName CurrentSpeakerNpcId;
 	bool bDialogueActive = false;
 	bool bWaitingForChoice = false;
 
