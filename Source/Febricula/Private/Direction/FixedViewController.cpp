@@ -12,10 +12,12 @@
 
 
 // Sets default values
+// [skydodo] 2026-10-13 버그 수정: SceneComponent를 만들지 않고 RootComponent에 nullptr을 넣고 있었다
 AFixedViewController::AFixedViewController()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
+	SceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	RootComponent = SceneComponent;
 }
 
@@ -46,11 +48,12 @@ FName AFixedViewController::AddFixedCamera(UFixedViewComponent* FixedViewCompone
 	return CameraTag[0];
 }
 
+// [skydodo] 2026-10-13 버그 수정: Find()->Get()과 NowFixedCamera->ComponentTags[0]을 검사 없이 역참조해 크래시 가능
 void AFixedViewController::OnOverlapBegin(FName ComponentTag, bool bState)
 {
 	if (bState)
 	{
-		if (UFixedViewComponent* FixedViewComponent = FixedCameraActors.Find(ComponentTag)->Get())
+		if (UFixedViewComponent* FixedViewComponent = FixedCameraActors.FindRef(ComponentTag))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Now Trigger: %s"), *FixedViewComponent->GetOwner()->GetName());
 			NowFixedCamera = FixedViewComponent;
@@ -62,7 +65,7 @@ void AFixedViewController::OnOverlapBegin(FName ComponentTag, bool bState)
 	}
 	else
 	{
-		if (ComponentTag != NAME_None)
+		if (ComponentTag != NAME_None && NowFixedCamera && !NowFixedCamera->ComponentTags.IsEmpty())
 		{
 			if (ComponentTag == NowFixedCamera->ComponentTags[0])
 			{
@@ -73,6 +76,7 @@ void AFixedViewController::OnOverlapBegin(FName ComponentTag, bool bState)
 }
 
 // Called when the game starts or when spawned
+// [skydodo] 2026-10-13 버그 수정: 카메라 하나 등록에 실패하면 return으로 나머지 카메라까지 등록되지 않았다 -> continue
 void AFixedViewController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -91,8 +95,9 @@ void AFixedViewController::BeginPlay()
 				FName CameraTag = AddFixedCamera(Comp);
 				if (CameraTag == NAME_None)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Fixed View Controller: 카메라 추가 실패"));
-					return;
+					// 카메라 하나가 잘못돼도 나머지는 등록한다
+					UE_LOG(LogTemp, Warning, TEXT("Fixed View Controller: %s 카메라 추가 실패"), *It->GetName());
+					continue;
 				}
 				UE_LOG(LogTemp, Log, TEXT("Fixed View Controller: %s 추가됨"), *CameraTag.ToString());
 				FixedCameraActors.Add(CameraTag, Comp);

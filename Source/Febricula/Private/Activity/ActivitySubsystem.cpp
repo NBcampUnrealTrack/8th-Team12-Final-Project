@@ -76,7 +76,7 @@ void UActivitySubsystem::FindRunnableActivities()
 		for (const FActivityLocation& Loc : Pair.Value.ActivityLocations)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Tag=%s Valid=%d Now=%s"), *Loc.ConnectedScheduleTag.ToString(), Loc.ConnectedScheduleTag.IsValid(), *NowSchedule.ToString());
-			if (Loc.ConnectedScheduleTag.IsValid() && Loc.ConnectedScheduleTag != NowSchedule)
+			if (Loc.ConnectedScheduleTag.IsValid() && !Loc.ConnectedScheduleTag.HasTagExact(NowSchedule))
 			{
 				continue;
 			}
@@ -92,13 +92,10 @@ void UActivitySubsystem::FindRunnableActivities()
 		}
 	}
 	SortRunnableActivity();
-	if (GEngine)
+	// [skydodo] 2026-10-13 수정: 화면 출력 대신 Output Log로 (확인은 GetRunnableActivities 치트로)
+	for (const auto& Pair : RunnableActivities)
 	{
-		for (const auto& Pair : RunnableActivities)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, FString::Printf(TEXT("%s"), *Pair.Key.GetTagName().ToString()));
-		}
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, TEXT("Founded Activities"));
+		UE_LOG(LogTemp, Log, TEXT("ActivitySubsystem: Runnable %s"), *Pair.Key.GetTagName().ToString());
 	}
 }
 
@@ -173,6 +170,8 @@ FGameplayTag UActivitySubsystem::GetNowScheduleTag() const
 	return NowSchedule;
 }
 
+// [skydodo] 2026-10-13 버그 수정: 헤더만 Shipping 가드가 있고 정의는 없어 Shipping 빌드가 깨졌다
+#if !UE_BUILD_SHIPPING
 const TMap<FGameplayTag, FActivityDefinition>& UActivitySubsystem::GetAllActivities() const
 {
 	return AllActivities;
@@ -182,6 +181,7 @@ const TMap<FGameplayTag, FActivityDefinition>& UActivitySubsystem::GetRunnableAc
 {
 	return RunnableActivities;
 }
+#endif
 
 void UActivitySubsystem::OnChangeSchedule(FGameplayTag ChangedSchedule)
 {
@@ -211,6 +211,17 @@ void UActivitySubsystem::SortRunnableActivity()
 	});
 }
 
+void UActivitySubsystem::CheckCurrentAP()
+{
+	if (MaxAP > 0 && CurrentAP <= 0)
+	{
+		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+		{
+			TimeSubsystem->SpendSchedule();
+		}
+	}
+}
+
 int32 UActivitySubsystem::GetRunnableLength()
 {
 	return RunnableActivities.Num();
@@ -233,6 +244,7 @@ bool UActivitySubsystem::TryConsumeAP(int32 Cost)
 
 	CurrentAP -= Cost;
 	UE_LOG(LogTemp, Log, TEXT("TryConsumeAP: Consumed %d AP (Remaining: %d)"), Cost, CurrentAP);
+	CheckCurrentAP();
 	return true;
 }
 
@@ -261,7 +273,6 @@ void UActivitySubsystem::ActivityFinished(FName ActivityName)
 	bFreeActivity = false;
 	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
 	OnActivityFinished.Broadcast(FName("Fixed"), ActivityName);
-
 }
 
 void UActivitySubsystem::ActivityFinished(FName NpcName, int32 EventNumber)
@@ -273,10 +284,11 @@ void UActivitySubsystem::ActivityFinished(FName NpcName, int32 EventNumber)
 			FName ActivityName = FName(FString::Printf(TEXT("%s_%d"), *NpcName.ToString(), EventNumber));
 			UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished: %s"), *ActivityName.ToString());
 			
-			OnActivityFinished.Broadcast(NpcName, ActivityName);
-			
 			GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
 			bFreeActivity = false;
+			CheckCurrentAP();
+			OnActivityFinished.Broadcast(NpcName, ActivityName);
+
 		}	
 		else
 		{

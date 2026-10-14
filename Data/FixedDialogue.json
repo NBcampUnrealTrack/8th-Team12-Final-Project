@@ -13,6 +13,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "StudyLibrary2",
     "AutoAdvance": "AfterDelay",
@@ -67,6 +68,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "StudyLibrary3",
     "AutoAdvance": "AfterDelay",
@@ -109,6 +111,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "StudyLibrary4",
     "AutoAdvance": "AfterDelay",
@@ -144,6 +147,7 @@
     "Text": "자리에 앉아 열심히 자습했다.",
     "OnEnterActions": [],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "StudyLibrary4_001",
     "AutoAdvance": "None",
@@ -186,6 +190,7 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "StudyLibrary5",
     "AutoAdvance": "AfterDelay",
@@ -252,12 +257,281 @@
       }
     ],
     "Choices": [],
+    "bYesNo": false,
     "Branches": [],
     "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
     "AutoAdvanceValue": 0.3,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "Player",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "RunningMachineGym1",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      },
+      {
+        "Type": "Teleport",
+        "Key": "Player",
+        "Key2": "RunningMachine",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "RunningMachineGym2",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "RunningMachineGym2",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "RunningMachineGym3",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "Cinematic",
+      "Location": {
+        "X": -388.7,
+        "Y": 1659.0,
+        "Z": 67.4
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 6.4,
+        "Yaw": -210.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 10000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "RunningMachineGym3",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "(속도 설정은 됐고...)",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "RunningMachineGym3_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "RunningMachineGym3_001",
+    "SpeakerName": "강천율",
+    "SpeakerNpcId": "PC_GangChunyul",
+    "Text": "(좋아. 이 정도면 되겠지.)",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "RunningMachineGym3_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "RunningMachineGym3_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "FadeOut",
+        "Key": "Black",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "RunningMachineGym4",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "RunningMachineGym4",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "AddStat",
+        "Key": "Hp",
+        "Key2": "None",
+        "Value": 1
+      },
+      {
+        "Type": "FinishActivity",
+        "Key": "RunningMachine",
+        "Key2": "None",
+        "Value": 0
+      },
+      {
+        "Type": "Teleport",
+        "Key": "Player",
+        "Key2": "PlayerStart",
+        "Value": 0
+      },
+      {
+        "Type": "FadeIn",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 3
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
     "Camera": {
       "CameraType": "Player",
       "Location": {

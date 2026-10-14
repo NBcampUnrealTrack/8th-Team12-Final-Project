@@ -432,7 +432,7 @@ namespace SubNpcSpotWalk
 	 * 방향으로 걷는다. 다가오는 사람이 있으면 그 사람 뒤로 비켜 지나간다. 모든 방향이 곧 부딪히면 그때만 선다.
 	 * 목표 바로 옆에 선 사람(줄에서 내 앞사람)은 장애물로 치지 않는다 - 그 뒤에 서야 한다.
 	 */
-	static FVector ChooseSteerDirection(const ASubNpcCharacter* Self, const FVector& Target, float MySpeed)
+	static FVector ChooseSteerDirection(const ASubNpcCharacter* Self, const FVector& Target, float MySpeed, FVector2D& HoldDir)
 	{
 		const FVector From = Self->GetActorLocation();
 		FVector2D Desired(Target.X - From.X, Target.Y - From.Y);
@@ -475,7 +475,7 @@ namespace SubNpcSpotWalk
 		}
 		if (Neighbors.Num() == 0)
 		{
-			Self->SteerHoldDir = Desired;
+			HoldDir = Desired;
 			return FVector(Desired.X, Desired.Y, 0.f);
 		}
 
@@ -505,9 +505,9 @@ namespace SubNpcSpotWalk
 			float Cost = FMath::Abs(Deg) / 90.f + FMath::Max(0.f, Horizon - MinTtc) * 3.f;
 			// [흔들림 방지] 직전에 걷던 방향에서 많이 꺾일수록 벌점. 없으면 비용이 비슷한 좌우 후보를
 			// 프레임마다 번갈아 골라 줄로 들어오는 사람이 좌우로 크게 흔들렸다.
-			if (!Self->SteerHoldDir.IsNearlyZero())
+			if (!HoldDir.IsNearlyZero())
 			{
-				Cost += 0.5f * (1.f - FVector2D::DotProduct(Dir, Self->SteerHoldDir));
+				Cost += 0.5f * (1.f - FVector2D::DotProduct(Dir, HoldDir));
 			}
 			if (Cost < BestCost)
 			{
@@ -521,15 +521,15 @@ namespace SubNpcSpotWalk
 			return FVector::ZeroVector;   // 어느 쪽도 곧 부딪힌다 - 잠깐 선다
 		}
 		// 방향도 한 번에 꺾지 않고 조금씩 돌린다 (사람은 걸으며 부드럽게 방향을 튼다)
-		if (!Self->SteerHoldDir.IsNearlyZero())
+		if (!HoldDir.IsNearlyZero())
 		{
-			const FVector2D Blended = (Self->SteerHoldDir * 0.75f + BestDir * 0.25f).GetSafeNormal();
+			const FVector2D Blended = (HoldDir * 0.75f + BestDir * 0.25f).GetSafeNormal();
 			if (!Blended.IsNearlyZero())
 			{
 				BestDir = Blended;
 			}
 		}
-		Self->SteerHoldDir = BestDir;
+		HoldDir = BestDir;
 		return FVector(BestDir.X, BestDir.Y, 0.f);
 	}
 
@@ -538,9 +538,9 @@ namespace SubNpcSpotWalk
 	 * 서 있는 사람(이벤트·줄·일행 대기)은 옆을 경유해 돌아가고, 길 밖에서 움직이는 사람은 속도 기반으로 피한다.
 	 * 길 위 행인은 피하지 않는다 - 그쪽이 비킨다.
 	 */
-	static FVector SteerForSpotWalk(const ASubNpcCharacter* Self, const FVector& Target, float Speed)
+	static FVector SteerForSpotWalk(const ASubNpcCharacter* Self, const FVector& Target, float Speed, FVector2D& HoldDir)
 	{
-		return ChooseSteerDirection(Self, DetourForSpotWalk(Self, Target), Speed);
+		return ChooseSteerDirection(Self, DetourForSpotWalk(Self, Target), Speed, HoldDir);
 	}
 }
 
@@ -1452,7 +1452,7 @@ void ASubNpcCharacter::ComputePathStep(float DeltaTime, FSubNpcPathStep& Out)
 		else
 		{
 			// 서 있는 사람(줄·이벤트)은 돌아가고, 길 밖에서 움직이는 사람은 피해서 길로 나간다
-			const FVector Dir2D = SubNpcSpotWalk::SteerForSpotWalk(this, Target, Step / FMath::Max(DeltaTime, KINDA_SMALL_NUMBER));
+			const FVector Dir2D = SubNpcSpotWalk::SteerForSpotWalk(this, Target, Step / FMath::Max(DeltaTime, KINDA_SMALL_NUMBER), SteerHoldDir);
 			if (Dir2D.IsNearlyZero())
 			{
 				Out.Result = FSubNpcPathStep::EResult::RotateOnly;   // 곧 부딪힌다 - 이번 틱은 선다
@@ -1802,7 +1802,7 @@ void ASubNpcCharacter::AdvanceToNextPath()
 	// 들어설 때 미리 정해 둔 다음 경로를 쓴다 (갈아탈 지점이 그 경로 기준으로 계산돼 있다).
 	bool bNextReversed = bPlannedNextReversed;
 	ANpcCrowdPath* Next = PlannedNextPath.Get();
-	if (!Next)
+	if (!Next || !Next->IsOpen())
 	{
 		Next = CurrentPath->PickNextPath(bNextReversed);
 	}
@@ -1978,7 +1978,7 @@ void ASubNpcCharacter::PlanNextPath()
 	ANpcCrowdPath* Next = nullptr;
 	if (const ASubNpcCharacter* Leader = GroupLeader.Get())
 	{
-		if (Leader->CurrentPath == CurrentPath && Leader->PlannedNextPath.IsValid())
+		if (Leader->CurrentPath == CurrentPath && Leader->PlannedNextPath.IsValid() && Leader->PlannedNextPath->IsOpen())
 		{
 			Next = Leader->PlannedNextPath.Get();
 			bNextReversed = Leader->bPlannedNextReversed;
@@ -2316,7 +2316,7 @@ void ASubNpcCharacter::TickSpotQueue(float DeltaTime, float Now)
 	}
 
 	// 서 있는 사람(이벤트하는 사람·줄 앞사람들)은 옆으로 돌아서 간다 (줄은 이벤트하는 사람 뒤에 선다)
-	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, Target, WalkSpeed);
+	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, Target, WalkSpeed, SteerHoldDir);
 	if (Dir.IsNearlyZero())
 	{
 		bIsMoving = false;   // 곧 부딪힌다 - 이번 틱은 서 있는 자세로 선다
@@ -2461,7 +2461,7 @@ void ASubNpcCharacter::TickApproachSpot(float DeltaTime)
 
 	// 걸어가는 방향을 본다. 높이는 설 자리 쪽으로 같이 맞춰 간다.
 	// 서 있는 사람은 돌아가고, 길 밖에서 움직이는 사람은 피해서 간다
-	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, SpotStandLocation, WalkSpeed);
+	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, SpotStandLocation, WalkSpeed, SteerHoldDir);
 	if (Dir.IsNearlyZero())
 	{
 		bIsMoving = false;   // 곧 부딪힌다 - 이번 틱은 서 있는 자세로 선다
@@ -3316,7 +3316,7 @@ void ASubNpcCharacter::TickGroupWait(float DeltaTime, float Now)
 	}
 
 	// 서 있는 사람(이벤트·줄·먼저 온 일행)은 돌아가고, 길 밖에서 움직이는 사람은 피해서 간다
-	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, GroupWaitLocation, WalkSpeed);
+	const FVector Dir = SubNpcSpotWalk::SteerForSpotWalk(this, GroupWaitLocation, WalkSpeed, SteerHoldDir);
 	if (Dir.IsNearlyZero())
 	{
 		bIsMoving = false;   // 곧 부딪힌다 - 이번 틱은 서 있는 자세로 선다

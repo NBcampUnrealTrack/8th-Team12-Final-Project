@@ -59,6 +59,7 @@ void ASlidingActor::OpenActor(AActor* Interactor, bool bInstant)
 	}
 }
 
+// [skydodo] 2026-10-13 버그 수정: 'CurrentMove >= 0'은 항상 참이라 닫힘이 끝나지 않고 타이머가 영원히 돌았다(ExecuteActionsWrapper도 호출 안 됨)
 void ASlidingActor::CloseActor(AActor* Interactor, bool bInstant)
 {
 	Super::CloseActor(Interactor);
@@ -67,10 +68,11 @@ void ASlidingActor::CloseActor(AActor* Interactor, bool bInstant)
 
 	if (!bInstant)
 	{
-		CurrentMove = FMath::Max(CurrentMove - MoveSpeed, 0);
-		for (int i = 0; i < MinMovement.Num(); i++)
+		// 0까지 다 닫힌 다음 틱에 종료한다 (>= 0이면 항상 참이라 타이머가 끝나지 않았다)
+		if (CurrentMove > 0)
 		{
-			if (CurrentMove >= 0)
+			CurrentMove = FMath::Max(CurrentMove - MoveSpeed, 0);
+			for (int i = 0; i < MinMovement.Num(); i++)
 			{
 				Hinges[i]->SetRelativeLocation(MinMovement[i].GetLocation() + Axis * CurrentMove);
 				bEnd = false;

@@ -303,5 +303,8 @@ protected:
 		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Prop | Debug")
 	TArray<FGameAction> QueuedLevelChange;
+	
+	int32 RoutingHopCount = 0;
+	static constexpr int32 MaxRoutingHops = 16;
 };
 

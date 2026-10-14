@@ -9,6 +9,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Dialogue/DialogueDataTypes.h"
 #include "GameFramework/Actor.h"
 #include "Interaction/Interactable.h"
 #include "MiniGameDoor.generated.h"
@@ -56,6 +57,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "MiniGame")
 	TObjectPtr<UTextRenderComponent> LabelText;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MiniGame")
+	TArray<FGameCondition> InteractConditions; 
 
 	/** 한 번 눌렀으면 레벨이 넘어갈 때까지 다시 받지 않는다 */
 	bool bTraveling = false;

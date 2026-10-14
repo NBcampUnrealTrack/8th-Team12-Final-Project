@@ -72,6 +72,7 @@ public:
 	//~ End UWorldSubsystem
 
 	bool IsMiniGameActive() const { return ActiveWidget != nullptr; }
+	void TryStart();
 
 	/**
 	 * 이 미니게임을 끝까지 플레이한 횟수 (건너뛰기 제외). 세이브에 남는다.
@@ -90,7 +91,6 @@ public:
 
 private:
 	/** 플레이어 폰이 생길 때까지 잠깐 기다렸다가 시작한다 */
-	void TryStart();
 
 	/** 미니게임에서 돌아온 레벨: 들어간 자리로 되돌리고 키보드 포커스를 게임 화면으로 돌려준다 */
 	void TryRestoreReturnPoint();

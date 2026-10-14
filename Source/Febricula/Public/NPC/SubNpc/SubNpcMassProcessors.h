@@ -23,6 +23,7 @@
 #include "GameFramework/Actor.h"
 #include "MassEntityTypes.h"
 #include "MassProcessor.h"
+#include "MassEntityQuery.h"	// [skydodo] 2026-10-13 버그 수정: 에디터에선 다른 헤더가 대신 끌어와서 몰랐는데, Shipping에선 FMassEntityQuery가 정의되지 않아 컴파일 에러
 #include "SubNpcMassProcessors.generated.h"
 
 class ASubNpcCharacter;

@@ -80,6 +80,9 @@ public:
 	void SpendSchedule();
 	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule")
 	void ResetSchedule();
+	
+	UFUNCTION(BlueprintCallable)
+	FName GetNextScheduleName();
 
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	int32 GetNowDay() const { return NowDay; }
@@ -124,11 +127,29 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Day")
 	FGameplayTag GetNowDayTypeTag() const;
+	int32 GetTargetScheduleIndex(FName Target);
 
 	UFUNCTION(BlueprintPure, Category = "TimeSubsystem | Schedule")
-	int32 GetNowScheduleIndex() const { return NowScheduleIndex; }
+	int32 GetScheduleIndex(FName Schedule = NAME_None) const
+	{
+		if (Schedule == NAME_None)
+			return NowScheduleIndex;
+		else
+		{
+			TArray<FScheduleDef> NowScheduleDef = GetScheduleDefs(); 
+			int32 Index = NowScheduleDef.IndexOfByPredicate([&](const FScheduleDef& Def)
+			{
+				return Def.ScheduleName.ToString() == Schedule;
+			});
+			return Index;
+		}
+	}
 
 	const FScheduleDef& GetNowSchedule() const { return NowSchedule; }
+	FName GetNowScheduleName() const { return FName(NowSchedule.ScheduleName.ToString()); }
+	
+	UFUNCTION(BlueprintCallable, Category = "TimeSubsystem | Schedule")
+	FGameplayTagContainer GetScheduleBlock(FName Key) const { return ScheduleGroupMap.FindRef(Key); }
 
 	/**
 	 * 범위를 벗어나면 nullptr.
@@ -198,6 +219,9 @@ protected:
 	TObjectPtr<UDataTable> ScheduleBlockTable;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Schedule")
 	FScheduleBlock ScheduleBlock;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Febricula | Schedule")
+	TMap<FName, FGameplayTagContainer> ScheduleGroupMap;
 	
 	int32 NowRepeatCount;
 };

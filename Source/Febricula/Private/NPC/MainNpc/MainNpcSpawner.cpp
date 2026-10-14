@@ -16,8 +16,10 @@
 #include "NPC/MainNpc/NpcRoute.h"
 #include "Progress/GameProgressSubsystem.h"
 #include "TimerManager.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogMainNpcSpawner, Log, All);
+
 
 namespace MainNpcSpawnerPrivate
 {
@@ -35,6 +37,21 @@ namespace MainNpcSpawnerPrivate
 			&& A.RouteId == B.RouteId
 			&& A.EventTable == B.EventTable
 			&& A.DialogueTable == B.DialogueTable;
+	}
+	
+	void ApplySeated(AMainNpcCharacter* Npc)
+	{
+		if (UCharacterMovementComponent* Move = Npc->GetCharacterMovement())
+		{
+			Move->StopMovementImmediately();
+			Move->SetMovementMode(MOVE_None);   // 중력·바닥 검사 정지
+		}
+		if (UCapsuleComponent* Capsule = Npc->GetCapsuleComponent())
+		{
+			// 콜리전 자체는 켜 둔다 → 상호작용 트레이스에는 계속 잡힘
+			Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Ignore);
+			Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);
+		}
 	}
 }
 
@@ -58,14 +75,21 @@ void AMainNpcSpawner::BeginPlay()
 		return;
 	}
 
+	// [skydodo] 2026-10-13 리팩토링: CollectSpawnPoints()/AllSpawnPoints는 채우기만 하고 아무도 읽지 않았고(FindSpawnPoint는 월드를 직접 돈다),
+	// 자리 이름 중복 경고를 아래 검사와 두 번 찍었다 -> 제거하고 아래 검사 하나만 남김
 	if (bValidateOnBeginPlay)
 	{
 		ValidateSchedule();
 
-		// 한 레벨 안에서 자리 이름이 겹치면 어느 쪽에 설지 알 수 없다.
+		// 한 레벨 안에서 자리 이름이 겹치면 어느 쪽에 설지 알 수 없다. (랜덤 자리는 이름 없이 여러 개를 두는 게 정상)
 		TSet<FName> SeenPointIds;
 		for (TActorIterator<AMainNpcSpawnPoint> It(GetWorld()); It; ++It)
 		{
+			if (It->GetSpawnPointType() == ESpawnPointType::MultiByRandom)
+			{
+				continue;
+			}
+
 			const FName PointId = It->GetSpawnPointId();
 			if (PointId.IsNone())
 			{
@@ -138,6 +162,7 @@ void AMainNpcSpawner::RefreshNpcs()
 	RefreshTimerHandle.Invalidate();
 	bRefreshDeferred = false;
 
+
 	if (!ScheduleTable)
 	{
 		return;
@@ -157,10 +182,25 @@ void AMainNpcSpawner::RefreshNpcs()
 	// 한 번에 처리하면 A가 비우기 전에 B가 같은 자리에 먼저 생겨서 겹치고, 스폰 겹침 보정 때문에 옆으로 밀려난다.
 	TArray<const FMainNpcSpawnRow*> RowsToSpawn;
 
-	for (const FName& NpcId : NpcIds)
+	// [skydodo] 2026-10-13 리팩토링: 같은 정렬을 NPC 수만큼 반복하던 루프를 한 번으로. 순서를 고정해야 자리 배정이 매번 같다
+	TArray<FName> SortedNpcIds = NpcIds.Array();
+	SortedNpcIds.Sort(FNameLexicalLess());
+
+	const UGameInstance* GameInstance = GetGameInstance();
+	const UGameProgressSubsystem* GameProgress = GameInstance ? GameInstance->GetSubsystem<UGameProgressSubsystem>() : nullptr;
+
+	for (const FName& NpcId : SortedNpcIds)
 	{
 		const FMainNpcSpawnRow* const* FoundRow = CurrentRows.Find(NpcId);
-		const FMainNpcSpawnRow* WantedRow = FoundRow && IsRowForThisLevel(**FoundRow) ? *FoundRow : nullptr;
+
+		// [skydodo] 2026-10-13 버그 수정: GameProgress가 없으면 WantedRow가 항상 null이라 모든 NPC가 내려갔다.
+		// 확률 판정은 GameProgress가 있을 때만 걸고, 없으면 확률 100으로 본다. NPC마다 찍던 시드 Warning 로그도 뺐다.
+		const FMainNpcSpawnRow* WantedRow = nullptr;
+		if (FoundRow && IsRowForThisLevel(**FoundRow)
+			&& (!GameProgress || GameProgress->CheckNpcCanSpawn(**FoundRow)))
+		{
+			WantedRow = *FoundRow;
+		}
 
 		if (AMainNpcCharacter* Current = FindSpawnedNpc(NpcId))
 		{
@@ -186,6 +226,7 @@ void AMainNpcSpawner::RefreshNpcs()
 			// 밖에서 지워졌으면 기록만 정리한다.
 			SpawnedNpcs.Remove(NpcId);
 			SpawnedRows.Remove(NpcId);
+			SpawnedPoints.Remove(NpcId);
 		}
 
 		if (WantedRow)
@@ -227,17 +268,22 @@ TMap<FName, const FMainNpcSpawnRow*> AMainNpcSpawner::ResolveCurrentRows() const
 	ScheduleTable->GetAllRows<FMainNpcSpawnRow>(TEXT("AMainNpcSpawner::ResolveCurrentRows"), Rows);
 	for (const FMainNpcSpawnRow* Row : Rows)
 	{
-		if (!Row || Row->NpcId.IsNone() || Row->Day != CurrentDay)
+		if (!Row || Row->NpcId.IsNone())
+		{
+			continue;
+		}
+		
+		if (Row->Day > 0 && Row->Day != CurrentDay)
 		{
 			continue;
 		}
 
 		// 시간대가 비어 있으면 하루 종일. 지정돼 있으면 지금 시간대와 같아야 한다.
-		if (Row->ScheduleTag.IsValid() && Row->ScheduleTag != CurrentSchedule)
+		if (!Row->ScheduleTag.IsEmpty() && !Row->ScheduleTag.HasTagExact(CurrentSchedule))
 		{
 			continue;
 		}
-
+		
 		if (Row->Conditions.Num() > 0 && !(Progress && Progress->EvaluateConditions(Row->Conditions)))
 		{
 			continue;
@@ -283,7 +329,7 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 	{
 		return nullptr;
 	}
-
+	
 	// 한 NPC는 한 명만. 레벨에 직접 배치해 둔 것도 포함해서 이미 있으면 새로 만들지 않는다.
 	if (AMainNpcCharacter* Existing = FindNpcInWorld(Row.NpcId))
 	{
@@ -293,8 +339,9 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 		return nullptr;
 	}
 
-	const AMainNpcSpawnPoint* SpawnPoint = FindSpawnPoint(Row.SpawnPointId);
-	if (!SpawnPoint)
+	TArray<AMainNpcSpawnPoint*> SpawnPoints = FindSpawnPoint(Row.SpawnPointId, Row.SpawnPointType);
+
+	if (SpawnPoints.Num() == 0)
 	{
 		UE_LOG(LogMainNpcSpawner, Warning,
 			TEXT("%s: %s 의 자리 '%s'를 이 레벨에서 찾지 못했습니다."),
@@ -310,6 +357,47 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 		return nullptr;
 	}
 
+	TSet<const AMainNpcSpawnPoint*> OccupiedPoints;
+	
+	for (const TPair<FName, TObjectPtr<AMainNpcSpawnPoint>>& SpawnedPoint: SpawnedPoints)
+	{
+		OccupiedPoints.Add(SpawnedPoint.Value.Get());
+	}
+	
+	SpawnPoints.Sort([](const AMainNpcSpawnPoint& A, const AMainNpcSpawnPoint& B)
+	{
+		return A.GetFName().LexicalLess(B.GetFName());
+	});
+	
+	if (SpawnPoints.Num() > 1)
+	{
+		if (const UGameProgressSubsystem* GameProgress = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+		{
+			const FRandomStream Stream = GameProgress->MakeRandomStream(Row, /*Salt=*/1);
+			for (int32 i = SpawnPoints.Num() - 1; i > 0; --i)
+			{
+				SpawnPoints.Swap(i, Stream.RandRange(0, i));
+			}
+		}
+	}
+	
+	AMainNpcSpawnPoint* SpawnPoint = nullptr;
+	
+	for (AMainNpcSpawnPoint* Candidate : SpawnPoints)
+	{
+		if (!OccupiedPoints.Contains(Candidate))
+		{
+			SpawnPoint = Candidate;
+			break;
+		}
+	}
+	if (!SpawnPoint)
+	{
+		UE_LOG(LogMainNpcSpawner, Warning,
+			TEXT("%s: %s 의 자리 '%s'가 모두 차 있어 스폰하지 않습니다."),
+			*GetNameSafe(this), *Row.NpcId.ToString(), *Row.SpawnPointId.ToString());
+		return nullptr;
+	}
 	// 자리 액터는 발 위치다. 캐릭터 원점은 캡슐 중심이므로 반 높이만큼 올린다.
 	FTransform SpawnTransform = SpawnPoint->GetActorTransform();
 	if (const AMainNpcCharacter* Cdo = NpcClass->GetDefaultObject<AMainNpcCharacter>())
@@ -319,9 +407,14 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 	SpawnTransform.SetScale3D(FVector::OneVector);
 
 	// NpcId를 BeginPlay 전에 넣어야 하므로 지연 스폰한다.
+	
+	const ESpawnActorCollisionHandlingMethod CollisionMethod = Row.bSeated
+	? ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+	: ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
 	AMainNpcCharacter* Npc = World->SpawnActorDeferred<AMainNpcCharacter>(
 		NpcClass, SpawnTransform, this, nullptr,
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+		CollisionMethod);
 	if (!Npc)
 	{
 		UE_LOG(LogMainNpcSpawner, Warning,
@@ -340,6 +433,7 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 		UE_LOG(LogMainNpcSpawner, Warning,
 			TEXT("%s: 테이블 NpcId(%s)와 블루프린트 NpcId(%s)가 다릅니다."),
 			*GetNameSafe(this), *Row.NpcId.ToString(), *Npc->GetNpcId().ToString());
+
 	}
 
 	// 애니메이션 컴포넌트가 BeginPlay에서 DefaultAnimation을 읽으므로 FinishSpawning 전에 넣는다.
@@ -353,6 +447,12 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 
 	Npc->FinishSpawning(SpawnTransform);
 
+	if (Row.bSeated)
+	{
+		MainNpcSpawnerPrivate::ApplySeated(Npc);
+	}
+
+	
 	// FinishSpawning 안에서 AIController 빙의와 BehaviorTree 기동까지 끝나 있다.
 	ApplyStartAIState(Npc, Row);
 
@@ -360,8 +460,11 @@ AMainNpcCharacter* AMainNpcSpawner::SpawnFromRow(const FMainNpcSpawnRow& Row)
 
 	SpawnedNpcs.Add(Row.NpcId, Npc);
 	SpawnedRows.Add(Row.NpcId, &Row);
-	UE_LOG(LogMainNpcSpawner, Log, TEXT("%s: %s -> %s"),
-		*GetNameSafe(this), *Row.NpcId.ToString(), *Row.SpawnPointId.ToString());
+	SpawnedPoints.Add(Row.NpcId, SpawnPoint);
+
+	// [skydodo] 2026-10-13 리팩토링: 랜덤 자리일 때 같은 로그를 두 번 찍던 것을 하나로 (자리 이름 + 실제 고른 액터)
+	UE_LOG(LogMainNpcSpawner, Log, TEXT("%s: %s -> %s (%s)"),
+		*GetNameSafe(this), *Row.NpcId.ToString(), *Row.SpawnPointId.ToString(), *GetNameSafe(SpawnPoint));
 	return Npc;
 }
 
@@ -421,12 +524,16 @@ void AMainNpcSpawner::DespawnNpc(FName NpcId)
 	{
 		Npc->OnNpcMovementStateChanged.RemoveDynamic(this, &AMainNpcSpawner::HandleNpcMovementStateChanged);
 		Npc->Destroy();
+		// [skydodo] 2026-10-13 리팩토링: 같은 "내림" 로그를 두 번 찍던 것을 하나로
 		const FMainNpcSpawnRow* Row = SpawnedRows.FindRef(NpcId);
-		UE_LOG(LogMainNpcSpawner, Log, TEXT("%s: %s 내림 (%s)"),
-			*GetNameSafe(this), *NpcId.ToString(), Row ? *Row->SpawnPointId.ToString() : TEXT("-"));
+		UE_LOG(LogMainNpcSpawner, Log, TEXT("%s: %s 내림 (%s / %s)"),
+			*GetNameSafe(this), *NpcId.ToString(), Row ? *Row->SpawnPointId.ToString() : TEXT("-"),
+			*GetNameSafe(SpawnedPoints.FindRef(NpcId)));
 	}
+
 	SpawnedNpcs.Remove(NpcId);
 	SpawnedRows.Remove(NpcId);
+	SpawnedPoints.Remove(NpcId);
 }
 
 bool AMainNpcSpawner::IsNpcBusy(const AMainNpcCharacter* Npc)
@@ -466,21 +573,27 @@ AMainNpcCharacter* AMainNpcSpawner::FindNpcInWorld(FName NpcId) const
 	return nullptr;
 }
 
-AMainNpcSpawnPoint* AMainNpcSpawner::FindSpawnPoint(FName SpawnPointId) const
+TArray<AMainNpcSpawnPoint*> AMainNpcSpawner::FindSpawnPoint(FName SpawnPointId, ESpawnPointType PointType) const
 {
-	if (SpawnPointId.IsNone())
+	if (PointType == ESpawnPointType::OneByOne && SpawnPointId.IsNone())
 	{
-		return nullptr;
+		return TArray<AMainNpcSpawnPoint*>();
 	}
 
+	// [skydodo] 2026-10-13 리팩토링: 타입별로 같은 순회 루프를 두 번 쓰던 것을 하나로. 랜덤 자리는 타입으로, 나머지는 이름으로 찾는다
+	const bool bRandomPool = PointType == ESpawnPointType::MultiByRandom;
+	TArray<AMainNpcSpawnPoint*> Found;
 	for (TActorIterator<AMainNpcSpawnPoint> It(GetWorld()); It; ++It)
 	{
-		if (It->GetSpawnPointId() == SpawnPointId)
+		const bool bMatch = bRandomPool
+			? It->GetSpawnPointType() == ESpawnPointType::MultiByRandom
+			: It->GetSpawnPointId() == SpawnPointId;
+		if (bMatch)
 		{
-			return *It;
+			Found.Add(*It);
 		}
 	}
-	return nullptr;
+	return Found;
 }
 
 bool AMainNpcSpawner::IsRowForThisLevel(const FMainNpcSpawnRow& Row) const
@@ -510,7 +623,7 @@ TArray<FString> AMainNpcSpawner::DescribeSpawnedNpcs() const
 		const AMainNpcAIController* NpcAIController = Cast<AMainNpcAIController>(Npc->GetController());
 		Lines.Add(FString::Printf(TEXT("%s @ %s  anim=%s  AI=%s  move=%s"),
 			*Pair.Key.ToString(),
-			*Row->SpawnPointId.ToString(),
+			*GetNameSafe(SpawnedPoints.FindRef(Pair.Key)),
 			*Npc->GetDefaultAnimation().ToString(),
 			NpcAIController ? *UEnum::GetDisplayValueAsText(NpcAIController->GetAIState()).ToString() : TEXT("-"),
 			*UEnum::GetDisplayValueAsText(Npc->GetMovementState()).ToString()));
@@ -536,7 +649,9 @@ bool AMainNpcSpawner::ValidateSchedule() const
 	ScheduleTable->ForeachRow<FMainNpcSpawnRow>(TEXT("AMainNpcSpawner::ValidateSchedule"),
 		[&](const FName& RowName, const FMainNpcSpawnRow& Row)
 		{
-			if (Row.NpcId.IsNone() || Row.NpcClass.IsNull() || Row.Level.IsNull() || Row.SpawnPointId.IsNone())
+			const bool bNeedsPointId = Row.SpawnPointType == ESpawnPointType::OneByOne;
+
+			if (Row.NpcId.IsNone() || Row.NpcClass.IsNull() || Row.Level.IsNull() || (bNeedsPointId && Row.SpawnPointId.IsNone()))
 			{
 				UE_LOG(LogMainNpcSpawner, Warning,
 					TEXT("[Schedule] %s 행: NpcId / Npc Class / Level / SpawnPointId 중 비어 있는 값이 있습니다."),
@@ -563,7 +678,8 @@ bool AMainNpcSpawner::ValidateSchedule() const
 			{
 				const FMainNpcSpawnRow& A = *Entries[i].Row;
 				const FMainNpcSpawnRow& B = *Entries[j].Row;
-				if (A.Day == B.Day && A.ScheduleTag == B.ScheduleTag && A.Priority == B.Priority
+				const bool bSameDay = A.Day == B.Day || A.Day <= 0 || B.Day <= 0;
+				if (bSameDay && A.ScheduleTag == B.ScheduleTag && A.Priority == B.Priority
 					&& A.Conditions.Num() == 0 && B.Conditions.Num() == 0)
 				{
 					UE_LOG(LogMainNpcSpawner, Warning,

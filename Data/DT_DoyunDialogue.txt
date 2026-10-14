@@ -1,0 +1,44 @@
+﻿@cast 도윤 = "김도윤" NPC_Doyun
+@cast 천율 = "강천율" PC_GangChunyul
+
+@label Doyun_Default
+@if ScheduleIs Schedule.MorningActivity
+@branch Doyun_Default_Morning1
+@if ScheduleIs Schedule.FreeTime1
+@branch Doyun_Default_AfterBreakfast
+@if ScheduleIs Schedule.FreeTime3
+@branch Doyun_Default_AfterLaunch
+@jump Doyun_Default2
+@end
+
+@label Doyun_Default_Morning1
+도윤: 좋은 아침.
+천율: 응, 좋은 아침.
+@FadeOut Black .3
+@hide 
+@wait .3
+@jump Doyun_Default2
+
+@label Doyun_Default_AfterBreakfast
+천율: 도윤.
+@NpcFacePlayer
+도윤: 뭐야, 언제왔어?
+천율: 방금.
+@jump Doyun_Default2
+
+@label Doyun_Default_AfterLaunch
+@NpcFacePlayer
+도윤: 여어.
+천율: 안녕.
+도윤: 점심 먹었어? 
+천율: 먹었지.
+
+@label Doyun_Default2
+도윤이와 잡담하며 시간을 보냈다.
+@FadeIn .3
+@AddAffinity NPC_Doyun 1
+@hide
+@wait .3
+@ConsumeAP 1
+@end
+ 

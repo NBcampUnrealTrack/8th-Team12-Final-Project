@@ -63,7 +63,7 @@ public:
 
 	/** 혼자 계속 도는 순찰. 지점에 도착하면 바로 다음 지점으로 간다 */
 	UFUNCTION(BlueprintCallable, Category = "NPC|AI")
-	void StartPatrol(ANpcRoute* Route);
+	void StartPatrol(ANpcRoute* Route, bool bAutoRotate = false);
 
 	/** 플레이어를 데리고 다니는 안내. 지점마다 플레이어를 기다린다 */
 	UFUNCTION(BlueprintCallable, Category = "NPC|AI")
@@ -96,7 +96,7 @@ public:
 	static const FName BBKey_RouteTargetLocation;
 	static const FName BBKey_RouteTargetRotator;
 	static const FName BBKey_ChaseTarget;
-
+	static const FName BBKey_bAutoRotate;
 protected:
 	/** StartPatrol/StartGuide가 공유하는 경로 세팅 부분 */
 	bool SetupRoute(ANpcRoute* Route);

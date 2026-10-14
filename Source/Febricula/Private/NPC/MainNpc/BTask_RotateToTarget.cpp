@@ -10,6 +10,7 @@ UBTask_RotateToTarget::UBTask_RotateToTarget()
 {
 	NodeName = TEXT("RotateToTarget");
 	RouteTargetRotatorKey.AddRotatorFilter(this, GET_MEMBER_NAME_CHECKED(UBTask_RotateToTarget, RouteTargetRotatorKey));
+	bAutoRotateKey.AddBoolFilter(this, GET_MEMBER_NAME_CHECKED(UBTask_RotateToTarget, bAutoRotateKey));
 }
 
 void UBTask_RotateToTarget::InitializeFromAsset(UBehaviorTree& Asset)
@@ -18,6 +19,7 @@ void UBTask_RotateToTarget::InitializeFromAsset(UBehaviorTree& Asset)
 	if (const UBlackboardData* BlackboardData = GetBlackboardAsset())
 	{
 		RouteTargetRotatorKey.ResolveSelectedKey(*BlackboardData);
+		bAutoRotateKey.ResolveSelectedKey(*BlackboardData);
 	}
 }
 
@@ -27,7 +29,8 @@ EBTNodeResult::Type UBTask_RotateToTarget::ExecuteTask(UBehaviorTreeComponent& O
 	{
 		if (UBlackboardComponent* BlackboardComponent = OwnerComp.GetBlackboardComponent())
 		{
-			const float Yaw = BlackboardComponent->GetValueAsRotator(RouteTargetRotatorKey.SelectedKeyName).Yaw;
+			const float Yaw = BlackboardComponent->GetValueAsRotator(RouteTargetRotatorKey.SelectedKeyName).Yaw;	
+			BlackboardComponent->SetValueAsBool(bAutoRotateKey.SelectedKeyName, false);
 			//UE_LOG(LogTemp, Warning, TEXT("[RotateToTarget] Key=%s, Yaw=%.1f, 현재 Yaw=%.1f"), *RouteTargetRotatorKey.SelectedKeyName.ToString(), Yaw, NowNpc->GetActorRotation().Yaw);
 			NowNpc->SetActorRotation(FRotator(0.f, Yaw, 0.f));
 			return EBTNodeResult::Succeeded;

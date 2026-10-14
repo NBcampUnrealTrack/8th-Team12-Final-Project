@@ -76,8 +76,10 @@ void UFebriculaCheatManager::AddClearedEvent(FName EventId)
 	}
 }
 
+// [skydodo] 2026-10-13 버그 수정: 아래 세 함수는 Shipping에 없는 디버그 함수를 불러 Shipping 빌드가 깨졌다 -> 본문을 가드
 void UFebriculaCheatManager::GetRunnableActivities()
 {
+#if !UE_BUILD_SHIPPING	// 디버그 조회 함수는 Shipping에 없다
 	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
 		const TMap<FGameplayTag, FActivityDefinition> RunnableActivity = ActivitySubsystem->GetRunnableActivities();
@@ -96,10 +98,12 @@ void UFebriculaCheatManager::GetRunnableActivities()
 			UE_LOG(LogTemp, Warning, TEXT("\n"));
 		}
 	}
+#endif
 }
 
 void UFebriculaCheatManager::GetAllActivities()
 {
+#if !UE_BUILD_SHIPPING	// 디버그 조회 함수는 Shipping에 없다
 	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 	{
 		const TMap<FGameplayTag, FActivityDefinition> AllActivities = ActivitySubsystem->GetAllActivities();
@@ -118,14 +122,17 @@ void UFebriculaCheatManager::GetAllActivities()
 			UE_LOG(LogTemp, Warning, TEXT("\n"));
 		}
 	}
+#endif
 }
 
 void UFebriculaCheatManager::GetAllCachedTargetPoints()
 {
+#if !UE_BUILD_SHIPPING	// 디버그 조회 함수는 Shipping에 없다
 	if (UActorCacheSubsystem* ActorCacheSubsystem = GetWorld()->GetSubsystem<UActorCacheSubsystem>())
 	{
 		ActorCacheSubsystem->PrintAllCachedTarget();
 	}
+#endif
 }
 
 void UFebriculaCheatManager::GetNowStat(FName StatName)
@@ -134,5 +141,52 @@ void UFebriculaCheatManager::GetNowStat(FName StatName)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s 현재 값: %d"), *StatName.ToString(), ProgressSubsystem->GetStat(StatName));
 	}
+}
+
+void UFebriculaCheatManager::GetMoveHistory()
+{
+	if (UGameProgressSubsystem* Progress = GetWorld()->GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+	{
+		const TArray<FName> MoveHistory= Progress->GetMoveHistory();
+		UE_LOG(LogTemp, Warning, TEXT("현재까지의 이동 경로"));
+		for (FName History : MoveHistory)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *History.ToString());
+		}
+	}
+}
+
+void UFebriculaCheatManager::GetNextScheduleName()
+{
+	if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("다음 스케쥴: %s"), *TimeSubsystem->GetNextScheduleName().ToString());
+	}
+}
+
+void UFebriculaCheatManager::InScheduleBlock(FName BlockName)
+{
+	if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		FGameplayTagContainer Container = TimeSubsystem->GetScheduleBlock(BlockName);
+		UE_LOG(LogTemp, Warning, TEXT("현재 스케쥴: %s"), *TimeSubsystem->GetNowScheduleName().ToString());	
+		if (Container.IsEmpty())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("존재하지 않는 스케쥴 블록: %s"), *BlockName.ToString());
+			return;
+		}
+		if (Container.HasTagExact(TimeSubsystem->GetNowScheduleTag()))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s 블록에 포함됨"), *BlockName.ToString());
+			return;
+		}
+		UE_LOG(LogTemp, Warning, TEXT("%s 블록에 포함되지 않음"), *BlockName.ToString());
+		return;
+	}
+}
+
+void UFebriculaCheatManager::SetSchedule(FName ScheduleName)
+{
+
 }
 

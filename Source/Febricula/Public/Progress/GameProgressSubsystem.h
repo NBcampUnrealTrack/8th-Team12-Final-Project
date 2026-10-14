@@ -14,34 +14,13 @@
 #include "Components/PlayerStat.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Dialogue/DialogueDataTypes.h"
+#include "NPC/MainNpc/MainNpcSpawner.h"
+#include "SaveGame/FebriculaSaveGame.h"
 #include "GameProgressSubsystem.generated.h"
 
 class UTimeSubsystem;
 
 /** UGameProgressSubsystem의 상태를 세이브 파일에 담기 위한 스냅샷 */
-USTRUCT(BlueprintType)
-struct FGameProgressSaveData
-{
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, Category = "Save")
-	TSet<FName> Tags;
-
-	UPROPERTY(VisibleAnywhere, Category = "Save")
-	TSet<FName> Topics;
-
-	UPROPERTY(VisibleAnywhere, Category = "Save")
-	TSet<FName> CompletedEvents;
-
-	UPROPERTY(VisibleAnywhere, Category = "Save")
-	TMap<FName, int32> Counters;
-
-	UPROPERTY(VisibleAnywhere, Category = "Save")
-	TMap<FName, int32> Stats;
-
-	UPROPERTY(VisibleAnywhere, Category = "Save")
-	int32 FallbackDay = 1;
-};
 
 UCLASS(BlueprintType)
 class FEBRICULA_API UGameProgressSubsystem : public UGameInstanceSubsystem
@@ -101,9 +80,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
 	void SetStat(FName StatId, int32 NewValue)
 	{
-		const int32 Val = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
-		if (Val == INDEX_NONE) return;
-		Stats[Val] = NewValue;
+		int32 Index;
+		if (!TryGetStatIndex(StatId, Index)) return;
+		Stats[Index] = NewValue;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Progress|Stat")
@@ -148,6 +127,44 @@ public:
 	/** 세이브 파일에서 불러온 스냅샷으로 상태를 통째로 덮어쓴다 */
 	UFUNCTION(BlueprintCallable, Category = "Progress|Save")
 	void LoadSaveData(const FGameProgressSaveData& Data);
+	
+	
+	/** 이지민 수정(2026. 10. 10)
+	 * 메인 npc 스포너의 확률 기반 스폰을 위한 함수
+	 */
+	
+	UFUNCTION(BlueprintCallable, Category = "Progress|Spawner Seed")
+	int32 GetSpawnerSeed() const
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GameProgressSubsystem: 현재 SpawnerSeed: %d"), SpawnerSeed);
+		return SpawnerSeed;
+	}
+
+	FRandomStream MakeRandomStream(const FMainNpcSpawnRow& NowRow, uint32 Salt) const;
+	UFUNCTION(BlueprintCallable, Category = "Progress|Spawner Seed")
+	bool CheckNpcCanSpawn(const FMainNpcSpawnRow& NowRow) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Progress|MoveHistory")
+	void AddMoveHistory(FName LevelName)
+	{
+		this->MoveHistory.Add(LevelName);
+	}
+
+	/** 세이브에서 불러온 기록으로 통째로 교체한다 (이어 붙이면 불러올 때마다 중복으로 쌓인다) */
+	void SetMoveHistory(const TArray<FName>& InMoveHistory) { MoveHistory = InMoveHistory; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Progress|MoveHistory")
+	const TArray<FName>& GetMoveHistory() const { return MoveHistory; };
+
+	
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	void SetSpawnerSeed(int32 NewSeed) { SpawnerSeed = NewSeed; }
+
+protected:
+	
+	/** 하루치 이동 경로 */
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FName> MoveHistory;
 
 protected:
 	/** 시간 조건 판정에 쓰는 UTimeSubsystem 접근자. 없으면 nullptr */
@@ -174,4 +191,10 @@ protected:
 
 	UPROPERTY()
 	int32 Stats[static_cast<uint8>(EPlayerStat::Max)];
+	
+	UPROPERTY()
+	int32 SpawnerSeed;
+
+	/** 스탯 이름을 Stats 배열 인덱스로 바꾼다. 없는 이름이면 경고를 남기고 false */
+	static bool TryGetStatIndex(FName StatId, int32& OutIndex);
 };

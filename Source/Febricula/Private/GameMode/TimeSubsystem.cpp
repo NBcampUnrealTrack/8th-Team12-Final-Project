@@ -7,6 +7,39 @@
 #include "GameMode/ScheduleBlockRow.h"
 #include "GameMode/TimeSettings.h"
 
+// [skydodo] 2026-10-13 리팩토링: SpendSchedule과 GetNextScheduleName이 "다음 칸" 규칙을 각자 복사해 들고 있어
+// 한쪽만 고치면 미리보기와 실제 진행이 어긋났다 -> 한 곳에서 계산한다
+namespace TimeScheduleStep
+{
+	struct FStep
+	{
+		/** 다음 칸 인덱스. Defs.Num() 이상이면 오늘 시간표가 끝났다는 뜻 (호출하는 쪽이 하루를 넘긴다) */
+		int32 Index = 0;
+		int32 RepeatCount = 0;
+	};
+
+	/** Index 칸 다음 칸. BackTo가 있으면 RepeatCount번 될 때까지 BackTo칸 앞으로 되돌아간다 */
+	static FStep Next(const TArray<FScheduleDef>& Defs, int32 Index, int32 RepeatCount)
+	{
+		const FScheduleDef& Def = Defs[Index];
+		FStep Step{ Index, RepeatCount };
+		if (Def.BackTo > 0 && ++Step.RepeatCount < Def.RepeatCount)
+		{
+			Step.Index -= Def.BackTo;
+		}
+		else
+		{
+			if (Def.BackTo > 0)
+			{
+				Step.RepeatCount = 0;
+			}
+			++Step.Index;
+		}
+		Step.Index = FMath::Max(Step.Index, 0);
+		return Step;
+	}
+}
+
 // [skydodo] 2026-08-26 수정: 누적 일차(AbsoluteDay) 초기화, 시간표 애셋이 비었을 때 크래시 방어
 void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -25,6 +58,8 @@ void UTimeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	
 	WeekDaySchedule = S->WeekDaySchedule.LoadSynchronous();
 	WeekEndSchedule = S->WeekEndSchedule.LoadSynchronous();
+	
+	ScheduleGroupMap = S->ScheduleGroupMap;
 
 	// [변경] 원래는 WeekDaySchedule->ScheduleDefs[0] 을 바로 읽었는데,
 	// 프로젝트 세팅에서 애셋을 아직 안 지정했거나 배열이 비어 있으면 게임 시작과 동시에 크래시가 난다.
@@ -74,6 +109,7 @@ int32 UTimeSubsystem::GetDayPerMonth()
 }
 
 // [skydodo] 2026-08-26 수정: 누적 일차 증가
+// [skydodo] 2026-10-13 버그 수정: 12월 다음이 13월이 됐다 -> 1월로 되돌림
 void UTimeSubsystem::SpendDay()
 {
 	// [변경] 누적 일차는 달이 바뀌어도 계속 증가시킨다.
@@ -82,7 +118,10 @@ void UTimeSubsystem::SpendDay()
 	if (++NowDay > MaxDay)
 	{
 		NowDay = 1;
-		NowMonth += 1;
+		if (++NowMonth > 12)
+		{
+			NowMonth = 1;
+		}
 		MaxDay = GetDayPerMonth();
 	}
 	OnDayChanged.Broadcast(NowDay);
@@ -103,24 +142,9 @@ void UTimeSubsystem::SpendSchedule()
 		NowScheduleIndex = FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1);
 		NowSchedule = Defs[NowScheduleIndex];
 
-		if (NowSchedule.BackTo > 0)
-		{
-			if (++NowRepeatCount < NowSchedule.RepeatCount)
-			{
-				NowScheduleIndex -= NowSchedule.BackTo;
-			}
-			else
-			{
-				NowRepeatCount = 0;
-				++NowScheduleIndex;
-			}
-		}
-		else
-		{
-			++NowScheduleIndex;
-		}
-
-		NowScheduleIndex = FMath::Max(NowScheduleIndex, 0);
+		const TimeScheduleStep::FStep Step = TimeScheduleStep::Next(Defs, NowScheduleIndex, NowRepeatCount);
+		NowScheduleIndex = Step.Index;
+		NowRepeatCount = Step.RepeatCount;
 
 		if (NowScheduleIndex >= Defs.Num())
 		{
@@ -146,18 +170,54 @@ void UTimeSubsystem::SpendSchedule()
 	OnScheduleChanged.Broadcast(NowSchedule.ScheduleName);
 }
 
+
 int32 UTimeSubsystem::GetNowScheduleAp()
 {
 	return NowSchedule.ActionPoint;
 }
 
+// [skydodo] 2026-10-13 버그 수정: 시간표가 비어 있으면 SpendSchedule이 바로 return해 무한 루프
 void UTimeSubsystem::ResetSchedule()
 {
+	// 시간표가 비어 있으면 SpendSchedule이 아무것도 하지 않아 아래 루프가 끝나지 않는다.
+	if (GetScheduleDefs().Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Time] ResetSchedule: 시간표가 비어 있어 건너뜀"));
+		return;
+	}
 	int32 Day = GetAbsoluteDay();
 	while (AbsoluteDay == Day)
 	{
 		SpendSchedule();
 	}
+}
+
+// [skydodo] 2026-10-13 버그 수정: 범위를 맞춘 ScheduleIndex 대신 NowScheduleIndex로 인덱싱했고,
+// 하루의 마지막 시간대에서는 내일 시간표가 아니라 오늘 시간표의 0번을 돌려줘 평일<->주말 경계에서 틀렸다.
+// SpendSchedule과 같은 규칙으로 다음 칸을 계산하되 상태는 건드리지 않는다.
+FName UTimeSubsystem::GetNextScheduleName()
+{
+	const TArray<FScheduleDef>& Defs = GetScheduleDefs();
+	if (Defs.Num() <= 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UTimeSubsystem::GetNextScheduleName: 오늘 쓸 ScheduleDefs가 비어 있습니다."));
+		return NAME_None;
+	}
+
+	const TimeScheduleStep::FStep Step = TimeScheduleStep::Next(Defs, FMath::Clamp(NowScheduleIndex, 0, Defs.Num() - 1), NowRepeatCount);
+	if (Step.Index < Defs.Num())
+	{
+		return FName(Defs[Step.Index].ScheduleName.ToString());
+	}
+
+	// 시간표 끝 -> 내일 시간표의 첫 칸. 내일이 주말인지는 IsWeekend()와 같은 식을 누적 일차 + 1로 계산한다.
+	const bool bTomorrowWeekend = (AbsoluteDay % 7) >= 5;
+	const UDayScheduleAsset* Tomorrow = bTomorrowWeekend ? WeekEndSchedule : WeekDaySchedule;
+	if (!Tomorrow || Tomorrow->ScheduleDefs.Num() <= 0)
+	{
+		return NAME_None;
+	}
+	return FName(Tomorrow->ScheduleDefs[0].ScheduleName.ToString());
 }
 
 // [skydodo] 2026-08-26 추가: 누적 일차 기준 주말 판정
@@ -212,6 +272,27 @@ FGameplayTag UTimeSubsystem::GetNowDayTypeTag() const
 	// 날이 생겼을 때 이 함수를 고칠 필요가 없어야 하기 때문이다.
 	const UDayScheduleAsset* Asset = GetTodaySchedule();
 	return Asset ? Asset->DayTypeTag : FGameplayTag();
+}
+
+// [skydodo] 2026-10-13 버그 수정: 시간표 애셋이 없으면 null 역참조 크래시, 등록 안 된 태그 이름이면 RequestGameplayTag가 ensure를 터뜨렸다
+int32 UTimeSubsystem::GetTargetScheduleIndex(FName Target)
+{
+	const FGameplayTag TargetTag = FGameplayTag::RequestGameplayTag(Target, /*ErrorIfNotFound=*/false);
+	if (!TargetTag.IsValid())
+	{
+		UE_LOG(LogTemp, Log, TEXT("TimeSubsystem: 존재하지 않는 태그 %s"), *Target.ToString());
+		return -1;
+	}
+	// GetScheduleDefs()는 애셋이 없으면 빈 배열을 준다
+	const TArray<FScheduleDef>& Defs = GetScheduleDefs();
+	for (int32 i = 0; i < Defs.Num(); i++)
+	{
+		if (Defs[i].ScheduleName == TargetTag)
+		{
+			return i;
+		}
+	}
+	return -1;
 }
 
 FTimeSaveData UTimeSubsystem::GetSaveData() const

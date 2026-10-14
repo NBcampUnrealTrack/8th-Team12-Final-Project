@@ -15,7 +15,7 @@
 #include "Animation/CharacterAnimationComponent.h"
 #include "Cache/ActorCacheSubsystem.h"
 #include "Components/CapsuleComponent.h"
-#include "Dialogue/NpcCrowdManager.h"
+#include "NPC/SubNpc/NpcCrowdSpawner.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameMode/FebriculaGameMode.h"
@@ -65,16 +65,14 @@ void UDialogueSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UDialogueSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
+	FinishDialogue();
 	UE_LOG(LogTemp, Warning, TEXT("Dialogue Subsystem: Deinitialize"));
 }
 
 void UDialogueSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, .0f, FColor::Red, FString::Printf(TEXT("%d"), CachedCharacter.Num()));
-	}
+	// [skydodo] 2026-10-13 수정: 캐시된 캐릭터 수를 매 프레임 화면에 찍던 디버그 출력 제거 (확인은 GetCachedCharacter 치트로)
 
 	// 빠른 넘기기(Ctrl 홀드 등) 중이면 일정 간격마다 Advance()를 대신 호출해준다.
 	// Advance() 자체가 선택지/자동진행 대기 중엔 아무것도 안 하고 리턴하므로,
@@ -202,9 +200,10 @@ void UDialogueSubsystem::SetDataTables(UDataTable* InEventTable, UDataTable* InD
 
 
 
+// [skydodo] 2026-10-13 버그 수정: DialogueNodeId로 고른 경우 BestRowName이 비어 이벤트 완료 기록이 빠졌다. Row가 null이면 역참조하던 것도 막음
 bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, FName DialogueNodeId)
 {
-	if (bDialogueActive || !EventTable)
+ 	if (bDialogueActive || !EventTable)
 	{
 		return false;
 	}
@@ -224,14 +223,15 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, 
 	for (const TPair<FName, uint8*>& Pair : EventTable->GetRowMap())
 	{
 		const FNpcEventRow* Row = reinterpret_cast<const FNpcEventRow*>(Pair.Value);
-		if (Row)
+		if (!Row)
 		{
-			if (Row->NpcId != NpcId)
+			continue;
+		}
+		if (Row->NpcId != NpcId)
+		{
+			if (!Row->NpcId.IsNone())
 			{
-				if (!Row->NpcId.IsNone())
-				{
-					continue;		
-				}
+				continue;
 			}
 		}
 
@@ -251,6 +251,7 @@ bool UDialogueSubsystem::TryStartEventForNpc(FName NpcId, AActor* InInstigator, 
 			if (Row->RootNodeId == DialogueNodeId)
 			{
 				BestRow = Row;
+				BestRowName = Pair.Key;	// 비워 두면 끝날 때 이벤트 완료 기록이 빠진다
 				break;
 			}
 		}
@@ -304,7 +305,7 @@ void UDialogueSubsystem::EnterTalkForParticipants(const TArray<FName>& NpcIds, A
 		{
 			UE_LOG(LogTemp, Warning, TEXT("UDialogueSubsystem: 참가자 NPC '%s'를 월드에서 찾지 못했습니다."),
 				*ParticipantId.ToString());
-			continue;
+			continue;	
 		}
 
 		ActiveParticipants.AddUnique(Npc);
@@ -554,6 +555,7 @@ void UDialogueSubsystem::FinishDialogue()
 	CurrentSpeakerNpcId = NAME_None;
 	ActiveEventId = NAME_None;
 	PendingAutoAdvance = EDialogueAutoAdvance::None;
+	RoutingHopCount = 0;
 	AutoAdvanceNpcId = NAME_None;
 	AutoAdvanceElapsed = 0.f;
 	PendingChoices.Reset();
@@ -572,6 +574,21 @@ void UDialogueSubsystem::FinishDialogue()
 		// 	MainNpc->SetActorEnableCollision(true);
 		// }
 	}
+	
+	// if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	// {
+	// 	int32 NowMaxAp = ActivitySubsystem->GetMaxAP();
+	// 	
+	// 	if (NowMaxAp > 0 && ActivitySubsystem->GetCurrentAP() <= 0)
+	// 	{
+	// 		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	// 		{
+	// 			TimeSubsystem->SpendSchedule();
+	// 		}
+	// 	}
+	// }
+
+	
 	CurrentInstigator = nullptr;
 	BlockPlayerInput(false);
 	OnDialogueFinished.Broadcast();
@@ -586,7 +603,7 @@ TMap<FName, FCharacterCache> UDialogueSubsystem::GetCachedCharacter() const
 	return CachedCharacter;
 }
 
-FTransform UDialogueSubsystem::GetDefaultTransform(FName NpcId)
+FTransform UDialogueSubsystem::GetDefaultTransform(FName NpcId)		
 {
 	if (FCharacterCache* Cache = CachedCharacter.Find(NpcId))
 	{
@@ -657,6 +674,21 @@ void UDialogueSubsystem::EnterNode(FName NodeId)
 		
 	ExecuteActions(Row->OnEnterActions);
 
+	if (Row->Text.IsEmpty() && Row->Choices.Num() == 0
+	&& Row->AutoAdvance == EDialogueAutoAdvance::None)
+	{
+		if (++RoutingHopCount > MaxRoutingHops)
+		{
+			UE_LOG(LogTemp, Error, TEXT("UDialogueSubsystem: 분기 노드 순환 의심 (%s)"), *NodeId.ToString());
+			FinishDialogue();
+			return;
+		}
+		PendingAutoAdvance = EDialogueAutoAdvance::None;
+		ResolveNodeExit();   // CurrentNodeId는 위에서 이미 설정됨
+		return;
+	}
+	RoutingHopCount = 0;
+	
 	// 선택지가 있는 노드는 반드시 골라야 하므로 자동 진행을 걸지 않는다.
 	// if (Row->Choices.Num() > 0)
 	// {
@@ -824,6 +856,7 @@ void UDialogueSubsystem::ResolveNodeExit()
 // 액션 실행
 // ---------------------------------------------------------------------------
 
+// [skydodo] 2026-10-13 버그 수정: AddStat case에 break가 없어 CompleteEvent까지 실행돼 스탯 키가 완료 이벤트로 기록됐다
 void UDialogueSubsystem::ExecuteActions(const TArray<FGameAction>& Actions)
 {
 	for (const FGameAction& Action : Actions)
@@ -977,6 +1010,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		
 	case EGameActionType::AddStat:
 		if (Progress) { Progress->AddStat(Action.Key, Action.Value); }
+		break;
 
 	case EGameActionType::CompleteEvent:
 		if (Progress) { Progress->MarkEventCompleted(Action.Key); }
@@ -1016,6 +1050,29 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		}
 	}
 	break;
+		
+	case EGameActionType::TimeSetSchedule:
+		if (UTimeSubsystem* Time = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+		{
+			// [skydodo] 2026-10-13 버그 수정: 넘기다 하루가 지나 평일<->주말 시간표가 바뀌고 그쪽에 목표 시간대가 없으면
+			// while이 끝나지 않았다 -> 이틀치 시간표 길이만큼만 넘기고, 그래도 못 만나면 경고 후 멈춘다
+			const int32 TargetIndex = Time->GetTargetScheduleIndex(Action.Key);
+			if (TargetIndex > -1)
+			{
+				const int32 MaxSteps = FMath::Max(Time->GetScheduleDefs().Num(), 1) * 2;
+				int32 Steps = 0;
+				while (Time->GetNowScheduleName() != Action.Key && Steps++ < MaxSteps)
+				{
+					Time->SpendSchedule();
+				}
+				if (Time->GetNowScheduleName() != Action.Key)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("시간대 변경 액션: %d칸을 넘겨도 '%s'에 도달하지 못해 멈췄습니다."),
+						MaxSteps, *Action.Key.ToString());
+				}
+			}
+		}
+		break;
 
 	case EGameActionType::TimeResetSchedule:
 		if (UTimeSubsystem* Time = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
@@ -1059,7 +1116,7 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 			if (AMainNpcAIController* AI = Cast<AMainNpcAIController>(MainNpc->GetController()))
 			{
 				// Key2 = RouteId. 비워두면 NPC의 기본 경로를 쓴다.
-				AI->StartPatrol(MainNpc->GetRoute(Action.Key2));
+				AI->StartPatrol(MainNpc->GetRoute(Action.Key2), static_cast<bool>(Action.Value));
 			}
 		}
 		break;
@@ -1100,31 +1157,18 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 		break;
 		
 	case EGameActionType::StartCrowdSpawn:
-		if (!Action.Key.IsNone())
+		// 레벨에 하나뿐인 행인 스포너가 Key2 이름의 행렬을 내보낸다. Key는 쓰지 않는다.
+		if (Action.Key2.IsNone())
 		{
-			TArray<AActor*> Founds;
-			UGameplayStatics::GetAllActorsWithTag(this, Action.Key, Founds);
-			if (Founds.Num() > 0)
-			{
-				if (IsValid(Founds[0]))
-				{
-					if (ANpcCrowdManager* CrowdManager = Cast<ANpcCrowdManager>(Founds[0]))
-					{
-						if (!Action.Key2.IsNone())
-						{
-							CrowdManager->Play(Action.Key2);
-						}
-						else
-						{
-							UE_LOG(LogTemp, Warning, TEXT("Path 식별자가 지정되지 않음"))
-						}
-					}
-				}
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("CrowdManager를 찾을 수 없음"))
-			}
+			UE_LOG(LogTemp, Warning, TEXT("StartCrowdSpawn: 행렬 이름(Key2)이 지정되지 않음"));
+		}
+		else if (ANpcCrowdSpawner* Spawner = Cast<ANpcCrowdSpawner>(UGameplayStatics::GetActorOfClass(this, ANpcCrowdSpawner::StaticClass())))
+		{
+			Spawner->PlayEventCrowd(Action.Key2);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("StartCrowdSpawn: NpcCrowdSpawner를 찾을 수 없음"));
 		}
 		break;
 		
@@ -1245,6 +1289,14 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 				if (!Action.Key2.ToString().ToBool())
 				{
 					UGameplayStatics::OpenLevelBySoftObjectPtr(this, *Level);
+					if (Progress)
+					{
+						Progress->AddMoveHistory(FName(UGameplayStatics::GetCurrentLevelName(GetWorld(), true)));
+					}
+					if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+					{
+						ActivitySubsystem->bFreeActivity = false;
+					}
 				}
 				else
 				{
@@ -1479,6 +1531,8 @@ void UDialogueSubsystem::ExecuteAction(const FGameAction& Action)
 	case EGameActionType::FinishActivity:
 		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 		{
+			// [skydodo] 2026-10-13 버그 수정: Value 0(고정 액티비티) 분기가 주석 처리돼 "Key_0" NPC 이벤트로 처리됐다.
+			// 고정 액티비티는 레벨 이름으로 태그를 만드는 ActivityFinished(FName)으로 끝내야 NowPlayedActivity와 맞는다
 			if (Action.Value == 0)
 			{
 				ActivitySubsystem->ActivityFinished(Action.Key);

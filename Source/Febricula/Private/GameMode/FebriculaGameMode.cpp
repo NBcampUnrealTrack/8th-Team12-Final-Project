@@ -34,25 +34,35 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 	}
 
 	AFebriculaPlayerStart* Matched = nullptr;
+	AFebriculaPlayerStart* ConditionalMatched = nullptr;
 	AFebriculaPlayerStart* Fallback = nullptr;
-
-	for (TActorIterator<AFebriculaPlayerStart> It(GetWorld()); It; ++It)
+	if (UGameProgressSubsystem* ProgressSubsystem = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
 	{
-		AFebriculaPlayerStart* Now = *It;
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *Now->SpawnPointTag.GetTagName().ToString());
-		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %s"), *NowSchedule.ToString());
-		UE_LOG(LogTemp, Warning, TEXT("%d"), NowSchedule.MatchesTag(Now->SpawnPointTag));
-		if (!Now->SpawnPointTag.IsValid())
+
+		for (TActorIterator<AFebriculaPlayerStart> It(GetWorld()); It; ++It)
 		{
-			if (!Fallback)
+			AFebriculaPlayerStart* Now = *It;
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *Now->SpawnPointTag.GetTagName().ToString());
+			UE_LOG(LogTemp, Warning, TEXT("SpawnPoint Tag: %s"), *NowSchedule.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("%d"), NowSchedule.MatchesTag(Now->SpawnPointTag));
+			// [skydodo] 2026-10-13 버그 수정: 조건 검사가 if (!Fallback) 안에 있어 조건 없는 Start를 먼저 만나면 그 뒤의 조건부 Start는
+			// 검사조차 안 됐다(배치 순서에 따라 결과가 바뀜). 우선순위: 시간대+조건 일치 > 태그 없는 조건부 일치 > 조건 없는 Start
+			if (!Now->SpawnPointTag.IsValid())
 			{
-				Fallback = Now;
+				if (Now->Conditions.IsEmpty())
+				{
+					if (!Fallback)
+					{
+						Fallback = Now;
+					}
+				}
+				else if (!ConditionalMatched && ProgressSubsystem->EvaluateConditions(Now->Conditions))
+				{
+					ConditionalMatched = Now;
+				}
+				continue;
 			}
-			continue;
-		}
-		if (NowSchedule.IsValid() && NowSchedule.MatchesTag(Now->SpawnPointTag))
-		{
-			if (UGameProgressSubsystem* ProgressSubsystem = GetGameInstance()->GetSubsystem<UGameProgressSubsystem>())
+			if (NowSchedule.IsValid() && NowSchedule.MatchesTag(Now->SpawnPointTag))
 			{
 				if (ProgressSubsystem->EvaluateConditions(Now->Conditions))
 				{
@@ -63,6 +73,7 @@ AActor* AFebriculaGameMode::ChoosePlayerStart_Implementation(AController* Player
 		}
 	}
 	if (Matched) return Matched;
+	if (ConditionalMatched) return ConditionalMatched;
 	if (Fallback) return Fallback;
 
 	return Super::ChoosePlayerStart_Implementation(Player);
@@ -75,6 +86,19 @@ void AFebriculaGameMode::BeginPlay()
 	{
 		DialogueSubsystem->BlockPlayerInput(false);
 	}
+	
+	// if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	// {
+	// 	int32 NowMaxAp = ActivitySubsystem->GetMaxAP();
+	// 	
+	// 	if (NowMaxAp > 0 && ActivitySubsystem->GetCurrentAP() <= 0)
+	// 	{
+	// 		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	// 		{
+	// 			TimeSubsystem->SpendSchedule();
+	// 		}
+	// 	}
+	// }
 
 	
 	// ���̺� �ε�� ������ �̵��� �� ���, ��� ���̴� �÷��̾� ��ġ/��ȭ ��α׸� ���⼭ ���� �����Ѵ�.

@@ -1,40 +1,67 @@
-﻿@label Room_Root
+﻿@label SchoolOutside_ClassRoomSide
+어디로 갈까?
+@menu YesNo
+- 복도로 -> GoSchoolHallway
+- 교실로 -> GoClassroom
+- 급식실로 -> GoFood
+@if ScheduleIsChildOf FoodTime
+- 그만둔다 -> Cancle_Root
+
+@end
+
+@label SchoolOutside_Block
+학교 밖으로 나갈까?
+@menu YesNo
+- 네 -> GoMiddleBusDirect
+@if ScheduleAfter Schedule.FreeTime3
+- 아니오 -> Cancle_Root
+
+@label SchoolOutside_LibrarySide
+어디로 갈까?
+@menu YesNo
+- 도서관으로 -> GoLibrary
+- 그만둔다 -> Cancle_Root
+
+@end
+
+@label SchoolOutside_GymSide
+어디로 갈까?
+@menu YesNo
+- 체육관으로 -> GoGym
+- 그만둔다 -> Cancle_Root
+
+@end
+
+@label Room_Root
 학교로 갈까?
 
 @menu YesNo
-- 예 -> GoSchool
-- 아니요 -> Room_Cancle
+- 예 -> GoSchoolFromHome1
+- 아니요 -> Cancle_Root
 
 @end
 
-@label GoSchool
-@ChangeLevel SchoolOutside true
+@label GoSchoolFromHome1
 @TimeAdvanceSchedule
-@hide
-@wait .1
-@end
-
-@label Room_Cancle
+@ChangeLevel SchoolOutside true
 @hide
 @wait .1
 @end
 
 @label Classroom_Root
-어디로 갈까
+어디로 갈까?
 
 @menu YesNo
 - 복도로 -> GoSchoolHallway
 - 밖으로 -> GoPlayground
-- 그만둔다
+- 그만둔다 -> Cancle_Root
 @end
-
-
 
 @label Hallway1_Root
 들어갈까?
 @menu YesNo
 - 들어간다 -> Hallway1_Go
-- 그만둔다 -> Hallway1_Cancle
+- 그만둔다 -> Cancle_Root
 @end
 
 @label Hallway1_Go
@@ -45,34 +72,80 @@
 @wait .1
 @end
 
-@label Hallway1_Cancle
-@hide
-@wait .1
-@end
-
 @label HallwayBlock_Root
 어디로 갈까?
 @menu YesNo
 - 운동장으로 -> GoPlaygroundDirect
-- 학교 밖으로 -> GoMiddleBusDirect
-@if ScheduleIs Schedule.AfterSchool   
 - 도서관으로 -> GoLibraryDirect
-- 그만둔다
+- 체육관으로 -> GoGymDirect
+- 그만둔다 -> Cancle_Root
+@end
+
+@label Library_Root
+어디로 갈까?
+@menu YesNo
+- 운동장으로 -> GoPlayground
+- 교실 복도로 -> GoSchoolHallway
+- 교실로 -> GoClassroom
+- 그만둔다 -> Cancle_Root
+@end
+
+@label Gym_Root
+어디로 갈까?
+@menu YesNo
+- 운동장으로 -> GoPlayground
+- 교실 복도로 -> GoSchoolHallway
+- 교실로 -> GoClassroom
+- 그만둔다 -> Cancle_Root
 @end
 
 @label ReturnClass_Root
 돌아갈까?
 @menu YesNo
 - 돌아간다 -> GoClassroom
-- 그만둔다
+- 그만둔다 -> Cancle_Root
 @end
 
 @label ReturnRoom_Root
 돌아갈까?
 @menu YesNo 
 - 돌아간다 -> GoRoom
-- 그만둔다
+- 그만둔다 -> Cancle_Root
 @end
+
+@label ReturnRoom_FirstRoot
+돌아갈까?
+@menu YesNo
+- 돌아간다 -> GoRoomFirst
+- 그만둔다 -> Cancle_Root
+
+@label MiddleBus_Root
+집으로 돌아갈까?
+- 네 -> GoHome
+- 아니요 -> Cancle_Root
+@end
+
+@label Mall_Root
+어디로 갈까?
+- 햄버거 가게
+- 꽃가게
+- 그만둔다 -> Cancel_Root
+@end
+
+@label GoBugger
+@ChangeLevel BuggerHouse true
+@hide 
+@wait .1
+@end
+
+@label GoFlower
+@ChangeLevel FlowerHouse true
+@hide
+@wait .1
+@end
+
+
+
 
 @label GoClassroom
 @ChangeLevel Classroom true
@@ -84,11 +157,24 @@
 돌아갈까?
 @menu YesNo
 - 네 -> GoMiddleBus 
-- 아니요
+- 아니요 -> Cancle_Root
+@end
+
+@label GoFood
+@ChangeLevel Food true
+@hide
+@wait .1
+@end
 
 @label GoRoom
 @ChangeLevel Room true
+@hide
+@wait .1
+@end
 
+@label GoRoomFirst
+@TimeSetSchedule Schedule.Night
+@ChangeLevel Room true
 @hide
 @wait .1
 @end
@@ -136,7 +222,7 @@
 @end
 
 @label GoMiddleBusDirect
-@ChangeLevel SchoolOutside false
+@ChangeLevel MiddleBus false
 
 
 @hide
@@ -158,3 +244,25 @@
 @hide
 @wait .1
 @end 
+
+@label GoGym
+@ChangeLevel Gym true
+
+
+@hide
+@wait .1
+@end 
+
+@label GoGymDirect
+@ChangeLevel Gym false
+
+
+@hide
+@wait .1
+@end 
+
+
+@label Cancle_Root
+@hide
+@wait .1
+@end

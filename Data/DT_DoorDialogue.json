@@ -1,24 +1,44 @@
 [
   {
-    "Name": "Room_Root",
+    "Name": "SchoolOutside_ClassRoomSide",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "학교로 갈까?",
+    "Text": "어디로 갈까?",
     "OnEnterActions": [],
     "Choices": [
       {
-        "Text": "예",
+        "Text": "복도로",
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoSchool"
+        "NextNodeId": "GoSchoolHallway"
       },
       {
-        "Text": "아니요",
+        "Text": "교실로",
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "Room_Cancle"
+        "NextNodeId": "GoClassroom"
+      },
+      {
+        "Text": "급식실로",
+        "Conditions": [
+          {
+            "Type": "ScheduleIsChildOf",
+            "Key": "FoodTime",
+            "Value": 0
+          }
+        ],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoFood"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -51,32 +71,40 @@
     }
   },
   {
-    "Name": "GoSchool",
+    "Name": "SchoolOutside_Block",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "",
-    "OnEnterActions": [
+    "Text": "학교 밖으로 나갈까?",
+    "OnEnterActions": [],
+    "Choices": [
       {
-        "Type": "ChangeLevel",
-        "Key": "SchoolOutside",
-        "Key2": "true",
-        "Value": 0
+        "Text": "네",
+        "Conditions": [
+          {
+            "Type": "ScheduleAfter",
+            "Key": "Schedule.FreeTime3",
+            "Value": 0
+          }
+        ],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoMiddleBusDirect"
       },
       {
-        "Type": "TimeAdvanceSchedule",
-        "Key": "None",
-        "Key2": "None",
-        "Value": 0
+        "Text": "아니오",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
       }
     ],
-    "Choices": [],
-    "bYesNo": false,
+    "bYesNo": true,
     "Branches": [],
     "NextNodeId": "None",
-    "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.1,
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": true,
+    "bHideBoxWhileWaiting": false,
     "Camera": {
       "CameraType": "None",
       "Location": {
@@ -100,11 +128,177 @@
     }
   },
   {
-    "Name": "Room_Cancle",
+    "Name": "SchoolOutside_LibrarySide",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어디로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "도서관으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoLibrary"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "SchoolOutside_GymSide",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어디로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "체육관으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoGym"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Room_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "학교로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "예",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoSchoolFromHome1"
+      },
+      {
+        "Text": "아니요",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoSchoolFromHome1",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",
-    "OnEnterActions": [],
+    "OnEnterActions": [
+      {
+        "Type": "TimeAdvanceSchedule",
+        "Key": "None",
+        "Key2": "None",
+        "Value": 0
+      },
+      {
+        "Type": "ChangeLevel",
+        "Key": "SchoolOutside",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
@@ -139,7 +333,7 @@
     "Name": "Classroom_Root",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "어디로 갈까",
+    "Text": "어디로 갈까?",
     "OnEnterActions": [],
     "Choices": [
       {
@@ -161,7 +355,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "Hallway1_Root"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -212,7 +406,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "Hallway1_Cancle"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -288,19 +482,48 @@
     }
   },
   {
-    "Name": "Hallway1_Cancle",
+    "Name": "HallwayBlock_Root",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
-    "Text": "",
+    "Text": "어디로 갈까?",
     "OnEnterActions": [],
-    "Choices": [],
-    "bYesNo": false,
+    "Choices": [
+      {
+        "Text": "운동장으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoPlaygroundDirect"
+      },
+      {
+        "Text": "도서관으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoLibraryDirect"
+      },
+      {
+        "Text": "체육관으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoGymDirect"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
+      }
+    ],
+    "bYesNo": true,
     "Branches": [],
     "NextNodeId": "None",
-    "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.1,
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": true,
+    "bHideBoxWhileWaiting": false,
     "Camera": {
       "CameraType": "None",
       "Location": {
@@ -324,7 +547,7 @@
     }
   },
   {
-    "Name": "HallwayBlock_Root",
+    "Name": "Library_Root",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "어디로 갈까?",
@@ -335,34 +558,93 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoPlaygroundDirect"
+        "NextNodeId": "GoPlayground"
       },
       {
-        "Text": "학교 밖으로",
-        "Conditions": [
-          {
-            "Type": "ScheduleIs",
-            "Key": "Schedule.AfterSchool",
-            "Value": 0
-          }
-        ],
-        "Actions": [],
-        "YesNo": false,
-        "NextNodeId": "GoMiddleBusDirect"
-      },
-      {
-        "Text": "도서관으로",
+        "Text": "교실 복도로",
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoLibraryDirect"
+        "NextNodeId": "GoSchoolHallway"
+      },
+      {
+        "Text": "교실로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoClassroom"
       },
       {
         "Text": "그만둔다",
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "ReturnClass_Root"
+        "NextNodeId": "Cancle_Root"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Gym_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어디로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "운동장으로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoPlayground"
+      },
+      {
+        "Text": "교실 복도로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoSchoolHallway"
+      },
+      {
+        "Text": "교실로",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoClassroom"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -413,7 +695,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "ReturnRoom_Root"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -464,7 +746,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoClassroom"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -474,6 +756,395 @@
     "AutoAdvanceValue": 0.0,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "ReturnRoom_FirstRoot",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "돌아갈까?",
+    "OnEnterActions": [],
+    "Choices": [
+      {
+        "Text": "돌아간다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoRoomFirst"
+      },
+      {
+        "Text": "그만둔다",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "Cancle_Root"
+      }
+    ],
+    "bYesNo": true,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "MiddleBus_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "집으로 돌아갈까?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "MiddleBus_Root_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "MiddleBus_Root_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 네 -> GoHome",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "MiddleBus_Root_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "MiddleBus_Root_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 아니요 -> Cancle_Root",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "어디로 갈까?",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "Mall_Root_001",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root_001",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 햄버거 가게",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "Mall_Root_002",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root_002",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 꽃가게",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "Mall_Root_003",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Mall_Root_003",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "- 그만둔다 -> Cancel_Root",
+    "OnEnterActions": [],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "None",
+    "AutoAdvanceValue": 0.0,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": false,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoBugger",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "BuggerHouse",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoFlower",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "FlowerHouse",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
     "Camera": {
       "CameraType": "None",
       "Location": {
@@ -558,7 +1229,7 @@
         "Conditions": [],
         "Actions": [],
         "YesNo": false,
-        "NextNodeId": "GoRoom"
+        "NextNodeId": "Cancle_Root"
       }
     ],
     "bYesNo": true,
@@ -591,11 +1262,103 @@
     }
   },
   {
+    "Name": "GoFood",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "Food",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
     "Name": "GoRoom",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "Room",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoRoomFirst",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "TimeSetSchedule",
+        "Key": "Schedule.Night",
+        "Key2": "None",
+        "Value": 0
+      },
       {
         "Type": "ChangeLevel",
         "Key": "Room",
@@ -856,7 +1619,7 @@
     "OnEnterActions": [
       {
         "Type": "ChangeLevel",
-        "Key": "SchoolOutside",
+        "Key": "MiddleBus",
         "Key2": "false",
         "Value": 0
       }
@@ -947,6 +1710,128 @@
         "Value": 0
       }
     ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoGym",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "Gym",
+        "Key2": "true",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "GoGymDirect",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [
+      {
+        "Type": "ChangeLevel",
+        "Key": "Gym",
+        "Key2": "false",
+        "Value": 0
+      }
+    ],
+    "Choices": [],
+    "bYesNo": false,
+    "Branches": [],
+    "NextNodeId": "None",
+    "AutoAdvance": "AfterDelay",
+    "AutoAdvanceValue": 0.1,
+    "AutoAdvanceNpcId": "None",
+    "bHideBoxWhileWaiting": true,
+    "Camera": {
+      "CameraType": "None",
+      "Location": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "Rotation": {
+        "Roll": 0.0,
+        "Pitch": 0.0,
+        "Yaw": 0.0
+      },
+      "MoveTime": 0.0,
+      "Focus": 100000.0
+    },
+    "SoundLocation": {
+      "SoundChannel": "",
+      "SoundName": "",
+      "Target": "",
+      "Blend": 0.0
+    }
+  },
+  {
+    "Name": "Cancle_Root",
+    "SpeakerName": "",
+    "SpeakerNpcId": "None",
+    "Text": "",
+    "OnEnterActions": [],
     "Choices": [],
     "bYesNo": false,
     "Branches": [],

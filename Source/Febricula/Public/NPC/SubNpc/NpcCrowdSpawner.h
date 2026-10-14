@@ -1,4 +1,4 @@
-// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-08)
+// [skydodo] 2026-09-01 작성 (최종 수정 2026-10-13)
 // 요약: 거리에 행인이 끊기지 않게 채우는 스포너
 // Fill out your copyright notice in the Description page of Project Settings.
 //
@@ -38,6 +38,33 @@ struct FCrowdDensityByHour
 	float DensityMultiplier = 1.f;
 };
 
+/** 이벤트(StartCrowdSpawn)로 한 번에 내보낼 행렬 */
+USTRUCT(BlueprintType)
+struct FCrowdSequence
+{
+	GENERATED_BODY()
+
+	/** 줄지어 걸을 경로 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd")
+	TObjectPtr<ANpcCrowdPath> CrowdPath;
+
+	/** 내보낼 인원 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd", meta = (ClampMin = 1))
+	int32 SpawnCount = 20;
+
+	/** 줄 사이 간격 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd", meta = (ClampMin = 1.f))
+	float NpcGap = 120.f;
+
+	/** 경로 시작점에서 첫 줄까지의 거리 (cm) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd", meta = (ClampMin = 0.f))
+	float StartOffset = 0.f;
+
+	/** 한 줄에 세울 인원 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd", meta = (ClampMin = 1))
+	int32 NpcPerRow = 1;
+};
+
 UCLASS()
 class FEBRICULA_API ANpcCrowdSpawner : public AActor
 {
@@ -53,6 +80,10 @@ public:
 	/** 즉시 목표 인원까지 채운다 (테스트용). 플레이어 시야를 신경쓰지 않는다 */
 	UFUNCTION(BlueprintCallable, Category = "Crowd|Spawner")
 	void FillImmediately();
+
+	/** EventCrowds에서 Name으로 찾은 행렬을 한 번에 내보낸다 (대사 액션 StartCrowdSpawn) */
+	UFUNCTION(BlueprintCallable, Category = "Crowd|Spawner")
+	void PlayEventCrowd(FName Name);
 
 protected:
 	virtual void BeginPlay() override;
@@ -177,6 +208,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Time")
 	TArray<FCrowdDensityByHour> DensityBySchedule;
 
+	// ---- 이벤트 행렬 ----
+
+	/** 대사 액션 StartCrowdSpawn의 Key2로 고르는 행렬 목록. 상시 인원과 별개로 한 번에 내보낸다 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Event")
+	TMap<FName, FCrowdSequence> EventCrowds;
+
 	FTimerHandle SpawnTimerHandle;
 
 public:
@@ -195,9 +232,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Crowd|Behavior")
 	TSoftObjectPtr<UStateTree> CrowdStateTree;
 
-public:
-
-protected:
 	/**
 	 * 멀리 있는 행인을 그릴 인스턴스드 메시 애니메이션 데이터 (AnimToTexture).
 	 *

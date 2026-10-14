@@ -10,7 +10,40 @@
 #include "GameplayTagContainer.h"
 #include "Activity/ActivitySetting.h"
 #include "Activity/ActivitySubsystem.h"
+#include "GameMode/TimeSettings.h"
+#include "Net/Core/PushModel/PushModel.h"
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"
+
+FRandomStream UGameProgressSubsystem::MakeRandomStream(const FMainNpcSpawnRow& NowRow, uint32 Salt) const
+{
+	// [skydodo] 2026-10-13 버그 수정: Salt를 섞지 않아 스폰 확률 판정(Salt 0)과 자리 섞기(Salt 1)가 같은 난수열이었다
+	uint32 Hash = HashCombine(GetTypeHash(SpawnerSeed), GetTypeHash(Salt));
+	Hash = HashCombine(Hash, GetTypeHash(GetCurrentDay()));
+	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.NpcId.ToString()));
+	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.Level.ToSoftObjectPath().ToString()));
+	Hash = HashCombine(Hash, FCrc::StrCrc32(*NowRow.SpawnPointId.ToString()));
+	if (const UTimeSubsystem* Time = GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+	{
+		Hash = HashCombine(Hash, FCrc::StrCrc32(*Time->GetNowScheduleName().ToString()));
+	}
+	
+	return FRandomStream(static_cast<int32>(Hash));
+}
+
+bool UGameProgressSubsystem::CheckNpcCanSpawn(const FMainNpcSpawnRow& NowRow) const
+{
+	if (NowRow.SpawnRate >= 100) return true;
+	if (NowRow.SpawnRate <= 0) return false;
+	
+
+	return MakeRandomStream(NowRow, /*Salt=*/0).FRand() < NowRow.SpawnRate / 100.f;
+}
+
+void UGameProgressSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	SpawnerSeed = FMath::Rand();	
+}
 
 const UTimeSubsystem* UGameProgressSubsystem::GetTime() const
 {
@@ -41,23 +74,36 @@ int32 UGameProgressSubsystem::AddCounter(FName CounterId, int32 Delta)
 	return Value;
 }
 
-int32 UGameProgressSubsystem::GetStat(FName StatId) const
+// [skydodo] 2026-10-13 버그 수정: 범위 검사가 'Value < -1 || Value > Max'라 -1(없는 이름)과 Max가 통과해 Stats[] 범위 밖을 읽고 썼다. Get/Set/AddStat이 이 함수 하나로 검사한다
+bool UGameProgressSubsystem::TryGetStatIndex(FName StatId, int32& OutIndex)
 {
-	int64 Value = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
-	if (Value < -1 || Value > static_cast<int64>(EPlayerStat::Max))
+	// GetValueByName은 없는 이름이면 INDEX_NONE(-1)을 준다. Max는 배열 크기라 유효한 스탯이 아니다.
+	const int64 Value = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
+	if (Value < 0 || Value >= static_cast<int64>(EPlayerStat::Max))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
+		return false;
+	}
+	OutIndex = static_cast<int32>(Value);
+	return true;
+}
+
+int32 UGameProgressSubsystem::GetStat(FName StatId) const
+{
+	int32 Index;
+	// [skydodo] 2026-10-13 리팩토링: TryGetStatIndex가 이미 경고를 남기므로 같은 경고를 두 번 찍지 않는다
+	if (!TryGetStatIndex(StatId, Index))
+	{
 		return 0;
 	}
-	return Stats[Value];
+	return Stats[Index];
 }
 
 int32 UGameProgressSubsystem::AddStat(FName StatId, int32 Delta)
 {
-	int64 Index = StaticEnum<EPlayerStat>()->GetValueByName(StatId);
-	if (Index < -1 || Index > static_cast<int64>(EPlayerStat::Max))
+	int32 Index;
+	if (!TryGetStatIndex(StatId, Index))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("알 수 없는 스탯: %s"), *StatId.ToString());
 		return 0;
 	}
  	Stats[Index] += Delta;
@@ -70,6 +116,7 @@ bool UGameProgressSubsystem::IsEventCompleted(FName EventId) const
 	return Temp;
 }
 
+// [skydodo] 2026-10-13 버그 수정: APAtLeat/APAtMost가 ActivitySubsystem이 없으면 다음 case로 떨어졌다 -> return false. ScheduleAfter에 TimeSubsystem null 검사 추가
 bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) const
 {
 	switch (Condition.Type)
@@ -118,22 +165,40 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 	case EGameConditionType::ScheduleAfter:
 	{
 		const UTimeSubsystem* TimeSubsystem = GetTime();
-		TArray<FScheduleDef> ScheduleDef = TimeSubsystem->GetScheduleDefs();
-		if (ScheduleDef.IsEmpty())
-		{
-			UE_LOG(LogTemp, Warning, TEXT("GameProcess Subsystem: ScheduleDef가 비어있음"));
-			return false;
-		}
-		for (FScheduleDef Def : ScheduleDef)
-		{
-			if (Def.ScheduleName == FGameplayTag::RequestGameplayTag(Condition.Key))
-			{
-				return true;
-			}
-		}
+		if (!TimeSubsystem) return false;
+
+		int32 NowIndex = TimeSubsystem->GetScheduleIndex();
+		int32 TargetIndex = TimeSubsystem->GetScheduleIndex(Condition.Key);
+			
+			
+		if (TargetIndex == -1) return false;
+		if (TargetIndex < NowIndex) return true;
 		return false;
 	}
 
+	case EGameConditionType::NextScheduleIs:
+	{
+		if (UTimeSubsystem* TimeSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UTimeSubsystem>())
+		{
+			TArray<FScheduleDef> ScheduleDefs = TimeSubsystem->GetScheduleDefs();
+			if (ScheduleDefs.IsEmpty())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("GameProcess Subsystem: ScheduleDef가 비어있음"));
+				return false;
+			}
+			
+			FName NextScheduleName = TimeSubsystem->GetNextScheduleName();
+			
+			if (NextScheduleName == NAME_None)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("GameProgress Subsystem: NextScheduleName이 비어있음"));
+				return false;
+			}
+			return NextScheduleName == Condition.Key;
+		}
+		return false;
+	}
+		
 	case EGameConditionType::ScheduleIsChildOf:
 	{
 		const UTimeSubsystem* Time = GetTime();
@@ -141,9 +206,16 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		{
 			return false;
 		}
-		const FGameplayTag Parent =
-			FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
-		return Parent.IsValid() && Time->GetNowScheduleTag().MatchesTag(Parent);
+		FGameplayTagContainer Block = Time->GetScheduleBlock(Condition.Key);
+		if (Block == FGameplayTagContainer::EmptyContainer)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GameProgress Subsystem: 존재하지 않는 스케쥴 블록 %s"), *Condition.Key.ToString());
+			return false;
+		}
+		return Block.HasTagExact(Time->GetNowSchedule().ScheduleName);
+		// const FGameplayTag Parent =
+		// 	FGameplayTag::RequestGameplayTag(Condition.Key, /*ErrorIfNotFound=*/false);
+		// return Parent.IsValid() && Time->GetNowScheduleTag().MatchesTag(Parent);
 	}
 
 	case EGameConditionType::DayTypeIs:
@@ -212,12 +284,14 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 		{
 			return Condition.Value <= ActivitySubsystem->GetCurrentAP();
 		}
-		
+		return false;
+
 	case EGameConditionType::APAtMost:
 		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
 		{
 			return Condition.Value >= ActivitySubsystem->GetCurrentAP();
 		}
+		return false;
 
 		
 	case EGameConditionType::StatAtLeast:
@@ -260,6 +334,26 @@ bool UGameProgressSubsystem::EvaluateCondition(const FGameCondition& Condition) 
 				const FString NowName = UWorld::RemovePIEPrefix(NowLevel->GetOutermost()->GetName());
 				return NowName == TargetLevel->ToSoftObjectPath().GetLongPackageName();
 			}
+		}
+		return false;
+	}
+		
+	case EGameConditionType::PreviousLevelIs:
+	{
+		if (MoveHistory.IsEmpty()) return false;
+		FName LastHistory = MoveHistory.Last();
+		UE_LOG(LogTemp, Warning, TEXT("마지막 방문 레벨: %s"), *LastHistory.ToString());
+		if (Condition.Key == "Library")
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Last History == Condition.key: %d"), LastHistory == Condition.Key);
+			if (LastHistory == Condition.Key)
+			{
+				return true;
+			}			
+		}
+		if (LastHistory == Condition.Key)
+		{
+			return true;
 		}
 		return false;
 	}

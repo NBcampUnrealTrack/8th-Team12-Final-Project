@@ -259,6 +259,12 @@ class Parser:
         return token
  
     # -- 노드 생성 ----------------------------------------------------------
+
+    def ensure_routing_node(self, line_no):
+        """@label 직후 대사 없이 @branch/@jump가 오면 분기 전용 노드를 만든다."""
+        if self.p_label is None:
+            return
+        self.commit(Node(line=line_no))
  
     def next_name(self):
         if self.p_label:
@@ -523,15 +529,17 @@ class Parser:
                 elif low == "branch":
                     if not args:
                         self.error(line_no, "@branch에 대상이 없음")
-                    elif not self.nodes:
-                        self.error(line_no, "@branch 앞에 노드가 없음")
                     elif not self.p_conditions:
                         self.error(line_no, "@branch 앞에 @if 조건이 없음 - 무조건 분기라면 @jump를 쓸 것")
                     else:
-                        self.nodes[-1].branches.append(
-                            Branch(self.p_conditions, args[0], line_no))
-                        self.p_conditions = []
- 
+                        # commit()이 남은 조건을 에러로 보므로 먼저 빼둔다
+                        conds, self.p_conditions = self.p_conditions, []
+                        self.ensure_routing_node(line_no)
+                        if not self.nodes:
+                            self.error(line_no, "@branch 앞에 노드가 없음")
+                        else:
+                            self.nodes[-1].branches.append(Branch(conds, args[0], line_no))
+
                 elif low == "cam":
                     self.mark_pending(line_no)
                     self.cmd_cam(args, line_no)
@@ -851,8 +859,8 @@ def process(path, action_types, condition_types, outdir, check_only):
  
     for line_no, message in sorted(parser.errors):
         print(f"{parser.filename}({line_no}): [ERROR] {message}")
-    for line_no, message in sorted(parser.warnings):
-        print(f"{parser.filename}({line_no}): [WARN ] {message}")
+    #for line_no, message in sorted(parser.warnings):
+    #    print(f"{parser.filename}({line_no}): [WARN ] {message}")
  
     if parser.errors:
         print(f"{parser.filename}: 실패 - 에러 {len(parser.errors)}건")
@@ -873,7 +881,7 @@ def process(path, action_types, condition_types, outdir, check_only):
  
 def main():
     ap = argparse.ArgumentParser(description="Febricula dialogue script parser")
-    ap.add_argument("inputs", nargs="*", default=["Mainstory1.txt"], help="스크립트 파일 (와일드카드 가능)")
+    ap.add_argument("inputs", nargs="*", default=["Mainstory1.txt", "DT_DoorDialogue.txt", "FixedDialogue.txt", "DT_SuahDialogue.txt", "DT_DefaultDialogue.txt", "DT_DoyunDialogue.txt", "DT_MobeDialogue.txt"], help="스크립트 파일 (와일드카드 가능)")
     ap.add_argument("--outdir", help="JSON 출력 폴더 (기본: 입력 파일과 같은 위치)")
     ap.add_argument("--enum-header", nargs="*", default=["D:\\febricula\\Febricula\\Source\\Febricula\\Public\\Dialogue\\DialogueDataTypes.h"],
                     help="EGameActionType / EGameConditionType이 정의된 .h 경로 (여러 개 가능)")

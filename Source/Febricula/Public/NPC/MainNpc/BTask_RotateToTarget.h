@@ -19,6 +19,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "NPC|Blackboard")
 	FBlackboardKeySelector RouteTargetRotatorKey;
 	
+	UPROPERTY(EditAnywhere, Category = "NPC|Blackboard")
+	FBlackboardKeySelector bAutoRotateKey;
+	
 protected:
 	virtual void InitializeFromAsset(UBehaviorTree& Asset) override;
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;

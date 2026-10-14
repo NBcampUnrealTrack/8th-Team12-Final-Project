@@ -43,4 +43,16 @@ public:
 	
 	UFUNCTION(Exec)
 	void GetNowStat(FName StatName);
+	
+	UFUNCTION(Exec)
+	void GetMoveHistory();
+	
+	UFUNCTION(Exec)
+	void GetNextScheduleName();
+	
+	UFUNCTION(Exec)
+	void InScheduleBlock(FName BlockName);
+	
+	UFUNCTION(Exec)
+	void SetSchedule(FName ScheduleName);
 };
