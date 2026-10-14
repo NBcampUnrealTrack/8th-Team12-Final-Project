@@ -1817,7 +1817,8 @@ namespace SubNpcPathDebug
 			}
 			DrawDebugString(World, Npc->GetActorLocation() + FVector(0.f, 0.f, 120.f), Text, nullptr, Color, 0.f, true, DebugTextScale);
 		}
-		if (Player)
+		// 행인이 없는 맵(미니게임 등)에서는 플레이어 글자도 띄우지 않는다
+		if (Player && Npcs.Num() > 0)
 		{
 			DrawDebugString(World, Player->GetActorLocation() + FVector(0.f, 0.f, 120.f), TEXT("플레이어"), nullptr, FColor::Silver, 0.f, true, DebugTextScale);
 		}
