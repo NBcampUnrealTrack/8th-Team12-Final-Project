@@ -19,6 +19,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HAL/ThreadSafeBool.h"
 #include "Mass/EntityHandle.h"
 #include "NPC/BaseNpcCharacter.h"
 #include "NPC/SubNpc/SubNpcTypes.h"

@@ -1,5 +1,10 @@
 {
-	"enabledMcpjsonServers": [
-		"Revvy"
-	]
+  "enabledMcpjsonServers": [
+    "Revvy"
+  ],
+  "permissions": {
+    "allow": [
+      "mcp__unreal__call_tool"
+    ]
+  }
 }

@@ -107,14 +107,66 @@ namespace SurvivorGame
 	/** 연습 손님은 느리게 */
 	constexpr float PracticeEnemySpeed = 0.7f;
 
+	// ---- 추가 공격 4종 (2026-10-14) ----
+	/** 바코드 스캐너: 걷는 방향으로 관통 레이저. 레벨마다 간격 · 길이 · 피해 증가 */
+	constexpr float ScannerInterval = 2.4f;
+	constexpr float ScannerIntervalPerLevel = 0.3f;
+	constexpr float ScannerLength = 650.f;
+	constexpr float ScannerLengthPerLevel = 110.f;
+	constexpr float ScannerWidth = 40.f;
+	constexpr float ScannerBeamTime = 0.28f;
+	/** 물걸레: 이만큼 걸을 때마다 자국. 자국 위 손님은 느려지고 0.4초마다 인내심 −레벨 */
+	constexpr float MopStep = 46.f;
+	constexpr float MopRadius = 46.f;
+	constexpr float MopRadiusPerLevel = 10.f;
+	constexpr float MopLife = 1.8f;
+	constexpr float MopLifePerLevel = 0.6f;
+	constexpr float MopSlow = 0.45f;
+	constexpr float MopTick = 0.4f;
+	constexpr int32 MaxPuddles = 60;
+	/** 1+1 연쇄 사과: 맞힌 뒤 이 거리 안의 다른 손님에게 튕긴다 */
+	constexpr float ChainRange = 340.f;
+	/** 비닐봉지 부메랑: 던진 뒤 감속해 돌아온다. 레벨 = 한 번에 던지는 봉지 수 */
+	constexpr float BagInterval = 2.8f;
+	constexpr float BagIntervalPerLevel = 0.25f;
+	constexpr float BagSpeed = 900.f;
+	constexpr float BagTurnTime = 0.55f;
+	constexpr float BagReturnSpeed = 820.f;
+	constexpr float BagRadius = 34.f;
+	constexpr float BagMaxLife = 3.f;
+
+	// ---- 보스: 블랙 컨슈머 (2026-10-14) ----
+	/** 근무 시작 후 이 시각에 한 번 들어온다 (90초 근무의 60초 - 스킬이 꽤 모였고, 80초 몰이 전) */
+	constexpr float BossSpawnTime = 60.f;
+	constexpr float BossSpeed = 70.f;
+	/**
+	 * 고함: 이 간격마다 멈춰 특수공격 모션 (convenience-boss-only-v1 animations.json).
+	 * 프레임 0.35/0.45/0.25/0.4초, 2번 프레임이 시작되는 0.8초에 충격파 → 범위 안이면 멘탈 피해 + 단체 손님 호출
+	 */
+	constexpr float BossYellInterval = 5.5f;
+	constexpr float BossSpecialFrames[] = { 0.35f, 0.45f, 0.25f, 0.4f };
+	constexpr float BossYellWarn = 0.8f;
+	/** 걷기 8fps (4프레임 → 초당 2바퀴). 느린 보스라 걸음 속도 대신 시간으로 돌린다 */
+	constexpr float BossWalkCycle = 2.f;
+	constexpr float BossYellRadius = 280.f;
+	constexpr float BossYellStress = 20.f;
+	constexpr float BossContactStress = 25.f;
+	/** 밀려나는 정도 (일반 손님 대비) */
+	constexpr float BossKnockScale = 0.15f;
+	/** 퇴점시키면 떨어뜨리는 파란 영수증 수 */
+	constexpr int32 BossGems = 8;
+
 	struct FSkillDef
 	{
 		const TCHAR* Name;
 		const TCHAR* Desc;
 		int32 Max;
 		const TCHAR* Icon;
+		/** 아이콘 그림이 없을 때 동그라미 안에 쓸 글자와 동그라미 색 */
+		const TCHAR* Glyph = nullptr;
+		const TCHAR* GlyphColor = nullptr;
 	};
-	/** ESkill 순서 (HTML upgrades) */
+	/** ESkill 순서 (HTML upgrades + 추가 공격 4종). Glyph는 아이콘 그림을 못 찾았을 때만 쓴다 */
 	const FSkillDef Skills[] =
 	{
 		{ TEXT("죄송합니다"), TEXT("동시 응대 대상 +1. 사과의 범위가 넓어집니다."), 4, TEXT("skill_apology") },
@@ -125,7 +177,14 @@ namespace SurvivorGame
 		{ TEXT("퇴근 연습"), TEXT("이동 속도 20% 증가. 발걸음만큼은 이미 퇴근."), 2, TEXT("skill_speed") },
 		{ TEXT("영수증 챙겨드릴게요"), TEXT("경험치 수집 반경 60% 증가."), 2, TEXT("skill_receipt") },
 		{ TEXT("폐기 음료 한 모금"), TEXT("멘탈 45 회복. 사과 효과 1 증가."), 99, TEXT("skill_drink") },
+		// 다시 고르면: 스캐너 = 간격 −0.3초 · 길이 +110 · 피해 +1 / 물걸레 = 자국 반경 · 지속 · 피해 증가
+		//               연쇄 = 튕기는 횟수 +1 / 부메랑 = 한 번에 던지는 봉투 +1 · 간격 단축
+		{ TEXT("바코드 스캐너"), TEXT("걷는 방향으로 관통 레이저 '삑!'. 다시 고르면 더 길고 자주, 더 세게."), 4, TEXT("skill_scanner"), TEXT("삑"), TEXT("e24a5a") },
+		{ TEXT("물걸레질"), TEXT("지나간 자리가 젖어 손님이 미끄러져요. 다시 고르면 더 넓고 오래, 더 세게."), 3, TEXT("skill_mop"), TEXT("걸레"), TEXT("4aa3d8") },
+		{ TEXT("1+1 연쇄 사과"), TEXT("사과가 맞으면 옆 손님에게 튕겨요. 다시 고르면 튕기는 횟수 +1."), 3, TEXT("skill_chain"), TEXT("1+1"), TEXT("e8952a") },
+		{ TEXT("비닐봉지 부메랑"), TEXT("날아갔다 돌아오며 길 위 손님을 모두 쳐요. 다시 고르면 봉투 +1개."), 3, TEXT("skill_bag"), TEXT("봉투"), TEXT("8a7bd0") },
 	};
+	static_assert(UE_ARRAY_COUNT(Skills) == 12, "ESkill과 Skills 표의 개수가 맞아야 한다");
 
 	struct FEnemyDef
 	{
@@ -142,7 +201,11 @@ namespace SurvivorGame
 		{ TEXT("rusher"), TEXT("화난 손님"), 5, 26.f, 136.f },
 		{ TEXT("coupon"), TEXT("쿠폰 진상"), 4, 26.f, 132.f },
 		{ TEXT("group"), TEXT("단체 손님"), 2, 21.f, 116.f },
+		// 보스 시트는 448px 칸 (발 위치 비율은 다른 캐릭터와 같다)
+		{ TEXT("boss"), TEXT("블랙 컨슈머"), 120, 50.f, 300.f },
 	};
+	/** 설명 카드에 나오는 일반 손님 수 (보스 제외) */
+	constexpr int32 NormalEnemyTypes = 4;
 
 	FLinearColor Hex(const TCHAR* InHex)
 	{
@@ -327,7 +390,7 @@ USurvivorMiniGameWidget::USurvivorMiniGameWidget(const FObjectInitializer& Objec
 	AddArt(TEXT("hero_success"), TEXT("Characters"), TEXT("T_Survivor_Hero_Success"));
 
 	// 손님: <art>_walk_front / _walk_back + 피격용 흰 실루엣 (_flash)
-	const TCHAR* const EnemyAssets[][2] = { { TEXT("tipsy"), TEXT("Tipsy") }, { TEXT("rusher"), TEXT("Rusher") }, { TEXT("coupon"), TEXT("Coupon") }, { TEXT("group"), TEXT("Group") } };
+	const TCHAR* const EnemyAssets[][2] = { { TEXT("tipsy"), TEXT("Tipsy") }, { TEXT("rusher"), TEXT("Rusher") }, { TEXT("coupon"), TEXT("Coupon") }, { TEXT("group"), TEXT("Group") }, { TEXT("boss"), TEXT("Boss") } };
 	for (const auto& Pair : EnemyAssets)
 	{
 		for (const TCHAR* Dir : { TEXT("Front"), TEXT("Back") })
@@ -340,10 +403,15 @@ USurvivorMiniGameWidget::USurvivorMiniGameWidget(const FObjectInitializer& Objec
 	}
 	AddArt(TEXT("coupon_throw"), TEXT("Characters"), TEXT("T_Survivor_Coupon_Throw"));
 	AddArt(TEXT("coupon_throw_flash"), TEXT("Characters"), TEXT("T_Survivor_Coupon_Throw_Flash"));
+	// 보스 특수공격 ("점장 나오라 그래!"). _Flash는 원본 알파로 만든 흰 실루엣
+	AddArt(TEXT("boss_special"), TEXT("Characters"), TEXT("T_Survivor_Boss_Special"));
+	AddArt(TEXT("boss_special_flash"), TEXT("Characters"), TEXT("T_Survivor_Boss_Special_Flash"));
 
 	AddArt(TEXT("xp_receipt"), TEXT("Items"), TEXT("T_Survivor_Item_XpReceipt"));
 	AddArt(TEXT("xp_blue"), TEXT("Items"), TEXT("T_Survivor_Item_XpBlue"));
 	AddArt(TEXT("manual"), TEXT("Items"), TEXT("T_Survivor_Item_Manual"));
+	// 비닐봉지 부메랑: 512×256 시트, 왼쪽 기본 · 오른쪽 구김 (6fps로 번갈아)
+	AddArt(TEXT("bag_projectile"), TEXT("Items"), TEXT("T_Survivor_Item_BagProjectile"));
 	for (int32 i = 0; i < 3; ++i)
 	{
 		AddArt(*FString::Printf(TEXT("coupon%d"), i), TEXT("Items"), *FString::Printf(TEXT("T_Survivor_Item_Coupon%d"), i));
@@ -359,6 +427,8 @@ USurvivorMiniGameWidget::USurvivorMiniGameWidget(const FObjectInitializer& Objec
 		{ TEXT("skill_apology"), TEXT("Apology") }, { TEXT("skill_closing"), TEXT("Closing") }, { TEXT("skill_manager"), TEXT("Manager") },
 		{ TEXT("skill_manual"), TEXT("Manual") }, { TEXT("skill_receipt"), TEXT("Receipt") }, { TEXT("skill_soulless"), TEXT("Soulless") },
 		{ TEXT("skill_speed"), TEXT("Speed") }, { TEXT("skill_zen"), TEXT("Zen") }, { TEXT("skill_drink"), TEXT("DiscardedDrink") },
+		// 추가 공격 4종 (convenience-skill-icons-v1)
+		{ TEXT("skill_scanner"), TEXT("Scanner") }, { TEXT("skill_mop"), TEXT("Mop") }, { TEXT("skill_chain"), TEXT("Chain") }, { TEXT("skill_bag"), TEXT("Bag") },
 	};
 	for (const auto& Pair : SkillAssets)
 	{
@@ -465,6 +535,26 @@ const FSlateBrush* USurvivorMiniGameWidget::SkillIcon(ESkill Skill) const
 	return FindBrush(SurvivorGame::Skills[static_cast<int32>(Skill)].Icon);
 }
 
+void USurvivorMiniGameWidget::PaintSkillIcon(FSurvivorPainter& P, ESkill Skill, float X, float Y, float Size) const
+{
+	using namespace SurvivorGame;
+
+	if (const FSlateBrush* Icon = SkillIcon(Skill))
+	{
+		P.ArtCentered(Icon, X, Y, Size);
+		return;
+	}
+	const FSkillDef& Def = Skills[static_cast<int32>(Skill)];
+	if (!Def.Glyph)
+	{
+		return;
+	}
+	const float D = Size * 0.8f;
+	P.Brush(&CircleBrush, X - D * 0.5f - 3.f, Y - D * 0.5f - 3.f, D + 6.f, D + 6.f, Ink());
+	P.Brush(&CircleBrush, X - D * 0.5f, Y - D * 0.5f, D, D, Hex(Def.GlyphColor));
+	P.Text(Def.Glyph, X, Y, Size * 0.3f, FLinearColor::White, ESurvivorAlign::Center, true, FMath::Max(1, FMath::RoundToInt(Size / 40.f)));
+}
+
 void USurvivorMiniGameWidget::PlaySfx(FName Key)
 {
 	const TObjectPtr<USoundBase>* Sound = LoadedSfx.Find(Key);
@@ -517,6 +607,12 @@ void USurvivorMiniGameWidget::ResetRound()
 	{
 		Count = 0;
 	}
+	FacingDir = FVector2f(1.f, 0.f);
+	ScannerTimer = 0.f;
+	BagTimer = 0.f;
+	PuddleTickTimer = 0.f;
+	MopDistance = 0.f;
+	NextEnemyId = 0;
 
 	Level = 1;
 	Xp = 0;
@@ -526,6 +622,7 @@ void USurvivorMiniGameWidget::ResetRound()
 	Exits = 0;
 	SpawnTimer = 0.f;
 	bRush = false;
+	bBossSpawned = false;
 
 	Enemies.Reset();
 	Shots.Reset();
@@ -535,6 +632,9 @@ void USurvivorMiniGameWidget::ResetRound()
 	Rings.Reset();
 	Departures.Reset();
 	Scraps.Reset();
+	Beams.Reset();
+	Puddles.Reset();
+	Bags.Reset();
 
 	EndingT = 0.f;
 	FailT = 0.f;
@@ -719,13 +819,14 @@ void USurvivorMiniGameWidget::SpawnEnemy(EEnemyType Type, const FVector2f* Near)
 
 	const FEnemyDef& Def = EnemyDefs[static_cast<int32>(Type)];
 	FEnemy& Enemy = Enemies.AddDefaulted_GetRef();
+	Enemy.Id = NextEnemyId++;
 	Enemy.Pos = Pos;
 	Enemy.Type = Type;
 	Enemy.R = Def.Radius;
 	// 25초마다 인내심 +1 (HTML 그대로)
 	Enemy.MaxHp = Enemy.Hp = Def.BaseHp + FMath::FloorToInt(T / 25.f);
 	Enemy.Age = FMath::FRand() * 6.f;
-	Enemy.Action = 1.f + FMath::FRand();
+	Enemy.Action = Type == EEnemyType::Boss ? BossYellInterval * 0.6f : 1.f + FMath::FRand();
 	// 걷기를 무작위로 시작해 같은 손님끼리 발이 똑같이 맞지 않게
 	Enemy.Walk = FMath::FRand();
 	Enemy.bFlip = FMath::RandBool();
@@ -761,9 +862,10 @@ void USurvivorMiniGameWidget::HitEnemy(FEnemy& Enemy, int32 InDamage, const FVec
 	{
 		return;
 	}
+	const bool bBoss = Enemy.Type == EEnemyType::Boss;
 	Enemy.Hp -= InDamage;
 	Enemy.Flash = 0.12f;
-	Enemy.Knock += Push * 190.f;
+	Enemy.Knock += Push * 190.f * (bBoss ? BossKnockScale : 1.f);
 	AddScraps(Enemy.Pos - FVector2f(0.f, 20.f), 2);
 	PlaySfx(TEXT("hit"));
 
@@ -782,7 +884,23 @@ void USurvivorMiniGameWidget::HitEnemy(FEnemy& Enemy, int32 InDamage, const FVec
 		Leave.Walk = Enemy.Walk;
 		Leave.Dir = Enemy.Pos.X < CenterX ? -1.f : 1.f;
 		PlaySfx(TEXT("exit"));
-		if (Exits % 5 == 1)
+		if (bBoss)
+		{
+			// 파란 영수증을 주위에 흩뿌린다
+			for (int32 i = 0; i < BossGems; ++i)
+			{
+				const float A = i * UE_TWO_PI / BossGems;
+				FGem& Extra = Gems.AddDefaulted_GetRef();
+				Extra.Pos = Gem.Pos + FVector2f(FMath::Cos(A), FMath::Sin(A)) * 70.f;
+				Extra.Pos.X = FMath::Clamp(Extra.Pos.X, AreaX, AreaRight);
+				Extra.Pos.Y = FMath::Clamp(Extra.Pos.Y, AreaY, AreaBottom);
+				Extra.Value = 2;
+				Extra.Seed = FMath::FRand() * 6.f;
+			}
+			AddScraps(Enemy.Pos - FVector2f(0.f, 40.f), 14);
+			AddPop(Enemy.Pos - FVector2f(0.f, 200.f), TEXT("블랙 컨슈머 퇴점! \"다신 안 와!\""), Hex(TEXT("ffcf85")));
+		}
+		else if (Exits % 5 == 1)
 		{
 			AddPop(Enemy.Pos - FVector2f(0.f, 35.f), TEXT("다른 데 갈 거야!"), Hex(TEXT("ffcf85")));
 		}
@@ -895,6 +1013,9 @@ void USurvivorMiniGameWidget::ApplySkill(ESkill Skill)
 		++Damage;
 		PlaySfx(TEXT("heal"));
 		break;
+	// 추가 공격은 레벨(Taken)을 그대로 읽어 세기를 정한다. 처음 배우면 바로 한 번 써 보게 타이머만 당긴다
+	case ESkill::Scanner: ScannerTimer = FMath::Min(ScannerTimer, 0.3f); break;
+	case ESkill::Bag:     BagTimer = FMath::Min(BagTimer, 0.3f); break;
 	default: break;
 	}
 }
@@ -904,6 +1025,8 @@ void USurvivorMiniGameWidget::BeginFailing()
 	Mode = EMode::Failing;
 	FailT = 0.f;
 	Coupons.Reset();
+	Bags.Reset();
+	Puddles.Reset();
 	PlaySfx(TEXT("fail"));
 }
 
@@ -913,6 +1036,8 @@ void USurvivorMiniGameWidget::BeginEnding()
 	EndingT = 0.f;
 	EndingStart = HeroPos;
 	Coupons.Reset();
+	Bags.Reset();
+	Puddles.Reset();
 	PlaySfx(TEXT("shift_end"));
 	AddPop(HeroPos - FVector2f(0.f, 150.f), TEXT("근무 종료. 이제 손님입니다."), SurvivorGame::Hex(TEXT("ffb340")));
 }
@@ -1049,6 +1174,11 @@ void USurvivorMiniGameWidget::Update(float Dt)
 	PracticeMoved += FVector2f::Distance(Before, HeroPos);
 	// 위로 가면 뒷모습, 아래로 가면 앞모습. 좌우로만 움직이면 보던 쪽을 유지하고 좌우 반전만 바꾼다
 	bHeroMoving = Dx != 0.f || Dy != 0.f;
+	if (bHeroMoving)
+	{
+		FacingDir = FVector2f(Dx, Dy) / Len;
+	}
+	MopDistance += FVector2f::Distance(Before, HeroPos);
 	if (Dy < 0.f) { bHeroBack = true; }
 	else if (Dy > 0.f) { bHeroBack = false; }
 	if (Dx != 0.f) { bHeroFlip = Dx > 0.f; }
@@ -1070,6 +1200,15 @@ void USurvivorMiniGameWidget::Update(float Dt)
 			}
 			SpawnTimer = (bRush ? 0.48f : FMath::Max(0.6f, 1.3f - T * 0.014f)) * SpawnIntervalScale;
 		}
+
+		// 보스: 근무 중간에 한 번
+		if (!bBossSpawned && T >= BossSpawnTime)
+		{
+			bBossSpawned = true;
+			SpawnEnemy(EEnemyType::Boss);
+			PlaySfx(TEXT("rush"));
+			AddPop(FVector2f(CenterX, AreaY + 140.f), TEXT("블랙 컨슈머 입장!"), Bad());
+		}
 	}
 
 	// ---- 죄송합니다: 가까운 손님 N명에게 자동 발사 ----
@@ -1089,7 +1228,7 @@ void USurvivorMiniGameWidget::Update(float Dt)
 		for (int32 i = 0; i < FMath::Min(ShotCount, Targets.Num()); ++i)
 		{
 			const FVector2f Dir = (Targets[i]->Pos - HeroPos).GetSafeNormal();
-			Shots.Add({ HeroPos - FVector2f(0.f, 30.f), Dir * ShotSpeed, 1.5f });
+			Shots.Add({ HeroPos - FVector2f(0.f, 30.f), Dir * ShotSpeed, 1.5f, SkillLevel(ESkill::Chain) });
 		}
 		FireTimer = ShotCooldown;
 	}
@@ -1099,10 +1238,13 @@ void USurvivorMiniGameWidget::Update(float Dt)
 		Shot.Life -= Dt;
 		for (FEnemy& Enemy : Enemies)
 		{
-			if (Enemy.Hp > 0 && FVector2f::Distance(Enemy.Pos, Shot.Pos) < Enemy.R + 15.f)
+			if (Enemy.Hp > 0 && Enemy.Id != Shot.LastHitId && FVector2f::Distance(Enemy.Pos, Shot.Pos) < Enemy.R + 15.f)
 			{
 				HitEnemy(Enemy, Damage, Shot.Vel / ShotSpeed);
-				Shot.Life = 0.f;
+				if (!BounceShot(Shot, Enemy))
+				{
+					Shot.Life = 0.f;
+				}
 				break;
 			}
 		}
@@ -1148,8 +1290,12 @@ void USurvivorMiniGameWidget::Update(float Dt)
 		BossTimer = BossCallInterval;
 	}
 
+	UpdateExtraAttacks(Dt);
+
 	// ---- 손님 ----
 	const EMode ModeBefore = Mode;
+	/** 보스 고함으로 부를 단체 손님 위치 (돌면서 Enemies에 넣으면 안 되므로 끝나고 부른다) */
+	TArray<FVector2f, TInlineAllocator<2>> BossCalls;
 	for (FEnemy& Enemy : Enemies)
 	{
 		if (Enemy.Hp <= 0)
@@ -1217,6 +1363,40 @@ void USurvivorMiniGameWidget::Update(float Dt)
 				Speed = 0.f;
 			}
 			break;
+		case EEnemyType::Boss:
+			// 천천히 다가오다 주기적으로 멈춰 특수공격 모션 → 0.8초에 고함 (범위 안이면 멘탈 피해) + 단체 손님 호출
+			Speed = BossSpeed + T * 0.3f;
+			if (Enemy.ThrowT < 0.f && Enemy.Action <= 0.f)
+			{
+				Enemy.ThrowT = 0.f;
+				Enemy.bThrown = false;
+				Enemy.Action = BossYellInterval;
+			}
+			if (Enemy.ThrowT >= 0.f)
+			{
+				Speed = 0.f;
+				Enemy.ThrowT += Dt;
+				if (Enemy.ThrowT >= Length(BossSpecialFrames))
+				{
+					Enemy.ThrowT = -1.f;
+				}
+				if (!Enemy.bThrown && Enemy.ThrowT >= BossYellWarn)
+				{
+					Enemy.bThrown = true;
+					Rings.Add({ Enemy.Pos, BossYellRadius, 1.f });
+					AddPop(Enemy.Pos - FVector2f(0.f, 320.f), TEXT("점장 나오라 그래!"), Bad());
+					BossCalls.Add(Enemy.Pos);
+					if (FVector2f::Distance(Enemy.Pos, HeroPos) < BossYellRadius)
+					{
+						Stress(BossYellStress);
+						if (Mode != ModeBefore)
+						{
+							return;
+						}
+					}
+				}
+			}
+			break;
 		default:
 			break;
 		}
@@ -1224,12 +1404,28 @@ void USurvivorMiniGameWidget::Update(float Dt)
 		{
 			Speed *= PracticeEnemySpeed;
 		}
+		// 물걸레 자국 위에서는 미끄러져 느리다 (돌진도 둔해진다)
+		for (const FPuddle& Puddle : Puddles)
+		{
+			if (FVector2f::DistSquared(Puddle.Pos, Enemy.Pos) < FMath::Square(Puddle.Radius + Enemy.R * 0.5f))
+			{
+				Speed *= MopSlow;
+				break;
+			}
+		}
 
 		// 실제로 움직이는 방향으로 그린다 (뒷걸음질이면 speed가 음수라 반대). 위로 가면 뒷모습
 		const FVector2f Move = Dir * Speed;
 		if (FMath::Abs(Move.X) > 15.f) { Enemy.bFlip = Move.X > 0.f; }
 		if (FMath::Abs(Move.Y) > 15.f) { Enemy.bBack = Move.Y < 0.f; }
-		StepWalk(Enemy.Walk, Speed, Dt);
+		if (Enemy.Type == EEnemyType::Boss)
+		{
+			Enemy.Walk = Speed > 5.f ? Enemy.Walk + Dt * BossWalkCycle : 0.f;
+		}
+		else
+		{
+			StepWalk(Enemy.Walk, Speed, Dt);
+		}
 
 		Enemy.Pos += (Move + Enemy.Knock) * Dt;
 		Enemy.Knock *= FMath::Max(0.f, 1.f - 8.f * Dt);
@@ -1238,7 +1434,7 @@ void USurvivorMiniGameWidget::Update(float Dt)
 
 		if (FVector2f::Distance(HeroPos, Enemy.Pos) < Enemy.R + HeroR)
 		{
-			Stress(16.f);
+			Stress(Enemy.Type == EEnemyType::Boss ? BossContactStress : 16.f);
 			if (Mode != ModeBefore)
 			{
 				return;
@@ -1246,6 +1442,14 @@ void USurvivorMiniGameWidget::Update(float Dt)
 		}
 	}
 	Enemies.RemoveAll([](const FEnemy& Enemy) { return Enemy.Hp <= 0; });
+	for (const FVector2f& At : BossCalls)
+	{
+		for (int32 i = 0; i < 2 && Enemies.Num() < MaxEnemies; ++i)
+		{
+			const FVector2f Near = At + FVector2f(i == 0 ? -90.f : 90.f, 40.f);
+			SpawnEnemy(EEnemyType::Group, &Near);
+		}
+	}
 
 	// 손님끼리 겹치지 않게 밀어낸다
 	for (int32 i = 0; i < Enemies.Num(); ++i)
@@ -1320,8 +1524,183 @@ void USurvivorMiniGameWidget::Update(float Dt)
 	}
 }
 
+bool USurvivorMiniGameWidget::BounceShot(FShot& Shot, const FEnemy& Victim)
+{
+	using namespace SurvivorGame;
+
+	if (Shot.Bounces <= 0)
+	{
+		return false;
+	}
+	// 방금 맞힌 손님 말고 가장 가까운 손님에게
+	const FEnemy* Next = nullptr;
+	float Best = FMath::Square(ChainRange);
+	for (const FEnemy& Enemy : Enemies)
+	{
+		const float D = FVector2f::DistSquared(Enemy.Pos, Victim.Pos);
+		if (Enemy.Hp > 0 && Enemy.Id != Victim.Id && D < Best)
+		{
+			Best = D;
+			Next = &Enemy;
+		}
+	}
+	if (!Next)
+	{
+		return false;
+	}
+	--Shot.Bounces;
+	Shot.LastHitId = Victim.Id;
+	Shot.Pos = Victim.Pos - FVector2f(0.f, 30.f);
+	Shot.Vel = (Next->Pos - Shot.Pos).GetSafeNormal() * ShotSpeed;
+	Shot.Life = 1.f;
+	AddPop(Victim.Pos - FVector2f(0.f, 80.f), TEXT("1+1!"), Accent());
+	return true;
+}
+
+void USurvivorMiniGameWidget::UpdateExtraAttacks(float Dt)
+{
+	using namespace SurvivorGame;
+
+	// ---- 바코드 스캐너: 걷는 방향으로 한 줄 관통 ----
+	if (const int32 Lv = SkillLevel(ESkill::Scanner))
+	{
+		ScannerTimer -= Dt;
+		if (ScannerTimer <= 0.f)
+		{
+			const FVector2f Start = HeroPos - FVector2f(0.f, 30.f);
+			const float Length = ScannerLength + ScannerLengthPerLevel * (Lv - 1);
+			const float Width = ScannerWidth + 6.f * (Lv - 1);
+			const FVector2f Side(-FacingDir.Y, FacingDir.X);
+			for (FEnemy& Enemy : Enemies)
+			{
+				// 레이저 선분까지의 거리
+				const FVector2f Rel = Enemy.Pos - Start;
+				const float Along = FVector2f::DotProduct(Rel, FacingDir);
+				const float Across = FMath::Abs(FVector2f::DotProduct(Rel, Side));
+				if (Along > -Enemy.R && Along < Length + Enemy.R && Across < Width * 0.5f + Enemy.R)
+				{
+					// 레이저 바깥쪽으로 살짝 밀어낸다
+					const float SideSign = FVector2f::DotProduct(Rel, Side) >= 0.f ? 1.f : -1.f;
+					HitEnemy(Enemy, 2 + Lv, Side * SideSign * 1.5f);
+				}
+			}
+			Beams.Add({ Start, FacingDir, Length, Width, ScannerBeamTime });
+			AddPop(Start - FVector2f(0.f, 60.f), TEXT("삑!"), Bad());
+			ScannerTimer = ScannerInterval - ScannerIntervalPerLevel * (Lv - 1);
+		}
+	}
+
+	// ---- 물걸레: 걸은 만큼 자국을 남기고, 자국 위 손님은 주기적으로 인내심이 깎인다 ----
+	const int32 MopLv = SkillLevel(ESkill::Mop);
+	if (MopLv > 0 && MopDistance >= MopStep)
+	{
+		MopDistance = 0.f;
+		const float Life = MopLife + MopLifePerLevel * (MopLv - 1);
+		Puddles.Add({ HeroPos + FVector2f(0.f, HeroR * 0.6f), MopRadius + MopRadiusPerLevel * (MopLv - 1), Life, Life });
+		if (Puddles.Num() > MaxPuddles)
+		{
+			Puddles.RemoveAt(0);
+		}
+	}
+	for (FPuddle& Puddle : Puddles)
+	{
+		Puddle.Life -= Dt;
+	}
+	Puddles.RemoveAll([](const FPuddle& Puddle) { return Puddle.Life <= 0.f; });
+
+	PuddleTickTimer -= Dt;
+	if (PuddleTickTimer <= 0.f && Puddles.Num() > 0)
+	{
+		PuddleTickTimer = MopTick;
+		for (FEnemy& Enemy : Enemies)
+		{
+			for (const FPuddle& Puddle : Puddles)
+			{
+				if (FVector2f::DistSquared(Puddle.Pos, Enemy.Pos) < FMath::Square(Puddle.Radius + Enemy.R * 0.5f))
+				{
+					HitEnemy(Enemy, FMath::Max(1, MopLv), FVector2f::ZeroVector);
+					break;
+				}
+			}
+		}
+	}
+
+	// ---- 비닐봉지 부메랑: 가까운 손님 쪽으로 레벨 수만큼 부채꼴로 던진다 ----
+	if (const int32 Lv = SkillLevel(ESkill::Bag))
+	{
+		BagTimer -= Dt;
+		if (BagTimer <= 0.f)
+		{
+			// 가장 가까운 손님 쪽, 없으면 보는 쪽
+			FVector2f Aim = FacingDir;
+			float Best = TNumericLimits<float>::Max();
+			for (const FEnemy& Enemy : Enemies)
+			{
+				const float D = FVector2f::DistSquared(Enemy.Pos, HeroPos);
+				if (Enemy.Hp > 0 && D < Best)
+				{
+					Best = D;
+					Aim = (Enemy.Pos - HeroPos).GetSafeNormal();
+				}
+			}
+			const float BaseAngle = FMath::Atan2(Aim.Y, Aim.X);
+			for (int32 i = 0; i < Lv; ++i)
+			{
+				// 1개 = 정면, 2개 = ±0.4, 3개 = 0 · ±0.6 라디안
+				const float Spread = Lv == 1 ? 0.f : (i - (Lv - 1) * 0.5f) * (1.2f / (Lv - 1));
+				const FVector2f Dir(FMath::Cos(BaseAngle + Spread), FMath::Sin(BaseAngle + Spread));
+				FBag& Bag = Bags.AddDefaulted_GetRef();
+				Bag.Pos = HeroPos - FVector2f(0.f, 30.f);
+				Bag.Dir = Dir;
+				Bag.Vel = Dir * BagSpeed;
+			}
+			BagTimer = BagInterval - BagIntervalPerLevel * (Lv - 1);
+		}
+	}
+	for (FBag& Bag : Bags)
+	{
+		Bag.Age += Dt;
+		if (!Bag.bReturning)
+		{
+			// 감속하다 멈추면 돌아온다
+			Bag.Vel = Bag.Dir * BagSpeed * FMath::Max(0.f, 1.f - Bag.Age / BagTurnTime);
+			if (Bag.Age >= BagTurnTime)
+			{
+				Bag.bReturning = true;
+				Bag.HitIds.Reset(); // 돌아오는 길에 한 번 더 칠 수 있다
+			}
+		}
+		else
+		{
+			const FVector2f Home = HeroPos - FVector2f(0.f, 30.f);
+			Bag.Vel = (Home - Bag.Pos).GetSafeNormal() * BagReturnSpeed;
+			if (FVector2f::Distance(Home, Bag.Pos) < 40.f)
+			{
+				Bag.Age = BagMaxLife; // 손에 돌아왔다
+				continue;
+			}
+		}
+		Bag.Pos += Bag.Vel * Dt;
+		for (FEnemy& Enemy : Enemies)
+		{
+			if (Enemy.Hp > 0 && !Bag.HitIds.Contains(Enemy.Id) && FVector2f::Distance(Enemy.Pos, Bag.Pos) < Enemy.R + BagRadius)
+			{
+				Bag.HitIds.Add(Enemy.Id);
+				HitEnemy(Enemy, 2 + SkillLevel(ESkill::Bag), Bag.Vel.GetSafeNormal() * 1.2f);
+			}
+		}
+	}
+	Bags.RemoveAll([](const FBag& Bag) { return Bag.Age >= BagMaxLife; });
+}
+
 void USurvivorMiniGameWidget::UpdateEffects(float Dt)
 {
+	for (FBeam& Beam : Beams)
+	{
+		Beam.Life -= Dt;
+	}
+	Beams.RemoveAll([](const FBeam& Beam) { return Beam.Life <= 0.f; });
+
 	for (FPopText& Pop : Pops)
 	{
 		Pop.Life -= Dt;
@@ -1713,7 +2092,16 @@ void USurvivorMiniGameWidget::PaintEnemy(FSurvivorPainter& P, const FEnemy& Enem
 		P.Brush(&CircleBrush, Enemy.Pos.X - R, FootY - 6.f - R * 0.45f, R * 2.f, R * 0.9f, WithAlpha(Hex(TEXT("c0464f")), 0.55f));
 		ShakeX = FMath::Sin(Enemy.Age * 70.f) * 3.f;
 	}
+	const bool bBoss = Enemy.Type == EEnemyType::Boss;
 	const FLinearColor Tint = bWarn ? FLinearColor(1.f, 0.6f, 0.6f, 1.f) : FLinearColor::White;
+	// 보스 고함 예고: 충격파가 나가기 전까지 범위 원이 차오른다 (나간 뒤엔 점장 호출 고리가 퍼진다)
+	if (bBoss && Enemy.ThrowT >= 0.f && !Enemy.bThrown)
+	{
+		const float K = FMath::Clamp(Enemy.ThrowT / BossYellWarn, 0.f, 1.f);
+		const float R = BossYellRadius;
+		P.Brush(&CircleBrush, Enemy.Pos.X - R, Enemy.Pos.Y - R, R * 2.f, R * 2.f, WithAlpha(Bad(), 0.12f));
+		P.Brush(&CircleBrush, Enemy.Pos.X - R * K, Enemy.Pos.Y - R * K, R * 2.f * K, R * 2.f * K, WithAlpha(Bad(), 0.22f));
+	}
 
 	FString Sheet;
 	int32 Frame;
@@ -1721,6 +2109,11 @@ void USurvivorMiniGameWidget::PaintEnemy(FSurvivorPainter& P, const FEnemy& Enem
 	{
 		Sheet = TEXT("coupon_throw");
 		Frame = FrameAt(ThrowFrames, Enemy.ThrowT);
+	}
+	else if (bBoss && Enemy.ThrowT >= 0.f)
+	{
+		Sheet = TEXT("boss_special");
+		Frame = FrameAt(BossSpecialFrames, Enemy.ThrowT);
 	}
 	else
 	{
@@ -1734,8 +2127,14 @@ void USurvivorMiniGameWidget::PaintEnemy(FSurvivorPainter& P, const FEnemy& Enem
 		P.Sprite(FindBrush(*(Sheet + TEXT("_flash"))), Frame, 4, Enemy.Pos.X + ShakeX, FootY, Size, Enemy.bFlip, WithAlpha(FLinearColor::White, Enemy.Flash / 0.12f * 0.85f));
 	}
 
-	// 머리 위 인내심 막대
+	// 머리 위 인내심 막대 (보스는 위쪽 띠에 큰 막대가 따로 있어 이름만)
 	const float Top = FootY - Size * 0.92f;
+	if (bBoss)
+	{
+		// 보스 그림은 칸 위쪽까지 머리가 차 있어 조금 더 위에
+		P.Text(Def.Name, Enemy.Pos.X, Top - Size * 0.08f, 26.f, Hex(TEXT("e0b8ff")), ESurvivorAlign::Center, true, 3);
+		return;
+	}
 	P.Box(Enemy.Pos.X - 25.f, Top - 1.f, 50.f, 8.f, Ink());
 	P.Box(Enemy.Pos.X - 24.f, Top, 48.f, 6.f, Hex(TEXT("6b5550")));
 	P.Box(Enemy.Pos.X - 24.f, Top, 48.f * FMath::Max(0.f, static_cast<float>(Enemy.Hp) / Enemy.MaxHp), 6.f, Hex(TEXT("ff8994")));
@@ -1801,7 +2200,14 @@ void USurvivorMiniGameWidget::PaintActors(FSurvivorPainter& P) const
 {
 	using namespace SurvivorGame;
 
-	// 영수증과 점장 호출 고리는 바닥에 깔린다
+	// 물걸레 자국 · 영수증 · 점장 호출 고리는 바닥에 깔린다
+	for (const FPuddle& Puddle : Puddles)
+	{
+		const float Alpha = FMath::Min(1.f, Puddle.Life / 0.4f) * 0.4f;
+		const float W = Puddle.Radius * 2.f;
+		const float H = Puddle.Radius * 1.2f;
+		P.Brush(&CircleBrush, Puddle.Pos.X - W * 0.5f, Puddle.Pos.Y - H * 0.5f, W, H, WithAlpha(Hex(TEXT("7cc4ee")), Alpha));
+	}
 	for (const FGem& Gem : Gems)
 	{
 		const float Bob = FMath::Sin(T * 5.f + Gem.Seed) * 3.f;
@@ -1862,6 +2268,32 @@ void USurvivorMiniGameWidget::PaintProjectiles(FSurvivorPainter& P) const
 	for (const FShot& Shot : Shots)
 	{
 		P.Brush(FindBrush(TEXT("apology")), Shot.Pos.X - 52.f, Shot.Pos.Y - 26.f, 104.f, 52.f);
+	}
+	// 바코드 스캐너: 붉은 레이저 (가운데 흰 줄)
+	for (const FBeam& Beam : Beams)
+	{
+		const float Alpha = Beam.Life / ScannerBeamTime;
+		const FVector2f Mid = Beam.Start + Beam.Dir * (Beam.Length * 0.5f);
+		const float Angle = FMath::Atan2(Beam.Dir.Y, Beam.Dir.X);
+		P.RotatedBrush(&SolidBrush, Mid.X - Beam.Length * 0.5f, Mid.Y - Beam.Width * 0.5f, Beam.Length, Beam.Width, Angle, WithAlpha(Bad(), 0.45f * Alpha));
+		P.RotatedBrush(&SolidBrush, Mid.X - Beam.Length * 0.5f, Mid.Y - 3.f, Beam.Length, 6.f, Angle, WithAlpha(FLinearColor::White, Alpha));
+	}
+	// 비닐봉지 부메랑: 빙글빙글 돌며 기본 · 구김 두 칸을 6fps로 번갈아 그린다
+	for (const FBag& Bag : Bags)
+	{
+		const float Spin = Bag.Age * 14.f;
+		if (const FSlateBrush* Sheet = FindBrush(TEXT("bag_projectile")))
+		{
+			const int32 Frame = FMath::FloorToInt(Bag.Age * 6.f) % 2;
+			FSlateBrush Cell = *Sheet;
+			Cell.SetUVRegion(FBox2f(FVector2f(Frame * 0.5f, 0.f), FVector2f(Frame * 0.5f + 0.5f, 1.f)));
+			P.RotatedBrush(&Cell, Bag.Pos.X - 40.f, Bag.Pos.Y - 40.f, 80.f, 80.f, Spin);
+		}
+		else
+		{
+			P.RotatedBrush(&ReceiptBrush, Bag.Pos.X - 26.f, Bag.Pos.Y - 22.f, 52.f, 50.f, Spin);
+			P.RotatedBrush(&SolidBrush, Bag.Pos.X - 14.f, Bag.Pos.Y - 30.f, 28.f, 8.f, Spin, Ink());
+		}
 	}
 	for (const FCouponShot& Coupon : Coupons)
 	{
@@ -1935,6 +2367,22 @@ void USurvivorMiniGameWidget::PaintHud(FSurvivorPainter& P) const
 		}
 	}
 
+	// ---- 위쪽 가운데: 보스 인내심 ----
+	for (const FEnemy& Enemy : Enemies)
+	{
+		if (Enemy.Type != EEnemyType::Boss || Enemy.Hp <= 0)
+		{
+			continue;
+		}
+		constexpr float W = 700.f;
+		const float X = CenterX - W * 0.5f;
+		P.Brush(&DarkPanelBrush, X, 40.f, W, 100.f);
+		P.Text(TEXT("블랙 컨슈머의 인내심"), CenterX, 70.f, 24.f, Hex(TEXT("e0b8ff")), ESurvivorAlign::Center, true);
+		P.Brush(&BarBackBrush, X + 30.f, 96.f, W - 60.f, 24.f);
+		P.Box(X + 33.f, 99.f, (W - 66.f) * FMath::Clamp(static_cast<float>(Enemy.Hp) / Enemy.MaxHp, 0.f, 1.f), 18.f, Hex(TEXT("a46be0")));
+		break;
+	}
+
 	// ---- 마지막 10초 띠 ----
 	if (bRush && (Mode == EMode::Play || Mode == EMode::LevelUp || Mode == EMode::Pause))
 	{
@@ -1954,7 +2402,7 @@ void USurvivorMiniGameWidget::PaintHud(FSurvivorPainter& P) const
 		{
 			continue;
 		}
-		P.ArtCentered(SkillIcon(static_cast<ESkill>(i)), SkillX + 28.f, BandY, 58.f);
+		PaintSkillIcon(P, static_cast<ESkill>(i), SkillX + 28.f, BandY, 58.f);
 		P.Text(FString::Printf(TEXT("%d"), Lv), SkillX + 62.f, BandY + 18.f, 22.f, Ink(), ESurvivorAlign::Left, true);
 		SkillX += 100.f;
 	}
@@ -2079,7 +2527,7 @@ void USurvivorMiniGameWidget::PaintButtons(FSurvivorPainter& P) const
 			const FSkillDef& Def = Skills[static_cast<int32>(Skill)];
 			const int32 NextLv = (Skill == ESkill::Multi ? ShotCount : Taken[static_cast<int32>(Skill)]) + 1;
 			P.Brush(bHovered || bPressed ? &CardHoverBrush : &CardBrush, Left, Top, B.W, B.H);
-			P.ArtCentered(SkillIcon(Skill), B.X, Top + 125.f, 170.f);
+			PaintSkillIcon(P, Skill, B.X, Top + 125.f, 170.f);
 			P.Text(Def.Name, B.X, Top + 255.f, 34.f, Ink(), ESurvivorAlign::Center, true);
 			P.Text(FString::Printf(TEXT("Lv.%d"), NextLv), B.X, Top + 298.f, 22.f, Accent(), ESurvivorAlign::Center, true);
 			FString LineA, LineB;
@@ -2124,7 +2572,7 @@ void USurvivorMiniGameWidget::PaintTutorialPage(FSurvivorPainter& P) const
 		{
 			TEXT("손님과 부딪히거나 쿠폰에 맞으면 멘탈이 깎여요."),
 			TEXT("화난 손님은 붉게 떨다가 돌진해요. 옆으로 피하세요!"),
-			FString::Printf(TEXT("60초 버티면 칼퇴. 많이 퇴점시킬수록 %s이 더 올라요."), *Stat),
+			FString::Printf(TEXT("%d초 버티면 칼퇴. 많이 퇴점시킬수록 %s이 더 올라요."), FMath::RoundToInt(Duration), *Stat),
 		},
 	};
 
@@ -2150,7 +2598,7 @@ void USurvivorMiniGameWidget::PaintTutorialPage(FSurvivorPainter& P) const
 	}
 	else
 	{
-		for (int32 i = 0; i < UE_ARRAY_COUNT(EnemyDefs); ++i)
+		for (int32 i = 0; i < NormalEnemyTypes; ++i)
 		{
 			const float X = CenterX + (i - 1.5f) * 230.f;
 			P.Sprite(FindBrush(*FString::Printf(TEXT("%s_walk_front"), EnemyDefs[i].Art)), 0, 4, X, 590.f, 180.f, false);
@@ -2226,7 +2674,8 @@ void USurvivorMiniGameWidget::PaintPractice(FSurvivorPainter& P) const
 			{ TEXT("쿠폰 진상의 쿠폰"), TEXT("멘탈 −12 · 멀리서 던져요") },
 			{ TEXT("붉게 떠는 화난 손님"), TEXT("곧 돌진! 옆으로 피하세요") },
 			{ TEXT("마지막 10초"), TEXT("손님이 한꺼번에 몰려와요") },
-			{ TEXT("60초 버티면"), TEXT("칼퇴 · 멘탈 0이면 퇴근") },
+			{ TEXT("끝까지 버티면"), TEXT("칼퇴 · 멘탈 0이면 퇴근") },
+			{ TEXT("근무 중간 블랙 컨슈머"), TEXT("고함 전 붉은 원 밖으로 피하세요") },
 		};
 		for (int32 i = 0; i < UE_ARRAY_COUNT(Rows); ++i)
 		{
