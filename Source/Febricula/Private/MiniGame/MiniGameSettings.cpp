@@ -43,4 +43,21 @@ UMiniGameSettings::UMiniGameSettings()
 	// 천천히(0.6초 간격) 9건 +2, 쉬지 않고 놓으면 11~13건 +3~+4, 14건(+5)은 30판 중 손에 꼽게 나온다.
 	Flower.StatThresholds = { 7, 10, 12, 14 };
 	Levels.Add(TEXT("FlowerHouse"), Flower);
+
+	// [skydodo] 2026-10-14 추가: 편의점 야간 알바 (빈 맵 L_ConvenienceStore - 팀원이 편의점 맵을 만들면 키만 바꾼다).
+	// 가로 화면 전체를 위젯이 덮으므로 플레이어 이동 · 고정 카메라는 쓰지 않는다.
+	FMiniGameLevelEntry Survivor;
+	Survivor.WidgetClass = TSoftClassPtr<UMiniGameWidget>(FSoftObjectPath(TEXT("/Script/Febricula.SurvivorMiniGameWidget")));
+	Survivor.bMovePlayer = false;
+	Survivor.bUseFixedCamera = false;
+	Survivor.BGM = TSoftObjectPtr<USoundBase>(FSoftObjectPath(TEXT("/Game/MiniGame/Survivor/Audio/S_Survivor_BGM.S_Survivor_BGM")));
+	Survivor.BGMVolume = 0.45f;
+	Survivor.FallbackReturnLevel = TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/MiniGame/Maps/L_MiniGameTest.L_MiniGameTest")));
+	Survivor.MoneyReward = 30000;
+	Survivor.RewardStat = TEXT("Speech");
+	// 점수 = 퇴점시킨 손님 수. 0~54명 +1, 55~79명 +2, 80~99명 +3, 100~119명 +4, 120명 이상 +5.
+	// 난이도 시뮬레이션(실제 규칙, 봇 40판씩) 기준 가만히 있으면 30명 안팎(+1), 피하며 주우면 중앙 95명(+3),
+	// 상위 25%가 110명(+4), 최고 135명 안팎(+5).
+	Survivor.StatThresholds = { 55, 80, 100, 120 };
+	Levels.Add(TEXT("L_ConvenienceStore"), Survivor);
 }
