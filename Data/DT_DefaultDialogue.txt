@@ -1,0 +1,43 @@
+﻿//수면
+
+@label DF_Sleep_01
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label DF_Sleep_02
+그만 잘까?
+@menu YesNo
+- 네 -> DF_Sleep_03
+- 아니요 -> Cancle_Root
+@end
+
+@label DF_Sleep_03
+@PlaySE First blanket_rustle
+@hide
+@wait 3
+
+@label DF_Sleep_04
+@TimeResetSchedule
+@ChangeLevel Room
+@hide
+@wait .1 
+@end
+
+@label DF_Sleep_05
+@FadeOut Black .1
+@hide
+@wait .1
+
+@label DF_Sleep_06
+@FadeIn 3
+@hide
+@wait .3
+@end
+
+@label Cancle_Root
+@cam reset
+@FadeIn 3
+@hide
+@wait .3
+@end

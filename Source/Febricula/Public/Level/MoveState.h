@@ -15,3 +15,12 @@ enum class EMoveState : uint8
 	CLOSING,
 	NONE
 };
+
+UENUM(BlueprintType)
+enum class EMoveAxis : uint8
+{
+	XAxis,
+	YAxis,
+	ZAxis
+};
+

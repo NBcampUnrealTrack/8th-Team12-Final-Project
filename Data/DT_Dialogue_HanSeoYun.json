@@ -1,0 +1,2316 @@
+[
+	{
+		"Name": "M_010",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[2인 테스트] 나랑 한서윤이 같이 나오는 장면이야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_020",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[2인 테스트] 나도 여기 있어. 화자가 바뀔 때마다 말하는 쪽이 널 돌아보면 정상이야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_030",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_030",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[2인 테스트] 이제 둘이 동시에 애니메이션을 재생할게.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_040",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_040",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[2인 테스트] 지금 둘 다 움직이고 있어야 해. (3초)",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPlayAnim",
+				"Key": "NPC_KimDoYun",
+				"Key2": "Test1",
+				"Value": 1
+			},
+			{
+				"Type": "NpcPlayAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "Test2",
+				"Value": 1
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_050",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 3.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_050",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[2인 테스트] 둘 다 멈췄어. 동시 재생·중단 확인 완료.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_060",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_060",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[2인 테스트] 이동까지 볼래?",
+		"OnEnterActions": [],
+		"Choices": [
+			{
+				"Text": "① 둘이 각자 다른 경로로 이동하는 걸 본다",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "M_070"
+			},
+			{
+				"Text": "② 여기서 끝낸다",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "M_200"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_070",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[2인 테스트] 나는 TourB, 한서윤은 TourA로 갈게. 동시에 출발한다.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_080",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_080",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStartGuide",
+				"Key": "NPC_KimDoYun",
+				"Key2": "TourB",
+				"Value": 0
+			},
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcStartGuide",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "TourA",
+				"Value": 0
+			},
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_090",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "NPC_KimDoYun",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "M_090",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[2인 테스트] 나 먼저 도착. 한서윤은 아직 걷고 있을 수도 있어.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_100",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_100",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_110",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "NPC_HanSeoYun",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "M_110",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[2인 테스트] 나도 도착. 서로 다른 경로로 동시에 이동하는 것까지 확인됐어.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "M_200",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "M_200",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "[2인 테스트] 끝. 다시 말 걸면 처음부터 반복돼.",
+		"OnEnterActions": [
+			{
+				"Type": "AddAffinity",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 3
+			},
+			{
+				"Type": "AddAffinity",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 3
+			},
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcStopRouteMove",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcStopRouteMove",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_010",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 대화 표시 확인. 화자 이름과 본문이 같이 보이면 정상이야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_020",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "[테스트] 나레이션 확인. 화자 이름칸이 사라졌으면 정상.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_030",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_030",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "[테스트] 주인공 대사도 이렇게 나와.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_040",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_040",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 지금부터 애니메이션을 3초간 반복 재생할게.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPlayAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "Test1",
+				"Value": 1
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_050",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 3.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_050",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 애니메이션 중단. 원래 자세로 돌아왔으면 정상.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_060",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_060",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 이번엔 1회짜리 애니메이션.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPlayAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "Test2",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_070",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 2.5,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_070",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 선택지를 띄울게. 세 번째는 담력 3 이상이라 지금은 회색이어야 정상이야.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [
+			{
+				"Text": "① 이동 테스트로 넘어간다",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "T_100"
+			},
+			{
+				"Text": "② 애니메이션을 한 번 더 본다 (앞으로 되돌아감)",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "T_040"
+			},
+			{
+				"Text": "③ [담력 3] 조건부 선택지 - 친밀도 +3",
+				"Conditions": [
+					{
+						"Type": "StatAtLeast",
+						"Key": "Courage",
+						"Value": 3
+					}
+				],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Key2": "None",
+						"Value": 3
+					}
+				],
+				"NextNodeId": "T_080"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_080",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 조건부 선택지 통과. 친밀도가 3 올랐어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_100",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_100",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 이제 걸어갈게. 대화창이 닫히고 내가 이동하면 정상이야. 따라와.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_110",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_110",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStartGuide",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "TourA",
+				"Value": 0
+			},
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_120",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "T_120",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 도착. 대화창이 다시 열렸으면 이동 연출 정상.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_130",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_130",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 이번엔 다른 경로(TourB)로 갈게. 경로가 바뀌는지 확인해.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_140",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_140",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStartGuide",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "TourB",
+				"Value": 0
+			},
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_150",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "T_150",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 두 번째 경로 도착.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "T_160",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "T_160",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "[테스트] 전부 확인했어. 친밀도 +5 주고 끝낼게. 다시 말 걸면 처음부터 반복돼.",
+		"OnEnterActions": [
+			{
+				"Type": "AddAffinity",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 5
+			},
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcStopRouteMove",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_010",
+		"SpeakerName": "학생부장",
+		"SpeakerNpcId": "NPC_StudentDean",
+		"Text": "서윤아.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_020",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_020",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "네. 부르셨어요?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_030",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_030",
+		"SpeakerName": "학생부장",
+		"SpeakerNpcId": "NPC_StudentDean",
+		"Text": "바쁘니?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_040",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_040",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "아뇨, 괜찮아요. 왜 그러시나요?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_050",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_050",
+		"SpeakerName": "학생부장",
+		"SpeakerNpcId": "NPC_StudentDean",
+		"Text": "전학생한테 학교 좀 소개해줄 수 있겠어?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_060",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_060",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "네. 알겠습니다. 너. 이리 따라와.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_070",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_070",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStartGuide",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_080",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "E1_080",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "전학생이란게 너구나.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_090",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_090",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "맞아. 잘 부탁해.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_100",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_100",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_110",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 2.5,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "E1_110",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "한서윤.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_120",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_120",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "응?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_130",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_130",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "한서윤이라고. 내 이름.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_140",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_140",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "아. 천율. 강천율이라고 해.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_150",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_150",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "일단은 내가 학생회장이니까 학교 생활 하면서 문제가 생기거나 뭐 궁금한게 생기거나 하면 나한테 물어보면 돼.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_160",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_160",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "고마워.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_170",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_170",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_180",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "E1_180",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "3학년 때 다른 소프트웨어고로 전학이라… 흔한 일은 아닌데.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_190",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_190",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "사고라도 쳤어?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_200",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_200",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "일이 좀 있긴 했어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_210",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_210",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "선생님한테 들었어. 징계 받았다며?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_220",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_220",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "...응. 알고 있었구나.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_230",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_230",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "학생회장이니까. 어떤 학생이 왜 전학오는지 정도는 알고 있어야지.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_240",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_240",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "아무리 그래도 정확히 무슨 일이 있었는지까진 모르지만.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_250",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_250",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "무슨 일이 있었는지 말해야 할까.",
+		"OnEnterActions": [],
+		"Choices": [
+			{
+				"Text": "싸웠어.",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "E1_260"
+			},
+			{
+				"Text": "...말하고 싶지 않아.",
+				"Conditions": [],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Key2": "None",
+						"Value": -2
+					}
+				],
+				"NextNodeId": "E1_255"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_255",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "...알겠어. 사생활이니까. 억지로 캐묻진 않을게.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_310",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_260",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "누구랑? 같은 반 애랑?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_270",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_270",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "응.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_280",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_280",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "폭력이라… 쉽지 않네…",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPlayAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "Think",
+				"Value": 1
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_290",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_290",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "아니, 아니지. 미안해.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_300",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_300",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "잘못한 건 잘못한 거고… 앞으로 안 그러면 되는 거지. 응.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_310",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_310",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_320",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "E1_320",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "원래 학교에선 뭐했었어?",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_330",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_330",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "별 거 없었어. 그냥 수업 시험 수업 시험 반복이었지 뭐.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_340",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_340",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "지필평가를 되게 중요시했나봐?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_350",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_350",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "그것도 없진 않았는데 모의 면접이라던가 팀플 같은걸 3학년에 몰아놨었거든. 2학년 때까진 기껏해야 학기 당 한두 번? 정도 했던 거 같은데.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_360",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_360",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "하긴. 뭘 어떻게 가르치고 평가할지는 학교마다 다 다르니까.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_370",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_370",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "여긴 많이 달라?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_380",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_380",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "네가 다녔던 학교랑은 정반대인 셈이네. 우린 1, 2학년 때 팀플하고 3학년 때는 면허 시험 대비해서 모의고사를 계속 보니까. 과목 실습이랑. 너한테는 오히려 다행일지도 모르겠다.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_390",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_390",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_400",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "E1_400",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "그럼 당장 뭐부터 해야하는 거지?",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_410",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_410",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "학사 일정 상으로는 곧 진단평가니까 그거 준비하면 돼.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_420",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_420",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "진단평가라…",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_430",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_430",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "왜? 자신 없어?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_440",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_440",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "시험만 쳤다 하면 긴장이 되서 영…",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_450",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_450",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "괜찮아. 낙제가 있다거나 성적이 낮다고 불이익을 받거나 하진 않으니까.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_460",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_460",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "그냥 내가 잘하는 건 뭔지 못하는 건 뭔지 알기 위해서 치르는 시험이니까 그렇게 걱정할 필요는 없어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_470",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_470",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "진단평가 다음엔 뭐 하지?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_480",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_480",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "그 다음엔… 별 거 없어. 중간고사 때까지는.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_490",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_490",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "면허 시험 대비 특강이라던가 모의고사라던가 그런건 다 2학기는 되야 시작할 거고.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_500",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_500",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "과제는? 과제는 어때?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_510",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_510",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "학교 과제는 어디까지나 그날 배운거 실습해보는 수준이니까 크게 어렵거나 시간이 오래 걸리진 않을 거야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_520",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_520",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "일반 과목은 과제물이 없기도 하고.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_530",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_530",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_540",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "E1_540",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "여기가 체육관.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_550",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_550",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "여기가? 그럼 저기 앞에 있는 건?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_560",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_560",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "저긴 강당. 학교 행사할 때 쓰는 곳이라 평소에는 잠겨 있어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_570",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_570",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "분리되어 있구나.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_580",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_580",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "응. 원래는 저 자리에 별관이 있었는데 오래되서 위험하다고 헐어버리고 저렇게 강당을 세웠다 그러더라고.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_590",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_590",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "안에는…",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_600",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_600",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "안쪽에서 우당탕 하는 소리가 났다.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_610",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 1.2,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_610",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "어… 안녕?",
+		"OnEnterActions": [
+			{
+				"Type": "NpcFacePlayer",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "NpcPlayAnim",
+				"Key": "NPC_KimDoYun",
+				"Key2": "UpHand",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_620",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_620",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "하아… 또 너야? 여기서 뭐해?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_630",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_630",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "잠깐 운동…?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_640",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_640",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "옆에 얜 누구야? 전학생?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_650",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_650",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "말 돌리지 말고.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_660",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_660",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "지금 아직 쉬는 시간도 아닌데 여기서 뭐 하냐니까?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_670",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_670",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "잠깐 정돈 괜찮잖아. 어차피 국어쌤이 도서관에서 자습하라고 했는데.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_680",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_680",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "'도서관'에서 '자습' 하라고 했지 누가 체육관에서 운동해도 된다 그랬어?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_690",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_690",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "아 한 번만 봐줘~ 너도 벌점 처리하기 귀찮을 거 아냐~",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_700",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_700",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "안 되는 건 안 돼.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_710",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_710",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "한서윤이 쥐고 있던 딱판을 꺼내 학번과 이름을 적었다.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPlayAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "Write",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_720",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 2.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_720",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "나가.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_730",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_730",
+		"SpeakerName": "김도윤",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"Text": "거 참 까탈스럽네. 간다 가.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_740",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_740",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "김도윤은 어깨를 으쓱하곤 체육관 밖으로 사라졌다.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcStopAnim",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_750",
+		"AutoAdvance": "AfterDelay",
+		"AutoAdvanceValue": 1.2,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_750",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "누구야?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_760",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_760",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "김도윤. 골 때리는 놈. 넌 될 수 있으면 쟤랑은 어울려 다니지 마.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_770",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_770",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "왜 그렇게 칼 같이 자르는 거야? 같은 학생끼리인데 좀 봐줄 수도 있을 것 같은데.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_780",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_780",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "그건 안 돼.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_790",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_790",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "네 말처럼 김도윤 저 녀석이야 적당히 봐줬다고 치자. 나중에 더 크고 심각한 일이 터지면? 그때 가서 쟤는 봐줬는데 왜 나는 안 돼? 라는 말이 나오면 굉장히 곤란해지지 않겠어?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_800",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_800",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "더군다나 우리는 소프트웨어고에 다닌다고 여러가지 특혜를 받잖아?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_810",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_810",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "원래 학생들은 못 가는 학회나 발표회 같은데 참석할 수 있는 것도 그렇고 각종 장학금이나 지원금도 그렇고.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_820",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_820",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "게다가 요즘처럼 일자리 구하기 힘든 시대에 면허 시험만 합격하면 거의 확실하게 취직할 수 있는 우리를 밖에선 일종의 특권층처럼 바라본단 말이야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_830",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_830",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "최대한 원리원칙 그대로, 빡빡하게 잡아야지 학교 일이 밖으로 세어나가도 군소리가 안 나오지.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_840",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_840",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "학교 탐방은 이쯤 하고 그만 돌아가자.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_850",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_850",
+		"SpeakerName": "강천율",
+		"SpeakerNpcId": "None",
+		"Text": "그래.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_860",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "E1_860",
+		"SpeakerName": "",
+		"SpeakerNpcId": "None",
+		"Text": "",
+		"OnEnterActions": [
+			{
+				"Type": "NpcResumeAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "E1_870",
+		"AutoAdvance": "WhenNpcArrived",
+		"AutoAdvanceValue": 200.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": true
+	},
+	{
+		"Name": "E1_870",
+		"SpeakerName": "한서윤",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"Text": "오늘은 여기까지. 앞으로 잘 지내보자, 전학생.",
+		"OnEnterActions": [
+			{
+				"Type": "NpcPauseAI",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			},
+			{
+				"Type": "AddAffinity",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 5
+			},
+			{
+				"Type": "NpcStopRouteMove",
+				"Key": "NPC_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_010",
+		"SpeakerName": "한서윤",
+		"Text": "마침 잘 만났네. 전학 온 지 2주쯤 됐지? 학교 생활은 좀 적응했어?",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_020",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_020",
+		"SpeakerName": "한서윤",
+		"Text": "...사실 물어보나 마나이긴 해. 학생회에 기록이 다 올라오니까.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [
+			{
+				"Conditions": [
+					{
+						"Type": "CounterAtLeast",
+						"Key": "Violation",
+						"Value": 3
+					}
+				],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Key2": "None",
+						"Value": -8
+					}
+				],
+				"NextNodeId": "HSY_E2_030_BAD"
+			},
+			{
+				"Conditions": [
+					{
+						"Type": "CounterAtLeast",
+						"Key": "Merit",
+						"Value": 3
+					}
+				],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Key2": "None",
+						"Value": 10
+					}
+				],
+				"NextNodeId": "HSY_E2_030_GOOD"
+			},
+			{
+				"Conditions": [],
+				"Actions": [
+					{
+						"Type": "AddAffinity",
+						"Key": "NPC_HanSeoYun",
+						"Key2": "None",
+						"Value": 3
+					}
+				],
+				"NextNodeId": "HSY_E2_030_NEUTRAL"
+			}
+		],
+		"NextNodeId": "None",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_030_BAD",
+		"SpeakerName": "한서윤",
+		"Text": "2주 만에 벌점이 이만큼 쌓이는 것도 재주야. 무단 이용에 무단 이탈까지... 적응을 한 게 아니라 나쁜 것만 골라서 배운 것 같은데.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_040_BAD",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_040_BAD",
+		"SpeakerName": "한서윤",
+		"Text": "경고는 이미 했어. 다음엔 경고로 안 끝나. ...실망이야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_030_GOOD",
+		"SpeakerName": "한서윤",
+		"Text": "성적도 상위권이고, 선생님들 사이에서도 이야기가 좋더라. 솔직히 좀 놀랐어.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_040_GOOD",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_040_GOOD",
+		"SpeakerName": "한서윤",
+		"Text": "타 학교 출신이면 커리큘럼이 달라서 한 학기는 헤매는 게 보통인데... 생각보다 빨리 자리를 잡았네. 계속 그렇게 해 줘.",
+		"OnEnterActions": [
+			{
+				"Type": "GrantTopic",
+				"Key": "Topic_HanSeoYun",
+				"Key2": "None",
+				"Value": 0
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_030_NEUTRAL",
+		"SpeakerName": "한서윤",
+		"Text": "큰 문제는 없었네. 무난하다는 건 이 학교에서 나쁜 평가가 아니야.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "HSY_E2_040_NEUTRAL",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_E2_040_NEUTRAL",
+		"SpeakerName": "한서윤",
+		"Text": "다만 무난한 걸로는 취업에서 밀려. ...조언이야. 참고만 해.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "HSY_IDLE_010",
+		"SpeakerName": "한서윤",
+		"Text": "지금은 순찰 중이야. 용건 없으면 나중에 하자.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"SpeakerNpcId": "NPC_HanSeoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_010",
+		"SpeakerName": "김도윤",
+		"Text": "야, 전학생! 여기 여기.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_020",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_020",
+		"SpeakerName": "",
+		"Text": "교무실에서 나오자마자 누군가 손을 흔들었다. 조금 전 체력단련실에서 벌점을 받은 그 학생이다.",
+		"OnEnterActions": [],
+		"Choices": [
+			{
+				"Text": "아까 체단실에서 걸린 애 아니야?",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "KDY_E1_030"
+			},
+			{
+				"Text": "(모른 척한다)",
+				"Conditions": [],
+				"Actions": [],
+				"NextNodeId": "KDY_E1_031"
+			}
+		],
+		"Branches": [],
+		"NextNodeId": "None",
+		"SpeakerNpcId": "None",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_030",
+		"SpeakerName": "김도윤",
+		"Text": "어, 맞아. 나야 나. 부끄러울 것도 없지 뭐.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_040",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_031",
+		"SpeakerName": "김도윤",
+		"Text": "아, 아까 그거? 맞아, 나야. 굳이 안 물어봐 주는 것도 배려긴 한데 어차피 다 알 텐데 뭘.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_040",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_040",
+		"SpeakerName": "김도윤",
+		"Text": "이런 재미없는 곳에서 제정신으로 지내려면 룰을 '조금은' 어겨 줘야 하거든. 벌점 좀 받는다고 인생 안 끝나.",
+		"OnEnterActions": [],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "KDY_E1_050",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	},
+	{
+		"Name": "KDY_E1_050",
+		"SpeakerName": "김도윤",
+		"Text": "올해 신입생들은 하나같이 재미없는 녀석들뿐이라 망한 한 해가 될 줄 알았는데, 너 같은 변수가 나타났네. 앞으로 잘 부탁한다?",
+		"OnEnterActions": [
+			{
+				"Type": "AddAffinity",
+				"Key": "NPC_KimDoYun",
+				"Key2": "None",
+				"Value": 5
+			}
+		],
+		"Choices": [],
+		"Branches": [],
+		"NextNodeId": "None",
+		"SpeakerNpcId": "NPC_KimDoYun",
+		"AutoAdvance": "None",
+		"AutoAdvanceValue": 0.0,
+		"AutoAdvanceNpcId": "None",
+		"bHideBoxWhileWaiting": false
+	}
+]

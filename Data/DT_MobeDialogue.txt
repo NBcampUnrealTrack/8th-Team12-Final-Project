@@ -1,0 +1,88 @@
+﻿@cast 매니저 = "매니저" NPC_BurgerChief
+@cast 천율 = "강천율" PC_GangChunyul
+
+@label BurgerChief_First_01
+천율: 저...
+매니저: 뭐 필요한 거 있으신가요 손님?
+천율: 아뇨... 삼촌이 여기로 가면 아르바이트를 할 수 있을거라 말씀하셔서요.
+매니저: 아, 네가 천율이구나? 
+천율: 네. 맞습니다.
+매니저: 사장님한테 이야기 들었어.
+매니저: 햄버거 알바 해본 적 있어? 
+천율: 식당 아르바이트라면 해 본 적 있긴 한데... 설거지랑 청소가 주였어요.
+매니저: 괜찮아. 별로 안 어려워. 그냥 기계가 시키는 대로 하면 끝이니까.
+매니저: 지금 바로 일할 거야?
+@menu
+- 네 -> BurgerChief_First_02
+@if APAtLeat 1
+- 아니오 -> BurgerChief_First_03
+@end
+
+@label BurgerChief_First_02
+천율: 네. 지금 당장도 일할 수 있어요.
+매니저: 그럼 이리 들어와.
+@GrantTag State.DirectWork
+@hide
+@wait .1
+@end
+
+@label BurgerChief_First_03
+천율: 당장은 못하지만 인사라도 먼저 드리는 게 맞는 것 같아서 찾아왔어요.
+매니저: 그래? 그럼 아르바이트 시작하면 뭐 해야하는지 알려줄게. 이리 와.
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label BurgerChief_First_04
+@ConsumeAP 1
+@ChangeLevel MiddleBus
+@hide
+@wait .1
+@end
+
+
+@cast 사장 = "사장" NPC_FlowerMaster
+@label FlowerHouse_First_01
+천율: 안녕하세요.
+사장: 네, 뭐 찾으시는거 있으신가요?
+천율: 그게 아니라 삼촌이 아르바이트 자리가 필요하면 이리로 가 보라고 하셔서요.
+사장: 아~ 맞아. 그랬었지.
+사장: 어서 와. 기다리고 있었어.
+천율: 저... 근데 꽃가게 아르바이트라는게 정확히 뭘 하는 건가요? 
+사장: 응? 왜? 갑자기 어려운 일 시킬까봐 겁나?
+사장: 걱정 안 해도 돼. 
+사장: 기술이 필요한 일들은 전부 내가 하니까 넌 그냥 손님 오시거나 배달 주문 들어오면 꽃 찾아서 포장까지만 해주면 돼.
+사장: 그 정도는 할 수 있지?  
+천율: 네. 한 번 해보겠습니다.
+사장: 좋아. 그럼 지금부터 바로 일할 거야?
+
+@menu YesNo
+- 네 -> FlowerHouse_First_02
+- 아니오 -> FlowerHouse_First_03
+@end
+
+@label FlowerHouse_First_02
+천율: 네. 바로 일할 수 있어요.
+사장: 그래. 그럼 여기 안으로 와.
+@GrantTag State.DirectWork
+@hide
+@wait .1
+
+@end
+
+@label FlowerHouse_First_03
+천율: 오늘은 그냥 인사 차 들른 거라... 죄송합니다.
+사장: 아냐. 죄송할 것까진 없지.
+사장: 시간 좀 있어? 꽃 안 상하게 포장하는 법이랑 배달보내는 법 알려줄게.
+천율: 넵.
+ 
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label FlowerHouse_First_04
+@ConsumeAP 1
+@ChangeLevel MiddleBus
+@hide
+@wait .1
+@end

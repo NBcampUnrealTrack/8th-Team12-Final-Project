@@ -18,34 +18,41 @@ public class Febricula : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
-			"Slate"
+			"Slate",
+			// [skydodo] 2026-10-10 추가: 미니게임 위젯이 NativePaint에서 직접 그린다 (FSlateDrawElement, 브러시, 글꼴)
+			"SlateCore",
+			"DeveloperSettings",
+			"GameplayTags", "CinematicCamera",
+			// BurgerHouse — 손님이 앉을 자리로 순간이동할 때 내비메시에 투영한다
+			// (ACustomerCharacter::TeleportToPoint). 안 하면 벽 안에서 시작해
+			// 이후 MoveTo 가 전부 실패한다.
+			"NavigationSystem",
+			// [skydodo] 2026-10-07 추가: 행인 Mass / AnimToTexture 모듈
+			// 행인 이동 계산을 Mass 프로세서에서 병렬로 돌린다 (SubNpcMassProcessors).
+			"MassEntity",
+			"MassCore",
+			// 멀리 있는 행인을 인스턴스드 메시 + 텍스처로 구운 애니메이션으로 그린다 (SubNpcMassProcessors).
+			"AnimToTexture",
+			// 행인 상태 결정(스팟에 들를지 등)을 Mass StateTree로 (SubNpcMassStateTree).
+			"MassAIBehavior",
+			"MassSignals"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
+		// [skydodo] 2026-10-07 추가
+		// 원경 행인 애니메이션 굽기 명령 crowd.BakeFarCrowd (SubNpcFarCrowdBake.cpp, 에디터 전용)
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.Add("AnimToTextureEditor");
+		}
+
 		PublicIncludePaths.AddRange(new string[] {
 			"Febricula",
-			"Febricula/Variant_Platforming",
-			"Febricula/Variant_Platforming/Animation",
-			"Febricula/Variant_Combat",
-			"Febricula/Variant_Combat/AI",
-			"Febricula/Variant_Combat/Animation",
-			"Febricula/Variant_Combat/Gameplay",
-			"Febricula/Variant_Combat/Interfaces",
-			"Febricula/Variant_Combat/UI",
-			"Febricula/Variant_SideScrolling",
-			"Febricula/Variant_SideScrolling/AI",
-			"Febricula/Variant_SideScrolling/Gameplay",
-			"Febricula/Variant_SideScrolling/Interfaces",
-			"Febricula/Variant_SideScrolling/UI"
+			// [skydodo] 2026-09-10 추가: BurgerHouse include 경로
+			// BurgerHouse — 손님 NPC 루프 (Import/BURGERHOUSE.md)
+			"Febricula/BurgerHouse"
 		});
 
-		// Uncomment if you are using Slate UI
-		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
-
-		// Uncomment if you are using online features
-		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
-
-		// To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
 	}
 }

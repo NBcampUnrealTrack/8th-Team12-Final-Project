@@ -1,0 +1,66 @@
+@label StudyLibrary1
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label StudyLibrary2
+@Interact Chair true
+@cam Loc -835.8 565.5 101.4 Rot 0 -9.700671 -153.0 .1 180
+@Teleport Player CheonStudy 
+@PlayAnim Player SitMale 1
+@hide
+@wait .3
+
+@label StudyLibrary3
+@FadeIn 1
+@hide
+@wait 1
+
+@label StudyLibrary4
+자리에 앉아 열심히 자습했다.
+
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label StudyLibrary5
+@StopAnim Player
+@cam reset
+@FadeIn 3
+@wait .3
+@Teleport Player PlayerStart
+@AddStat Int 3
+@FinishActivity Study
+@end
+
+
+@label RunningMachineGym1
+@FadeOut Black 3
+@hide
+@wait .3
+
+
+@label RunningMachineGym2
+@Teleport Player RunningMachine
+@cam Loc -388.7 1659.0 67.4 Rot 0 6.4 -210.0
+@FadeIn 3
+@hide
+@wait .3
+
+@cast 천율 = "강천율" PC_GangChunyul
+@label RunningMachineGym3
+천율: (속도 설정은 됐고...)
+천율: (좋아. 이 정도면 되겠지.)
+@FadeOut Black 3
+@hide
+@wait .3
+
+@label RunningMachineGym4
+@cam reset
+@AddStat Hp 1
+@FinishActivity RunningMachine
+@Teleport Player PlayerStart
+@FadeIn 3
+@hide
+@wait .3
+@end

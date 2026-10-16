@@ -11,8 +11,21 @@ AMapActorBase::AMapActorBase()
 	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	bAllowTickBeforeBeginPlay = false;
-	RootComponent = CreateDefaultSubobject<USceneComponent>(FName("Root"));
-	
+}
+
+bool AMapActorBase::CanInteract_Implementation(AActor* Interactor) const
+{
+	return Super::CanInteract_Implementation(Interactor);
+}
+
+void AMapActorBase::Interact_Implementation(AActor* Interactor)
+{
+	Super::Interact_Implementation(Interactor);
+}
+
+FText AMapActorBase::GetInteractionPrompt_Implementation(AActor* Interactor) const
+{
+	return Super::GetInteractionPrompt_Implementation(Interactor);
 }
 
 // Called when the game starts or when spawned
