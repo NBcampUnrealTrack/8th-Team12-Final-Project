@@ -115,17 +115,17 @@ void AFebriculaGameMode::BeginPlay()
 	//GetWorldTimerManager().SetTimer(AutoEventTimer, this, &AFebriculaGameMode::PlayEvent, 3.0f, false);
 	const bool bSpecialEvent = PlayEvent();
 
-	if (!bSpecialEvent)
-	{
-		if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
-		{
-			TArray<FGameplayTag> RunnableActivityTags = ActivitySubsystem->GetRunnableActivityTag();
-			if (RunnableActivityTags.Num() > 0)
-			{
-				ActivitySubsystem->PrintFixedActivities();
-			}
-		}
-	}
+	// if (!bSpecialEvent)
+	// {
+	// 	if (UActivitySubsystem* ActivitySubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UActivitySubsystem>())
+	// 	{
+	// 		TArray<FGameplayTag> RunnableActivityTags = ActivitySubsystem->GetRunnableActivityTag();
+	// 		if (RunnableActivityTags.Num() > 0)
+	// 		{
+	// 			ActivitySubsystem->PrintFixedActivities();
+	// 		}
+	// 	}
+	// }
 }
 
 TSoftClassPtr<ABaseNpcCharacter> AFebriculaGameMode::GetNpcViaName(FName NowName)

@@ -732,7 +732,7 @@ AI의 끊임없는 발전.
 // 진단평가
 @cast 학생들 = "학생들" NPC_Crowd
 @label Shindan
-@FadeOut Black .1
+@FadeOut Black .1a
 담임: 안 온 사람 있나?
 도윤: 없습니다~
 담임: 그래. 너 왔으면 다 왔겠네.

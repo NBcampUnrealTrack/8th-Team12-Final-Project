@@ -1182,6 +1182,13 @@
         "NextNodeId": "GoFlower"
       },
       {
+        "Text": "편의점",
+        "Conditions": [],
+        "Actions": [],
+        "YesNo": false,
+        "NextNodeId": "GoCombi"
+      },
+      {
         "Text": "그만둔다",
         "Conditions": [],
         "Actions": [],
@@ -1282,49 +1289,6 @@
     "Text": "",
     "OnEnterActions": [
       {
-        "Type": "FadeOut",
-        "Key": "Black",
-        "Key2": "None",
-        "Value": 3
-      }
-    ],
-    "Choices": [],
-    "bYesNo": false,
-    "Branches": [],
-    "NextNodeId": "GoBugger_01",
-    "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.3,
-    "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": true,
-    "Camera": {
-      "CameraType": "None",
-      "Location": {
-        "X": 0.0,
-        "Y": 0.0,
-        "Z": 0.0
-      },
-      "Rotation": {
-        "Roll": 0.0,
-        "Pitch": 0.0,
-        "Yaw": 0.0
-      },
-      "MoveTime": 0.0,
-      "Focus": 100000.0
-    },
-    "SoundLocation": {
-      "SoundChannel": "",
-      "SoundName": "",
-      "Target": "",
-      "Blend": 0.0
-    }
-  },
-  {
-    "Name": "GoBugger_01",
-    "SpeakerName": "",
-    "SpeakerNpcId": "None",
-    "Text": "",
-    "OnEnterActions": [
-      {
         "Type": "ChangeLevel",
         "Key": "BurgerHouse",
         "Key2": "true",
@@ -1368,49 +1332,6 @@
     "Text": "",
     "OnEnterActions": [
       {
-        "Type": "FadeOut",
-        "Key": "Black",
-        "Key2": "None",
-        "Value": 3
-      }
-    ],
-    "Choices": [],
-    "bYesNo": false,
-    "Branches": [],
-    "NextNodeId": "GoFlower_01",
-    "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.3,
-    "AutoAdvanceNpcId": "None",
-    "bHideBoxWhileWaiting": true,
-    "Camera": {
-      "CameraType": "None",
-      "Location": {
-        "X": 0.0,
-        "Y": 0.0,
-        "Z": 0.0
-      },
-      "Rotation": {
-        "Roll": 0.0,
-        "Pitch": 0.0,
-        "Yaw": 0.0
-      },
-      "MoveTime": 0.0,
-      "Focus": 100000.0
-    },
-    "SoundLocation": {
-      "SoundChannel": "",
-      "SoundName": "",
-      "Target": "",
-      "Blend": 0.0
-    }
-  },
-  {
-    "Name": "GoFlower_01",
-    "SpeakerName": "",
-    "SpeakerNpcId": "None",
-    "Text": "",
-    "OnEnterActions": [
-      {
         "Type": "ChangeLevel",
         "Key": "FlowerHouse",
         "Key2": "true",
@@ -1448,24 +1369,24 @@
     }
   },
   {
-    "Name": "GoClassroom",
+    "Name": "GoCombi",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",
     "OnEnterActions": [
       {
-        "Type": "FadeOut",
-        "Key": "Black",
-        "Key2": "None",
-        "Value": 3
+        "Type": "ChangeLevel",
+        "Key": "Combi",
+        "Key2": "true",
+        "Value": 0
       }
     ],
     "Choices": [],
     "bYesNo": false,
     "Branches": [],
-    "NextNodeId": "GoClassroom_01",
+    "NextNodeId": "None",
     "AutoAdvance": "AfterDelay",
-    "AutoAdvanceValue": 0.3,
+    "AutoAdvanceValue": 0.1,
     "AutoAdvanceNpcId": "None",
     "bHideBoxWhileWaiting": true,
     "Camera": {
@@ -1491,7 +1412,7 @@
     }
   },
   {
-    "Name": "GoClassroom_01",
+    "Name": "GoClassroom",
     "SpeakerName": "",
     "SpeakerNpcId": "None",
     "Text": "",

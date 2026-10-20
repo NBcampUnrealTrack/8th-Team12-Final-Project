@@ -4,6 +4,7 @@
 
 #include "Interaction/InteractableProp.h"
 
+#include "Activity/ActivityDefinition.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -68,32 +69,40 @@ void AInteractableProp::Interact_Implementation(AActor* Interactor)
 	}
 
 	bool bStarted = false;
-	
-	if (!DialogueNodeId.IsNone())
+	if (ConnectedEventTable)
 	{
-		if (UDataTable* DialogueDT = DefaultDialogueTable.LoadSynchronous())
+		if (!DialogueNodeId.IsNone())
 		{
-			Dialogue->SetDataTables(ConnectedEventTable, DialogueDT);
+			if (UDataTable* DialogueDT = DefaultDialogueTable.LoadSynchronous())
+			{
+				Dialogue->SetDataTables(ConnectedEventTable, DialogueDT);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 테이블 '%s'의 기본 Dialogue Table '%s'을(를) 찾지 못했습니다."), *GetNameSafe(ConnectedEventTable), *DefaultDialogueTable.GetAssetName());	
+				return;
+			}		
+			if (ConnectedEventTable->GetRowStruct() == FActivityDefinition::StaticStruct())
+			{
+				bStarted = Dialogue->StartDialogueAtNode(DialogueNodeId, this);
+			}
+			else
+			{
+				// 선택지가 필요한 사물은 대화 테이블 노드를 그대로 재생한다.
+				if (AMainNpcCharacter* Npc = Cast<AMainNpcCharacter>(GetOwner()))
+				{
+					bStarted = Dialogue->TryStartEventForNpc(Npc->GetNpcId(), this, DialogueNodeId);
+				}
+				else
+				{
+					bStarted = Dialogue->TryStartEventForNpc(NAME_None, this, DialogueNodeId);
+				}
+			}
 		}
 		else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("DialogueSubsystem: 이벤트 테이블 '%s'의 기본 Dialogue Table '%s'을(를) 찾지 못했습니다."), *GetNameSafe(ConnectedEventTable), *DefaultDialogueTable.GetAssetName());	
-			return;
+			bStarted = Dialogue->StartSimpleLines(SpeakerName, InspectLines, this);
 		}
-		
-		// 선택지가 필요한 사물은 대화 테이블 노드를 그대로 재생한다.
-		if (AMainNpcCharacter* Npc = Cast<AMainNpcCharacter>(GetOwner()))
-		{
-			bStarted = Dialogue->TryStartEventForNpc(Npc->GetNpcId(), this, DialogueNodeId);
-		}
-		else
-		{
-			bStarted = Dialogue->TryStartEventForNpc(NAME_None, this, DialogueNodeId);
-		}
-	}
-	else
-	{
-		bStarted = Dialogue->StartSimpleLines(SpeakerName, InspectLines, this);
 	}
 	if (bStarted)
 	{

@@ -110,7 +110,7 @@ void UActivitySubsystem::PrintFixedActivities()
 
 		TArray<FGameCondition> Condition;
 		Condition.Add(FGameCondition(EGameConditionType::APAtLeat, NAME_None, Activity.Value.ActionPointCost));
-		DialogueChoices.Add(FDialogueChoice(FText::FromName(Activity.Key.GetTagName()), Condition, TArray<FGameAction>(), Activity.Value.NodeId));
+		DialogueChoices.Add(FDialogueChoice(FText::FromName(Activity.Value.ActivityName), Condition, TArray<FGameAction>(), Activity.Value.NodeId));
 	}
 	DialogueChoices.Add(FDialogueChoice(INVTEXT("자유행동"), TArray<FGameCondition>(), TArray<FGameAction>(), NAME_None));
 	
@@ -119,7 +119,7 @@ void UActivitySubsystem::PrintFixedActivities()
 	{
 		//DialogueSubsystem->TryStartEventForNpc(FName(""), nullptr);
 		FDialogueNodeRow Row = FDialogueNodeRow();
-		for (int i = 0; i < DialogueChoices.Num() - 1; i++)
+		for (int i = 0; i < DialogueChoices.Num() - 1; i++) 
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Choice Name: %s"), *DialogueChoices[i].Text.ToString());
 		}
@@ -290,7 +290,7 @@ void UActivitySubsystem::ActivityFinished(FName ActivityName)
 	UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished: %s"), *NowPlayedActivity.ToString());
 	if (NowPlayedActivity != ActivityTag) return;
 	bFreeActivity = false;
-	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
+	//GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
 	OnActivityFinished.Broadcast(FName("Fixed"), ActivityName);
 }
 
@@ -303,7 +303,7 @@ void UActivitySubsystem::ActivityFinished(FName NpcName, int32 EventNumber)
 			FName ActivityName = FName(FString::Printf(TEXT("%s_%d"), *NpcName.ToString(), EventNumber));
 			UE_LOG(LogTemp, Warning, TEXT("ActivitySubsystem: Finished: %s"), *ActivityName.ToString());
 			
-			GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
+			//GetWorld()->GetTimerManager().SetTimerForNextTick(this, &UActivitySubsystem::PrintFixedActivities);
 			bFreeActivity = false;
 			CheckCurrentAP();
 			OnActivityFinished.Broadcast(NpcName, ActivityName);

@@ -33,6 +33,7 @@
 #include "NPC/MainNpc/NpcAffinitySubsystem.h"
 #include "WorldPartition/HLOD/HLODActor.h"
 #include "Dialogue/DialogueLogSubsystem.h"
+#include "GameMode/LevelSetting.h"
 
 TStatId UDialogueSubsystem::GetStatId() const
 {
@@ -193,11 +194,69 @@ void UDialogueSubsystem::SetDataTables(UDataTable* InEventTable, UDataTable* InD
 	}
 }
 
+void UDialogueSubsystem::ResetDataTables()
+{
+	if (ALevelSetting* AES = Cast<ALevelSetting>(GetWorld()->GetWorldSettings()))
+	{
+		SetDataTables(AES->AutoEventRow, AES->AutoDialogueRow);
+	}
+}
+
 // ---------------------------------------------------------------------------
 // 대화 시작
 // ---------------------------------------------------------------------------
 
+bool UDialogueSubsystem::TryStartActivitySelection(AActor* InInstigator, FName DialogueNodeId)
+{
+	if (bDialogueActive || !EventTable)
+	{
+		return false;
+	}
 
+	const UGameProgressSubsystem* Progress = GetProgress();
+	if (!Progress)
+	{
+		return false;
+	}
+
+	// 조건을 만족하는 이벤트 중 Priority가 가장 높은 것을 고른다.
+	// 동점이면 테이블에 먼저 나온 쪽이 이긴다 (데이터 순서 = 이벤트 트리 순서).
+	const FActivityDefinition* BestRow = nullptr;
+	FName BestRowName = NAME_None;
+
+	static const FString ContextString(TEXT("TryStartEventForNpc"));
+	for (const TPair<FName, uint8*>& Pair : EventTable->GetRowMap())
+	{
+		const FActivityDefinition* Row = reinterpret_cast<const FActivityDefinition*>(Pair.Value);
+		if (!Row)
+		{
+			continue;
+		}
+
+		// 반복 불가 이벤트인데 이미 완료했으면 후보에서 제외
+		if (DialogueNodeId != NAME_None)
+		{
+			if (Row->NodeId == DialogueNodeId)
+			{
+				BestRow = Row;
+				BestRowName = Pair.Key;	// 비워 두면 끝날 때 이벤트 완료 기록이 빠진다
+				break;
+			}
+		}		
+	}
+	if (!BestRow)
+	{
+		return false;
+	}
+
+	CurrentInstigator = InInstigator;
+	ActiveEventId = BestRowName;
+	bDialogueActive = true;
+	bRunningSimpleLines = false;
+	
+	EnterNode(BestRow->NodeId);
+	return true;
+}
 
 
 // [skydodo] 2026-10-13 버그 수정: DialogueNodeId로 고른 경우 BestRowName이 비어 이벤트 완료 기록이 빠졌다. Row가 null이면 역참조하던 것도 막음

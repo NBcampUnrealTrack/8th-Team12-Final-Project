@@ -18,6 +18,8 @@ struct FActivityDefinition : public FTableRowBase
 {
 	GENERATED_BODY()
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
+	FName ActivityName;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
 	FGameplayTag ActivityNameTag;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Febricula | TestEvent")
 	TArray<FActivityLocation> ActivityLocations;

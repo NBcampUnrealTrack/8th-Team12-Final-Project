@@ -11626,7 +11626,7 @@
       {
         "Type": "FadeOut",
         "Key": "Black",
-        "Key2": ".1",
+        "Key2": ".1a",
         "Value": 0
       }
     ],

@@ -1,3 +1,19 @@
+// 진입점
+@label Library_Chair1
+앉을까?
+@menu YesNo
+- 자습한다 -> StudyLibrary1
+- 그만둔다 -> Cancle_Root
+@end
+
+@label Cancle_Root
+@hide
+@wait .1
+@end
+
+
+
+// 실제 로직
 @label StudyLibrary1
 @FadeOut Black 3
 @hide

@@ -73,6 +73,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
 	void SetDataTables(UDataTable* InEventTable, UDataTable* InDialogueTable);
 
+	UFUNCTION(BlueprintCallable, Category = "Dialogue")
+	void ResetDataTables();
+
+
 	// ---- 대화 시작 ----
 
 	/**
@@ -82,6 +86,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
 	bool TryStartEventForNpc(FName NpcId, AActor* InInstigator, FName DialogueNodeId = NAME_None);
 
+	bool TryStartActivitySelection(AActor* InInstigator, FName DialogueNodeId);
+
+	
 	/** 특정 노드부터 직접 대화를 시작한다 (이벤트 테이블을 거치지 않는 경우) */
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
 	bool StartDialogueAtNode(FName NodeId, AActor* InInstigator);
